@@ -46,27 +46,28 @@ end;
 
 structure Path: NET =
 struct
-(* Three types of keys: Combinations (= Application), Variables and Atoms *)
 (* TODO purpose of VarK, name of Var irrelevant? *)
-datatype key = CombK of int | VarK | AtomK of string;
+(* TODO redesign such that only valid keys are possible *)
+datatype nodeK = CombK of int | AtomK of string | VarK;
+type key = nodeK list;
 
-fun add_key_of_terms (term, keys) : key list =
-  let fun aux (term, keys) = case term of
-          fst $ snd => CombK 1 :: aux (fst, check_head (snd, keys))
-        | Const (name,_) => AtomK name :: keys
-        | Free (name,_) => AtomK name :: keys
-        | Bound i => AtomK (Name.bound i) :: keys
-        (* Other cases impossible. check_head ensured that no Var/Abs
-           occurs before the next $ *)
-      and check_head (term, keys) = case head_of term of
-          Var _ => VarK :: keys
-        | Abs _ => VarK :: keys
-        | _ => aux (term, keys)
-  in check_head (term, keys)
-  end;
+fun key_of_term_aux (term, prefix, keys) : key list = case term of
+    Const (name, _) => rev (AtomK name :: prefix) :: keys
+  | Free (name, _) => rev (AtomK name :: prefix) :: keys
+  | Bound i => rev (AtomK (Name.bound i) :: prefix) :: keys
+  | fst $ snd =>
+      (* Add CombK if not present, else reuse *)
+      let val (index, prefix) = case prefix of
+              CombK i :: tl => (i, tl)
+            | xs => (1, prefix)
+      (* Avoid list @ list *)
+          val keys_fst = key_of_term_aux (fst, CombK index :: prefix, keys)
+      in key_of_term_aux (snd, CombK (index+1) :: prefix, keys_fst) end
+  | Var _ => rev (VarK :: prefix) :: keys
+  | Abs _ => rev (VarK :: prefix) :: keys
 
 (*convert a term to a list of keys*)
-fun key_of_term t = add_key_of_terms (t, []);
+fun key_of_term t = key_of_term_aux (t, [], []);
 
 (*encode_type -- for indexing purposes*)
 fun encode_type (Type (c, Ts)) = Term.list_comb (Const (c, dummyT), map encode_type Ts)
@@ -86,22 +87,35 @@ fun encode_type (Type (c, Ts)) = Term.list_comb (Const (c, dummyT), map encode_t
  *)
 datatype 'a tree = CompNode of 'a list * 'a tree Inttab.table
                  | SymNode of 'a list * 'a tree Symtab.table
+                 | Leaf of 'a list
 
-val empty = Leaf[];
-fun is_empty (Leaf []) = true | is_empty _ = false;
-val emptynet = Net{comb=empty, var=empty, atoms=Symtab.empty};
+val empty_comp = CompNode ([], Inttab.empty);
+val empty_sym = SymNode ([], Symtab.empty);
 
+val empty = Leaf [];
+fun is_empty (Leaf []) = true | is_empty _ = false; (* TODO is that always correct? *)
 
-(*** Insertion into a discrimination net ***)
+(*** Insertion into a path index tree ***)
 
 exception INSERT;       (*duplicate item in the net*)
-
 
 (*Adds item x to the list at the node addressed by the keys.
   Creates node if not already present.
   eq is the equality test for items.
   The empty list of keys generates a Leaf node, others a Net node.
 *)
+(* TODO inefficient approach: Insert each key independently.
+   For e.g. f(g(h(x,y))) path from root to h is repeated thrice, for h,x,y
+   TODO perhaps drop subkeys from keylist? For f(g(x)) only save <f,1,g,1> = x? Why doesn't that work?
+*)
+fun insert_one eq (key, x) tree = case (key,tree) of
+    ([], Leaf xs) => Leaf (x :: xs)
+  | ([], CompNode (xs,t)) => CompNode (x::xs,t)
+  | ([], SymNode (xs,t)) => SymNode (x::xs,t)
+  | (k::ks), Leaf xs) => 
+
+fun insert eq (keys, x) tree =
+
 fun insert eq (keys,x) net =
   let fun ins1 ([], Leaf xs) =
             if member eq xs x then  raise INSERT  else Leaf(x::xs)
