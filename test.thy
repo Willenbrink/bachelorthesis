@@ -10,6 +10,7 @@ ML_val \<open>@{term_pat "Suc (?x::nat)"}\<close>
 ML_val \<open>@{typ_pat "int \<Rightarrow> int"}\<close>
 
 ML_val \<open>@{term_pat "(\<lambda>x. x 1) f"}\<close>
+ML_val \<open>@{term_pat "(f x) y"}\<close>
 
 ML_val "Path.empty"
 ML "fun taut (x,y) = true"

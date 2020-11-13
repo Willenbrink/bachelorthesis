@@ -47,33 +47,41 @@ end;
 structure Path: NET =
 struct
 (* TODO purpose of VarK, name of Var irrelevant? *)
-(* TODO redesign such that only valid keys are possible *)
-datatype nodeK = CombK of int | AtomK of string | VarK;
-type key = nodeK list;
+(* TODO is an empty key valid? *)
 
-fun key_of_term_aux (term, prefix, keys) : key list = case term of
-    Const (name, _) => rev (AtomK name :: prefix) :: keys
-  | Free (name, _) => rev (AtomK name :: prefix) :: keys
-  | Bound i => rev (AtomK (Name.bound i) :: prefix) :: keys
-  | fst $ snd =>
-      (* Add CombK if not present, else reuse *)
-      let val (index, prefix) = case prefix of
-              CombK i :: tl => (i, tl)
-            | xs => (1, prefix)
-      (* Avoid list @ list *)
-          val keys_fst = key_of_term_aux (fst, CombK index :: prefix, keys)
-      in key_of_term_aux (snd, CombK (index+1) :: prefix, keys_fst) end
-  | Var _ => rev (VarK :: prefix) :: keys
-  | Abs _ => rev (VarK :: prefix) :: keys
+datatype key = End of string | Fun of string * int * key | EndVar
+
+(* Represent terms as trees with functions at their root instead of $ *)
+datatype atom = AtomT of string | VarT
+datatype term_tree = TT of atom * term_tree list
+
+fun rev_term term args = case term of
+      Const (n,_) => TT (AtomT n, args)
+    | Free (n,_) => TT (AtomT n, args)
+    | Bound i => TT (AtomT (Name.bound i), args)
+    | Var _ => TT (VarT, args)
+    | Abs _ => TT (VarT, args)
+    | fst $ snd => rev_term fst (rev_term snd [] :: args)
+
+(* TODO implement in a more efficient way by e.g. not creating reversed terms *)
+fun key_of_term_aux term : key list =
+  case term of
+      TT (VarT,_) => [EndVar]
+    | TT (AtomT n, []) => [End n]
+    | TT (AtomT n, args) =>
+           map key_of_term_aux args
+        |> map_index (fn (i,t) => map (fn t => (i,t)) t)
+        |> flat
+        |> map (fn (i,t) => Fun (n,i,t))
+        |> (fn ts => End n :: ts)
 
 (*convert a term to a list of keys*)
-fun key_of_term t = key_of_term_aux (t, [], []);
+fun key_of_term (t : term) : key list = key_of_term_aux (rev_term t [])
 
 (*encode_type -- for indexing purposes*)
 fun encode_type (Type (c, Ts)) = Term.list_comb (Const (c, dummyT), map encode_type Ts)
   | encode_type (TFree (a, _)) = Free (a, dummyT)
   | encode_type (TVar (a, _)) = Var (a, dummyT);
-
 
 (*Trees indexed by key lists: each arc is labelled by a key.
   Each node contains a list of items, and arcs to children.
@@ -85,11 +93,9 @@ fun encode_type (Type (c, Ts)) = Term.list_comb (Const (c, dummyT), map encode_t
    CompNodes take an int to determine which argument to choose.
    SymNode take a string to determine which symbol to choose.
  *)
-datatype 'a tree = CompNode of 'a list * 'a tree Inttab.table
-                 | SymNode of 'a list * 'a tree Symtab.table
+datatype 'a tree = SymNode of 'a list * 'a tree Inttab.table Symtab.table
                  | Leaf of 'a list
 
-val empty_comp = CompNode ([], Inttab.empty);
 val empty_sym = SymNode ([], Symtab.empty);
 
 val empty = Leaf [];
@@ -108,6 +114,7 @@ exception INSERT;       (*duplicate item in the net*)
    For e.g. f(g(h(x,y))) path from root to h is repeated thrice, for h,x,y
    TODO perhaps drop subkeys from keylist? For f(g(x)) only save <f,1,g,1> = x? Why doesn't that work?
 *)
+(*
 fun insert_one eq (key, x) tree = case (key,tree) of
     ([], Leaf xs) => Leaf (x :: xs)
   | ([], CompNode (xs,t)) => CompNode (x::xs,t)
@@ -115,6 +122,7 @@ fun insert_one eq (key, x) tree = case (key,tree) of
   | (k::ks), Leaf xs) => 
 
 fun insert eq (keys, x) tree =
+*)
 
 fun insert eq (keys,x) net =
   let fun ins1 ([], Leaf xs) =
