@@ -93,13 +93,14 @@ fun encode_type (Type (c, Ts)) = Term.list_comb (Const (c, dummyT), map encode_t
    CompNodes take an int to determine which argument to choose.
    SymNode take a string to determine which symbol to choose.
  *)
-datatype 'a tree = SymNode of 'a list * 'a tree Inttab.table Symtab.table
-                 | Leaf of 'a list
+type 'a content = 'a list Symtab.table
+datatype 'a tree = Node of 'a content * 'a tree Inttab.table Symtab.table
+                 | Leaf of 'a content
 
-val empty_sym = SymNode ([], Symtab.empty);
+val empty_node = Node (Symtab.empty, Symtab.empty);
 
-val empty = Leaf [];
-fun is_empty (Leaf []) = true | is_empty _ = false; (* TODO is that always correct? *)
+val empty = Leaf (Symtab.empty);
+fun is_empty (Leaf x) = Symtab.is_empty x | is_empty _ = false; (* TODO is that always correct? *)
 
 (*** Insertion into a path index tree ***)
 
@@ -110,32 +111,56 @@ exception INSERT;       (*duplicate item in the net*)
   eq is the equality test for items.
   The empty list of keys generates a Leaf node, others a Net node.
 *)
+
+fun append_sym eq (k,v) table =
+  let fun update vs =
+    if member eq vs v
+    then raise INSERT
+    else v::vs
+  in Symtab.map_default (k, []) update table end
+
+fun append_int eq (k,v) table =
+  let fun update vs =
+    if member eq vs v
+    then raise INSERT
+    else v::vs
+  in Inttab.map_default (k, []) update table end
+
 (* TODO inefficient approach: Insert each key independently.
    For e.g. f(g(h(x,y))) path from root to h is repeated thrice, for h,x,y
    TODO perhaps drop subkeys from keylist? For f(g(x)) only save <f,1,g,1> = x? Why doesn't that work?
-*)
-(*
-fun insert_one eq (key, x) tree = case (key,tree) of
-    ([], Leaf xs) => Leaf (x :: xs)
-  | ([], CompNode (xs,t)) => CompNode (x::xs,t)
-  | ([], SymNode (xs,t)) => SymNode (x::xs,t)
-  | (k::ks), Leaf xs) => 
 
-fun insert eq (keys, x) tree =
+   TODO transition to Table(int*string) as in structure Symreltab = Table(type key = string * string
+  val ord = prod_ord fast_string_ord fast_string_ord);
+
+type 'a content = 'a list Symtab.table
+datatype 'a tree = Node of 'a content * 'a tree Inttab.table Symtab.table
+                 | Leaf of 'a content
+  val insert: ('a * 'a -> bool) -> key list * 'a -> 'a net -> 'a net
 *)
+fun insert_one (eq : 'a * 'a -> bool) (key : key, v : 'a) (tree : 'a tree) : 'a tree =
+  let fun apps key table = append_sym eq (key,v) table in
+  case (key, tree) of
+      (End n, Leaf con) => Leaf (apps n con)
+    | (End n, Node (con, rest)) => Node (apps n con, rest)
+    | (Fun (n,i,k), Node (con, symtab)) =>
+        let val inttab = case Symtab.lookup symtab n of
+                None => Inttab.empty
+            val node = case Inttab.lookup inttab i of
+                None => empty
+            val node = insert_one eq (k,v) node : 'a tree
+            val inttab = Inttab.update (i,node) inttab
+            val symtab = Symtab.update (n,inttab) symtab
+        in Node (con, symtab) end
+    | (Fun (n,i,k), Leaf con) =>
+        let val tree = insert_one eq (k,v) empty
+            val inttab = Inttab.update (i,tree) Inttab.empty
+            val symtab = Symtab.update (n,inttab) Symtab.empty
+        in Node (con, symtab) end
+   end
 
 fun insert eq (keys,x) net =
-  let fun ins1 ([], Leaf xs) =
-            if member eq xs x then  raise INSERT  else Leaf(x::xs)
-        | ins1 (keys, Leaf[]) = ins1 (keys, emptynet)   (*expand empty...*)
-        | ins1 (CombK :: keys, Net{comb,var,atoms}) =
-            Net{comb=ins1(keys,comb), var=var, atoms=atoms}
-        | ins1 (VarK :: keys, Net{comb,var,atoms}) =
-            Net{comb=comb, var=ins1(keys,var), atoms=atoms}
-        | ins1 (AtomK a :: keys, Net{comb,var,atoms}) =
-            let val atoms' = Symtab.map_default (a, empty) (fn net' => ins1 (keys, net')) atoms;
-            in  Net{comb=comb, var=var, atoms=atoms'}  end
-  in  ins1 (keys,net)  end;
+  Library.foldl (fn (acc,k) => insert_one eq (k,x) acc) (net,keys)
 
 fun insert_term eq (t, x) = insert eq (key_of_term t, x);
 
