@@ -44,10 +44,12 @@ sig
   val content: 'a net -> 'a list
 end;
 
-structure Path: NET =
+structure Path (*: NET*) =
 struct
 (* TODO purpose of VarK, name of Var irrelevant? *)
 (* TODO is an empty key valid? *)
+(* TODO should a key list address one node or multiple? *)
+(* TODO is_first_order function in term! *)
 
 datatype key = End of string | Fun of string * int * key | EndVar
 
@@ -94,7 +96,7 @@ fun encode_type (Type (c, Ts)) = Term.list_comb (Const (c, dummyT), map encode_t
    SymNode take a string to determine which symbol to choose.
  *)
 type 'a content = 'a list Symtab.table
-datatype 'a tree = Node of 'a content * 'a tree Inttab.table Symtab.table
+datatype 'a net = Node of 'a content * 'a net Inttab.table Symtab.table
                  | Leaf of 'a content
 
 val empty_node = Node (Symtab.empty, Symtab.empty);
@@ -136,26 +138,25 @@ fun append_int eq (k,v) table =
 type 'a content = 'a list Symtab.table
 datatype 'a tree = Node of 'a content * 'a tree Inttab.table Symtab.table
                  | Leaf of 'a content
-  val insert: ('a * 'a -> bool) -> key list * 'a -> 'a net -> 'a net
 *)
-fun insert_one (eq : 'a * 'a -> bool) (key : key, v : 'a) (tree : 'a tree) : 'a tree =
+fun insert_one eq (key, v) tree  =
   let fun apps key table = append_sym eq (key,v) table in
   case (key, tree) of
       (End n, Leaf con) => Leaf (apps n con)
     | (End n, Node (con, rest)) => Node (apps n con, rest)
-    | (Fun (n,i,k), Node (con, symtab)) =>
-        let val inttab = case Symtab.lookup symtab n of
-                None => Inttab.empty
-            val node = case Inttab.lookup inttab i of
-                None => empty
-            val node = insert_one eq (k,v) node : 'a tree
-            val inttab = Inttab.update (i,node) inttab
-            val symtab = Symtab.update (n,inttab) symtab
-        in Node (con, symtab) end
     | (Fun (n,i,k), Leaf con) =>
         let val tree = insert_one eq (k,v) empty
             val inttab = Inttab.update (i,tree) Inttab.empty
             val symtab = Symtab.update (n,inttab) Symtab.empty
+        in Node (con, symtab) end
+    | (Fun (n,i,k), Node (con, symtab)) =>
+        let val inttab = case Symtab.lookup symtab n of
+                NONE => Inttab.empty | SOME x => x
+            val node = case Inttab.lookup inttab i of
+                NONE => empty | SOME x => x
+            val node = insert_one eq (k,v) node
+            val inttab = Inttab.update (i,node) inttab
+            val symtab = Symtab.update (n,inttab) symtab
         in Node (con, symtab) end
    end
 
@@ -172,33 +173,29 @@ fun insert_term_safe eq entry net = insert_term eq entry net handle INSERT => ne
 
 exception DELETE;       (*missing item in the net*)
 
-(*Create a new Net node if it would be nonempty*)
-fun newnet (args as {comb,var,atoms}) =
-  if is_empty comb andalso is_empty var andalso Symtab.is_empty atoms
-  then empty else Net args;
-
 (*Deletes item x from the list at the node addressed by the keys.
   Raises DELETE if absent.  Collapses the net if possible.
   eq is the equality test for items. *)
+fun delete_one eq (key, v) tree =
+  let fun rem content = if member eq content v then remove eq v content
+                else raise DELETE in
+  case (key, tree) of
+      (End n, Leaf con) => Leaf (Symtab.map_entry n rem con)
+    | (End n, Node (con, rest)) => Node (Symtab.map_entry n rem con, rest)
+    | (Fun _, Leaf _) => raise DELETE
+    | (Fun (n,i,k), Node (con, symtab)) =>
+        let val inttab = case Symtab.lookup symtab n of
+                NONE => Inttab.empty | SOME x => x
+            val node = case Inttab.lookup inttab i of
+                NONE => empty | SOME x => x
+            val node = delete_one eq (k,v) node
+            val inttab = Inttab.update (i,node) inttab
+            val symtab = Symtab.update (n,inttab) symtab
+        in Node (con, symtab) end
+   end
+
 fun delete eq (keys, x) net =
-  let fun del1 ([], Leaf xs) =
-            if member eq xs x then Leaf (remove eq x xs)
-            else raise DELETE
-        | del1 (keys, Leaf[]) = raise DELETE
-        | del1 (CombK :: keys, Net{comb,var,atoms}) =
-            newnet{comb=del1(keys,comb), var=var, atoms=atoms}
-        | del1 (VarK :: keys, Net{comb,var,atoms}) =
-            newnet{comb=comb, var=del1(keys,var), atoms=atoms}
-        | del1 (AtomK a :: keys, Net{comb,var,atoms}) =
-            let val atoms' =
-              (case Symtab.lookup atoms a of
-                NONE => raise DELETE
-              | SOME net' =>
-                  (case del1 (keys, net') of
-                    Leaf [] => Symtab.delete a atoms
-                  | net'' => Symtab.update (a, net'') atoms))
-            in  newnet{comb=comb, var=var, atoms=atoms'}  end
-  in  del1 (keys,net)  end;
+  Library.foldl (fn (acc,k) => delete_one eq (k,x) acc) (net,keys)
 
 fun delete_term eq (t, x) = delete eq (key_of_term t, x);
 
@@ -209,15 +206,23 @@ fun delete_term_safe eq entry net = delete_term eq entry net handle DELETE => ne
 (*** Retrieval functions for discrimination nets ***)
 
 (*Return the list of items at the given node, [] if no such node*)
-fun lookup (Leaf xs) [] = xs
-  | lookup (Leaf _) (_ :: _) = []  (*non-empty keys and empty net*)
-  | lookup (Net {comb, ...}) (CombK :: keys) = lookup comb keys
-  | lookup (Net {var, ...}) (VarK :: keys) = lookup var keys
-  | lookup (Net {atoms, ...}) (AtomK a :: keys) =
-      (case Symtab.lookup atoms a of
-        SOME net => lookup net keys
-      | NONE => []);
+fun lookup_one tree key = (case (key,tree) of
+    (End n, Leaf con) => (case Symtab.lookup con n of NONE => [] | SOME xs => xs)
+  | (End n, Node (con,_)) => (case Symtab.lookup con n of NONE => [] | SOME xs => xs)
+  | (Fun _, Leaf _) => []
+  | (Fun (n,i,k), Node(_,rest)) => (case Symtab.lookup rest n of
+      NONE => []
+    | SOME x => (case Inttab.lookup x i of
+        NONE => []
+      | SOME x => lookup_one x k )) )
 
+fun lookup _ [] = []
+  | lookup tree (k::keys) =
+    let val acc = lookup_one tree k
+        fun intersect (acc,k) = inter Term.aconv_untyped acc (lookup_one tree k)
+    in Library.foldl intersect (acc,keys) end
+
+(*
 (*Skipping a term in a net.  Recursively skip 2 levels if a combination*)
 fun net_skip (Leaf _) nets = nets
   | net_skip (Net{comb,var,atoms}) nets =
@@ -306,5 +311,5 @@ fun merge eq (net1, net2) =
   fold (insert_safe eq) (dest net2) net1;  (* FIXME non-canonical merge order!?! *)
 
 fun content net = map #2 (dest net);
-
+*)
 end;

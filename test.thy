@@ -12,9 +12,29 @@ ML_val \<open>@{typ_pat "int \<Rightarrow> int"}\<close>
 ML_val \<open>@{term_pat "(\<lambda>x. x 1) f"}\<close>
 ML_val \<open>@{term_pat "(f x) y"}\<close>
 
-ML_val "Path.empty"
-ML "fun taut (x,y) = true"
-ML_val \<open>Net.insert_term taut (@{term "f x"},true) Net.empty\<close>
-ML_val \<open>Path.insert_term taut (@{term "f x"},true) Path.empty\<close>
+ML "val eq = Term.aconv_untyped"
+ML "fun dup t = (t,t)"
+ML "fun ins t tree = Path.insert_term eq (t,t) tree"
+ML_val \<open>Net.insert_term eq (@{term "f x"},@{term "f x"}) Net.empty\<close>
+ML \<open>val ex = Path.empty
+ |> ins @{term "f x"}
+ |> ins @{term "f (g x)"}
+ |> ins @{term "f x y"}
+ |> ins @{term "f (g x y)"}
+ |> ins @{term "f (g x y z)"}
+ |> ins @{term "f"}
+\<close>
+
+ML_val \<open>ins @{term "f"} ex handle Path.INSERT => Path.empty\<close> (* Duplicate *)
+ML \<open>val ex2 =
+     ex
+  |> Path.delete_term eq (dup @{term "f x"})
+\<close>
+(* TODO == for trees?
+*)
+ML_val \<open>ins @{term "f x"} ex2\<close>
+
+ML \<open>val ks = Path.key_of_term @{term "f(g x y)"}\<close>
+ML_val \<open>Path.lookup ex ks\<close>
 
 ML_val "head_of"
