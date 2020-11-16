@@ -51,68 +51,60 @@ struct
 (* TODO should a key list address one node or multiple? *)
 (* TODO is_first_order function in term! *)
 
+(* Fun(name,index,key_rest) *)
 datatype key = End of string | Fun of string * int * key | EndVar
 
 (* Represent terms as trees with functions at their root instead of $ *)
 datatype atom = AtomT of string | VarT
+(* TT(name, args) is a constant when args = [] *)
 datatype term_tree = TT of atom * term_tree list
 
-fun rev_term term args = case term of
+fun rev_term term =
+  let fun aux term args = case term of
       Const (n,_) => TT (AtomT n, args)
     | Free (n,_) => TT (AtomT n, args)
     | Bound i => TT (AtomT (Name.bound i), args)
     | Var _ => TT (VarT, args)
     | Abs _ => TT (VarT, args)
-    | fst $ snd => rev_term fst (rev_term snd [] :: args)
+    | fst $ snd => aux fst (aux snd [] :: args)
+  in aux term [] end
 
-(* TODO implement in a more efficient way by e.g. not creating reversed terms *)
-fun key_of_term_aux term : key list =
-  case term of
+(*convert a term to a list of keys*)
+(* TODO implement in a more efficient way by not explicitly creating reversed terms *)
+fun key_of_term (t : term) : key list =
+  let fun aux term = case term of
       TT (VarT,_) => [EndVar]
     | TT (AtomT n, []) => [End n]
     | TT (AtomT n, args) =>
-           map key_of_term_aux args
-        |> map_index (fn (i,t) => map (fn t => (i,t)) t)
+           map aux args
+        |> map_index (fn (i,t) => map (fn t => (i,t)) t) (*Map every arg to correct index*)
         |> flat
         |> map (fn (i,t) => Fun (n,i,t))
-        |> (fn ts => End n :: ts)
-
-(*convert a term to a list of keys*)
-fun key_of_term (t : term) : key list = key_of_term_aux (rev_term t [])
+        |> (fn ts => End n :: ts) (* Prepend current pos *)
+  in rev_term t
+  |> aux
+  end
 
 (*encode_type -- for indexing purposes*)
 fun encode_type (Type (c, Ts)) = Term.list_comb (Const (c, dummyT), map encode_type Ts)
   | encode_type (TFree (a, _)) = Free (a, dummyT)
   | encode_type (TVar (a, _)) = Var (a, dummyT);
 
-(*Trees indexed by key lists: each arc is labelled by a key.
-  Each node contains a list of items, and arcs to children.
-  The empty key addresses the entire net.
-  Lookup functions preserve order in items stored at same level.
+(* Trees/Nets are indexed by keys. Each key represents a single node.
+   Each node contains content as a' list Symtab and a recursive tree.
+   There is no leaf as the tree can be an empty table.
+   There is no empty key.
+   TODO Lookup functions preserve order in items stored at same level?
 *)
-(* Trees are indexed by key lists.
-   Each node contains a list of items.
-   CompNodes take an int to determine which argument to choose.
-   SymNode take a string to determine which symbol to choose.
- *)
 type 'a content = 'a list Symtab.table
 datatype 'a net = Node of 'a content * 'a net Inttab.table Symtab.table
-                 | Leaf of 'a content
 
-val empty_node = Node (Symtab.empty, Symtab.empty);
-
-val empty = Leaf (Symtab.empty);
-fun is_empty (Leaf x) = Symtab.is_empty x | is_empty _ = false; (* TODO is that always correct? *)
+val empty = Node (Symtab.empty, Symtab.empty);
+fun is_empty (Node (c,t)) = Symtab.is_empty c andalso Symtab.is_empty t
 
 (*** Insertion into a path index tree ***)
 
 exception INSERT;       (*duplicate item in the net*)
-
-(*Adds item x to the list at the node addressed by the keys.
-  Creates node if not already present.
-  eq is the equality test for items.
-  The empty list of keys generates a Leaf node, others a Net node.
-*)
 
 fun append_sym eq (k,v) table =
   let fun update vs =
@@ -128,36 +120,27 @@ fun append_int eq (k,v) table =
     else v::vs
   in Inttab.map_default (k, []) update table end
 
-(* TODO inefficient approach: Insert each key independently.
-   For e.g. f(g(h(x,y))) path from root to h is repeated thrice, for h,x,y
-   TODO perhaps drop subkeys from keylist? For f(g(x)) only save <f,1,g,1> = x? Why doesn't that work?
+(*Adds item x to the list at the node addressed by the keys.
+  Creates node if not already present.
+  eq is the equality test for items.
+  TODO inefficient approach: Insert each key independently.
+  For e.g. f(g(h(x,y))) path from root to h is repeated thrice, for h,x,y
+  TODO perhaps drop subkeys from keylist? For f(g(x)) only save <f,1,g,1> = x? Why doesn't that work?
 
-   TODO transition to Table(int*string) as in structure Symreltab = Table(type key = string * string
+  TODO transition to Table(int*string) as in structure Symreltab = Table(type key = string * string
   val ord = prod_ord fast_string_ord fast_string_ord);
-
-type 'a content = 'a list Symtab.table
-datatype 'a tree = Node of 'a content * 'a tree Inttab.table Symtab.table
-                 | Leaf of 'a content
 *)
-fun insert_one eq (key, v) tree  =
-  let fun apps key table = append_sym eq (key,v) table in
-  case (key, tree) of
-      (End n, Leaf con) => Leaf (apps n con)
-    | (End n, Node (con, rest)) => Node (apps n con, rest)
-    | (Fun (n,i,k), Leaf con) =>
-        let val tree = insert_one eq (k,v) empty
-            val inttab = Inttab.update (i,tree) Inttab.empty
-            val symtab = Symtab.update (n,inttab) Symtab.empty
-        in Node (con, symtab) end
-    | (Fun (n,i,k), Node (con, symtab)) =>
-        let val inttab = case Symtab.lookup symtab n of
+fun insert_one eq (key, v) (Node (con,tree)) = case key of
+      End n => Node (append_sym eq (n,v) con, tree)
+    | Fun (n,i,k) =>
+        let val inttab = case Symtab.lookup tree n of
                 NONE => Inttab.empty | SOME x => x
             val node = case Inttab.lookup inttab i of
                 NONE => empty | SOME x => x
             val node = insert_one eq (k,v) node
             val inttab = Inttab.update (i,node) inttab
-            val symtab = Symtab.update (n,inttab) symtab
-        in Node (con, symtab) end
+            val symtab = Symtab.update (n,inttab) tree
+        in Node (con, symtab)
    end
 
 fun insert eq (keys,x) net =
@@ -176,21 +159,19 @@ exception DELETE;       (*missing item in the net*)
 (*Deletes item x from the list at the node addressed by the keys.
   Raises DELETE if absent.  Collapses the net if possible.
   eq is the equality test for items. *)
-fun delete_one eq (key, v) tree =
+fun delete_one eq (key, v) (Node (con,tree)) =
   let fun rem content = if member eq content v then remove eq v content
                 else raise DELETE in
-  case (key, tree) of
-      (End n, Leaf con) => Leaf (Symtab.map_entry n rem con)
-    | (End n, Node (con, rest)) => Node (Symtab.map_entry n rem con, rest)
-    | (Fun _, Leaf _) => raise DELETE
-    | (Fun (n,i,k), Node (con, symtab)) =>
-        let val inttab = case Symtab.lookup symtab n of
+  case key of
+      End n => Node (Symtab.map_entry n rem con, tree)
+    | Fun (n,i,k) =>
+        let val inttab = case Symtab.lookup tree n of
                 NONE => Inttab.empty | SOME x => x
             val node = case Inttab.lookup inttab i of
                 NONE => empty | SOME x => x
             val node = delete_one eq (k,v) node
             val inttab = Inttab.update (i,node) inttab
-            val symtab = Symtab.update (n,inttab) symtab
+            val symtab = Symtab.update (n,inttab) tree
         in Node (con, symtab) end
    end
 
@@ -206,15 +187,13 @@ fun delete_term_safe eq entry net = delete_term eq entry net handle DELETE => ne
 (*** Retrieval functions for discrimination nets ***)
 
 (*Return the list of items at the given node, [] if no such node*)
-fun lookup_one tree key = (case (key,tree) of
-    (End n, Leaf con) => (case Symtab.lookup con n of NONE => [] | SOME xs => xs)
-  | (End n, Node (con,_)) => (case Symtab.lookup con n of NONE => [] | SOME xs => xs)
-  | (Fun _, Leaf _) => []
-  | (Fun (n,i,k), Node(_,rest)) => (case Symtab.lookup rest n of
+fun lookup_one (Node (con,tree)) key = case key of
+    End n => (case Symtab.lookup con n of NONE => [] | SOME xs => xs)
+  | Fun (n,i,k) => (case Symtab.lookup tree n of
       NONE => []
     | SOME x => (case Inttab.lookup x i of
         NONE => []
-      | SOME x => lookup_one x k )) )
+      | SOME x => lookup_one x k ))
 
 fun lookup _ [] = []
   | lookup tree (k::keys) =
