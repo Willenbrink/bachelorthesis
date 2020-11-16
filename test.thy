@@ -22,6 +22,8 @@ ML \<open>val ex = Path.empty
  |> ins @{term "f x y"}
  |> ins @{term "f (g x y)"}
  |> ins @{term "f (g x y z)"}
+ |> ins @{term "f (g y y z)"}
+ |> ins @{term "f (g (h a) y z)"}
  |> ins @{term "f"}
 \<close>
 
@@ -34,7 +36,11 @@ ML \<open>val ex2 =
 *)
 ML_val \<open>ins @{term "f x"} ex2\<close>
 
-ML \<open>val ks = Path.key_of_term @{term "f(g x y)"}\<close>
+ML \<open>val ks = Path.key_of_term @{term "f (g x y)"}\<close>
+ML \<open>val (Path.Node (con,tree)) = ex\<close>
+ML \<open>val test = Path.SItab.lookup tree ("f",0)\<close>
+ML_val \<open>Path.SItab.dest tree\<close>
 ML_val \<open>Path.lookup ex ks\<close>
+ML_val \<open>Path.lookup_one ex (ks |> rev |> hd)\<close>
 
 ML_val "head_of"

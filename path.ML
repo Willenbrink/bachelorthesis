@@ -47,7 +47,7 @@ end;
 structure Path (*: NET*) =
 struct
 (* TODO purpose of VarK, name of Var irrelevant? *)
-(* TODO is an empty key valid? *)
+(* TODO should a empty key be valid? *)
 (* TODO should a key list address one node or multiple? *)
 (* TODO is_first_order function in term! *)
 
@@ -56,7 +56,7 @@ datatype key = End of string | Fun of string * int * key | EndVar
 
 (* Represent terms as trees with functions at their root instead of $ *)
 datatype atom = AtomT of string | VarT
-(* TT(name, args) is a constant when args = [] *)
+(* TT(name, args) is a constant when args = [], function elsewise *)
 datatype term_tree = TT of atom * term_tree list
 
 fun rev_term term =
@@ -69,7 +69,7 @@ fun rev_term term =
     | fst $ snd => aux fst (aux snd [] :: args)
   in aux term [] end
 
-(*convert a term to a list of keys*)
+(*convert a term to a list of keys, one key for each {Var,Const,Func} in term*)
 (* TODO implement in a more efficient way by not explicitly creating reversed terms *)
 fun key_of_term (t : term) : key list =
   let fun aux term = case term of
@@ -91,16 +91,19 @@ fun encode_type (Type (c, Ts)) = Term.list_comb (Const (c, dummyT), map encode_t
   | encode_type (TVar (a, _)) = Var (a, dummyT);
 
 (* Trees/Nets are indexed by keys. Each key represents a single node.
-   Each node contains content as a' list Symtab and a recursive tree.
+   Each node contains content as 'a list Symtab and a recursive tree.
    There is no leaf as the tree can be an empty table.
    There is no empty key.
    TODO Lookup functions preserve order in items stored at same level?
 *)
-type 'a content = 'a list Symtab.table
-datatype 'a net = Node of 'a content * 'a net Inttab.table Symtab.table
+structure SItab = Table(type key = string * int
+  val ord = prod_ord fast_string_ord int_ord);
 
-val empty = Node (Symtab.empty, Symtab.empty);
-fun is_empty (Node (c,t)) = Symtab.is_empty c andalso Symtab.is_empty t
+type 'a content = 'a list Symtab.table
+datatype 'a net = Node of 'a content * 'a net SItab.table
+
+val empty = Node (Symtab.empty, SItab.empty);
+fun is_empty (Node (c,t)) = Symtab.is_empty c andalso SItab.is_empty t
 
 (*** Insertion into a path index tree ***)
 
@@ -126,25 +129,15 @@ fun append_int eq (k,v) table =
   TODO inefficient approach: Insert each key independently.
   For e.g. f(g(h(x,y))) path from root to h is repeated thrice, for h,x,y
   TODO perhaps drop subkeys from keylist? For f(g(x)) only save <f,1,g,1> = x? Why doesn't that work?
-
-  TODO transition to Table(int*string) as in structure Symreltab = Table(type key = string * string
-  val ord = prod_ord fast_string_ord fast_string_ord);
 *)
-fun insert_one eq (key, v) (Node (con,tree)) = case key of
+fun insert_one eq (key, v) (Node (con,tree)) = (case key of
       End n => Node (append_sym eq (n,v) con, tree)
     | Fun (n,i,k) =>
-        let val inttab = case Symtab.lookup tree n of
-                NONE => Inttab.empty | SOME x => x
-            val node = case Inttab.lookup inttab i of
-                NONE => empty | SOME x => x
-            val node = insert_one eq (k,v) node
-            val inttab = Inttab.update (i,node) inttab
-            val symtab = Symtab.update (n,inttab) tree
-        in Node (con, symtab)
-   end
+      let val tree = SItab.map_default ((n,i),empty) (insert_one eq (k,v)) tree
+      in Node (con, tree) end)
 
-fun insert eq (keys,x) net =
-  Library.foldl (fn (acc,k) => insert_one eq (k,x) acc) (net,keys)
+fun insert eq (keys,term) net =
+  Library.foldl (fn (acc,k) => insert_one eq (k,term) acc) (net,keys)
 
 fun insert_term eq (t, x) = insert eq (key_of_term t, x);
 
@@ -157,22 +150,15 @@ fun insert_term_safe eq entry net = insert_term eq entry net handle INSERT => ne
 exception DELETE;       (*missing item in the net*)
 
 (*Deletes item x from the list at the node addressed by the keys.
-  Raises DELETE if absent.  Collapses the net if possible.
+  Raises DELETE if absent. TODO Collapses the net if possible?
   eq is the equality test for items. *)
 fun delete_one eq (key, v) (Node (con,tree)) =
   let fun rem content = if member eq content v then remove eq v content
                 else raise DELETE in
   case key of
-      End n => Node (Symtab.map_entry n rem con, tree)
+      End n => Node (Symtab.map_default (n,[]) rem con, tree)
     | Fun (n,i,k) =>
-        let val inttab = case Symtab.lookup tree n of
-                NONE => Inttab.empty | SOME x => x
-            val node = case Inttab.lookup inttab i of
-                NONE => empty | SOME x => x
-            val node = delete_one eq (k,v) node
-            val inttab = Inttab.update (i,node) inttab
-            val symtab = Symtab.update (n,inttab) tree
-        in Node (con, symtab) end
+        Node (con, SItab.map_default ((n,i),empty) (delete_one eq (k,v)) tree)
    end
 
 fun delete eq (keys, x) net =
@@ -185,19 +171,20 @@ fun delete_term_safe eq entry net = delete_term eq entry net handle DELETE => ne
 
 
 (*** Retrieval functions for discrimination nets ***)
+fun content (Node (con,tree)) =
+  let val con_fst = Symtab.dest con |> map snd |> flat
+      val con_snd = SItab.dest tree |> map snd |> map content |> flat
+  in con_fst @ con_snd end
 
 (*Return the list of items at the given node, [] if no such node*)
 fun lookup_one (Node (con,tree)) key = case key of
     End n => (case Symtab.lookup con n of NONE => [] | SOME xs => xs)
-  | Fun (n,i,k) => (case Symtab.lookup tree n of
+  | Fun (n,i,k) => case SItab.lookup tree (n,i) of
       NONE => []
-    | SOME x => (case Inttab.lookup x i of
-        NONE => []
-      | SOME x => lookup_one x k ))
+    | SOME x => lookup_one x k
 
-fun lookup _ [] = []
-  | lookup tree (k::keys) =
-    let val acc = lookup_one tree k
+fun lookup tree keys =
+    let val acc = content tree
         fun intersect (acc,k) = inter Term.aconv_untyped acc (lookup_one tree k)
     in Library.foldl intersect (acc,keys) end
 
