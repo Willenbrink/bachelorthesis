@@ -26,6 +26,20 @@ STs start with only a term. Free variables are no longer explicitly listed. Inst
 See https://apps.dtic.mil/dtic/tr/fulltext/u2/a460990.pdf for more information. Also contains algorithms for retrieval and discussion of performance.
 
 # Other methods
+## Term-table indexing
+* See term\_ord.ML and term\_sharing.ML
+* Termtab = Table(type key = term val ord = fast\_term\_ord)
+
+Table is implemented using balanced 2-3 trees (= B-Tree of 3. order) which is basically a binary/ternary search tree. Comparison is done with fast_term_ord which proceeds in the following order if no difference is found.
+not pointer_eq => struct_ord => atom_ord => types_ord
+* struct_ord orders such that for the first difference found:
+Const < Free < Var < Bound < Abs < $
+* atom_ord orders the first difference by fast_string_ord, fast_indexname_ord or int_ord (for de-bruijn)
+* types_ord uses typ_ord which I've not investigated further
+
+Assumption: Termtab uses binary search und orders terms by their first difference. Insertion will be relatively fast (rebalancing the tree should happen rarely and have a low-medium cost), lookup should be faster than most other methods. Unification will basically be impossible and memory consumption will be quite high as each term is saved completely independentely. If this was a good solution in general no one would have bothered researching the other methods I guess :P
+Nevertheless might be quite fast when only lookup is required and memory consumption is not a concern.
+
 Term-table indexing. No papers, no comments, only source code. See term_ord.ML and term_sharing.ML.
 
 Codeword indexing. More or less irrelevant
