@@ -58,7 +58,7 @@ datatype key = End of string | Fun of string * int * key | EndVar
 datatype atom = AtomT of string | VarT
 (* TT(name, args) is a constant when args = [], function elsewise *)
 datatype term_tree = TT of atom * term_tree list
-
+(* TODO Use strip-comb whenever $ is encountered instead! *)
 fun rev_term term =
   let fun aux term args = case term of
       Const (n,_) => TT (AtomT n, args)
