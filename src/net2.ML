@@ -174,16 +174,19 @@ fun lookup (Leaf xs) [] = xs
       | NONE => []);
 
 (*Skipping a term in a net.  Recursively skip 2 levels if a combination*)
+(* Collect var/atom nets within given net. Combs are recursively split up *)
 fun net_skip (Leaf _) nets = nets
-  | net_skip (Net{comb,var,atoms}) nets =
-      fold_rev net_skip (net_skip comb []) (Symtab.fold (cons o #2) atoms (var::nets));
-
+  | net_skip (Net{comb,var,atoms}) (nets : 'a net list) : 'a net list =
+       var::nets
+    |> Symtab.fold (cons o #2) atoms (* cons values in atoms to acc *)
+    |> fold_rev net_skip (net_skip comb []);
 
 (** Matching and Unification **)
 
 (*conses the linked net, if present, to nets*)
-fun look1 (atoms, a) nets =
-  (case Symtab.lookup atoms a of
+(* conses val to nets if atoms contains key *)
+fun look1 (atoms, key) nets =
+  (case Symtab.lookup atoms key of
     NONE => nets
   | SOME net => net :: nets);
 
@@ -193,30 +196,25 @@ fun look1 (atoms, a) nets =
   Abs or Var in object: if "unif", regarded as wildcard,
                                    else matches only a variable in net.
 *)
-fun matching unif t net nets =
-  let fun rands _ (Leaf _, nets) = nets
-        | rands t (Net{comb,atoms,...}, nets) =
-            case t of
-                f$t => fold_rev (matching unif t) (rands f (comb,[])) nets
-              | Const(c,_) => look1 (atoms, c) nets
-              | Free(c,_)  => look1 (atoms, c) nets
-              | Bound i    => look1 (atoms, Name.bound i) nets
-              | _          => nets
-  in
-     case net of
-         Leaf _ => nets
-       | Net{var,...} =>
-             case head_of t of
-                 Var _ => if unif then net_skip net nets
-                          else var::nets           (*only matches Var in net*)
-  (*If "unif" then a var instantiation in the abstraction could allow
+(* matching : bool -> term -> 'a net -> 'a net list -> 'a net list *)
+(* TODO buggy *)
+fun matching _ _ (Leaf _) nets = nets
+  | matching unif t (net as Net{var,atoms,comb}) nets =
+    (*If "unif" then a var instantiation in the abstraction could allow
     an eta-reduction, so regard the abstraction as a wildcard.*)
-               | Abs _ => if unif then net_skip net nets
-                          else var::nets           (*only a Var can match*)
-               | _ => rands t (net, var::nets)  (*var could match also*)
+      let val match_unif =
+        if unif then net_skip net nets
+        else var::nets (*only matches Var in net*)
+      in case head_of t of
+         Var _ => match_unif
+       | Abs _ => match_unif
+       | fst $ snd => fold_rev (matching unif snd) (matching unif fst comb []) (var::nets)
+       | Const(c,_) => look1 (atoms, c) (var::nets)
+       | Free(c,_)  => look1 (atoms, c) (var::nets)
+       | Bound i    => look1 (atoms, Name.bound i) (var::nets)
   end;
 
-fun extract_leaves l = maps (fn Leaf xs => xs) l;
+fun extract_leaves (l : 'a net list) : 'a list = maps (fn Leaf xs => xs) l;
 
 (*return items whose key could match t, WHICH MUST BE BETA-ETA NORMAL*)
 fun match_term net t =

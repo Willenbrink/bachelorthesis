@@ -2,6 +2,7 @@ theory "test"
   imports Main
 begin
 
+ML_file "/opt/Isabelle2020/src/Pure/net.ML"
 ML_file "path.ML"
 ML_file "pprinter.ML"
 setup "term_pat_setup"
@@ -44,3 +45,31 @@ ML_val \<open>Path.lookup ex ks\<close>
 ML_val \<open>Path.lookup_one ex (ks |> rev |> hd)\<close>
 
 ML_val "head_of"
+
+
+ML "fun ins t n = Net.insert_term eq (t,t) n"
+ML \<open>val net = Net.empty
+ |> ins @{term "f x"}
+ |> ins @{term "f (x y)"}
+ |> ins @{term "f x y"}
+ |> ins @{term "f (g x y)"}
+ |> ins @{term "f (g x y z)"}
+ |> ins @{term "f (g y y z)"}
+ |> ins @{term "f (g (h a) y z)"}
+ |> ins @{term "f"}
+\<close>
+
+ML \<open>val Net.Net{atoms,comb,var} = net\<close>
+ML_val \<open>let val Net.Net{atoms,...} = net in Net.look1 (atoms,"f") [] end\<close>
+ML_val \<open>Net.rands false @{term "f"} (net,[])\<close>
+
+
+
+
+
+
+
+
+
+
+

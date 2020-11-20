@@ -36,7 +36,7 @@ See the cookbook for more information (p.25). Higher order functions should be f
 
 - [x] How should currying be handled? Is f(x,y) preferred to f x y? => Basically we don't care. f(x,y) = f $ (pair (x,y)) instead of f $ x $ y.
 
-- [ ] Eta-normalform in Isabelle is the usual Eta-normalform with all variables/abstractions added as seen in unify.ML eta_norm. This is in contrast to [this article](https://en.wikipedia.org/wiki/Lambda_calculus_definition#Normalization)? We also have eta-long beta-normal form in envir.ML (which apparently does what the name suggest: beta-contract, eta-extend).
+* Eta-normalform in Isabelle is the usual Eta-normalform with all variables/abstractions added as seen in unify.ML eta_norm. This is in contrast to [this article](https://en.wikipedia.org/wiki/Lambda_calculus_definition#Normalization)? We also have eta-long beta-normal form in envir.ML (which apparently does what the name suggest: beta-contract, eta-extend).
 
 * Terms are structured with $ as parents instead of functions and arg lists. I.e. ($) (($) f x) y instead of f [x,y]. Therefore terms must be restructured before building the key for PI (either separately or implicitly in key_of_term)
 
