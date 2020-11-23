@@ -46,12 +46,14 @@ end;
 
 structure Path (*: NET*) =
 struct
-(* TODO purpose of VarK, name of Var irrelevant? *)
-(* TODO should a empty key be valid? *)
-(* TODO should a key list address one node or multiple? *)
-(* TODO is_first_order function in term! *)
+(* TODO should a empty key be valid?
+   TODO should a key list address one node or multiple?
+   TODO is_first_order function in term!
+   TODO Var/Abs is sometimes encoded with an empty string. Problematic?
 
-(* Fun(name,index,key_rest) *)
+ *)
+
+(* Fun(name,index,key_remainder) *)
 datatype key = End of string | Fun of string * int * key | EndVar
 
 (* Represent terms as trees with functions at their root instead of $ *)
@@ -252,94 +254,10 @@ fun match unif node term =
 val match_term = match false
 val unify_term = match true
 
-(*
-(*Skipping a term in a net.  Recursively skip 2 levels if a combination*)
-fun net_skip (Leaf _) nets = nets
-  | net_skip (Net{comb,var,atoms}) nets =
-      fold_rev net_skip (net_skip comb []) (Symtab.fold (cons o #2) atoms (var::nets));
+val entries = content (* TODO are they really the same? *)
 
+fun merge eq (tree1, tree2) =
+  fold (fn t => insert_term_safe eq (t,t)) (content tree2) tree1  (* FIXME non-canonical merge order!?! *)
 
-(** Matching and Unification **)
-
-(*conses the linked net, if present, to nets*)
-fun look1 (atoms, a) nets =
-  (case Symtab.lookup atoms a of
-    NONE => nets
-  | SOME net => net :: nets);
-
-(*Return the nodes accessible from the term (cons them before nets)
-  "unif" signifies retrieval for unification rather than matching.
-  Var in net matches any term.
-  Abs or Var in object: if "unif", regarded as wildcard,
-                                   else matches only a variable in net.
-*)
-fun matching unif t net nets =
-  let fun rands _ (Leaf _, nets) = nets
-        | rands t (Net{comb,atoms,...}, nets) =
-            case t of
-                f$t => fold_rev (matching unif t) (rands f (comb,[])) nets
-              | Const(c,_) => look1 (atoms, c) nets
-              | Free(c,_)  => look1 (atoms, c) nets
-              | Bound i    => look1 (atoms, Name.bound i) nets
-              | _          => nets
-  in
-     case net of
-         Leaf _ => nets
-       | Net{var,...} =>
-             case head_of t of
-                 Var _ => if unif then net_skip net nets
-                          else var::nets           (*only matches Var in net*)
-  (*If "unif" then a var instantiation in the abstraction could allow
-    an eta-reduction, so regard the abstraction as a wildcard.*)
-               | Abs _ => if unif then net_skip net nets
-                          else var::nets           (*only a Var can match*)
-               | _ => rands t (net, var::nets)  (*var could match also*)
-  end;
-
-fun extract_leaves l = maps (fn Leaf xs => xs) l;
-
-(*return items whose key could match t, WHICH MUST BE BETA-ETA NORMAL*)
-fun match_term net t =
-    extract_leaves (matching false t net []);
-
-(*return items whose key could unify with t*)
-fun unify_term net t =
-    extract_leaves (matching true t net []);
-
-
-(** operations on nets **)
-
-(*subtraction: collect entries of second net that are NOT present in first net*)
-fun subtract eq net1 net2 =
-  let
-    fun subtr (Net _) (Leaf ys) = append ys
-      | subtr (Leaf xs) (Leaf ys) =
-          fold_rev (fn y => if member eq xs y then I else cons y) ys
-      | subtr (Leaf _) (net as Net _) = subtr emptynet net
-      | subtr (Net {comb = comb1, var = var1, atoms = atoms1})
-            (Net {comb = comb2, var = var2, atoms = atoms2}) =
-          subtr comb1 comb2
-          #> subtr var1 var2
-          #> Symtab.fold (fn (a, net) =>
-            subtr (the_default emptynet (Symtab.lookup atoms1 a)) net) atoms2
-  in subtr net1 net2 [] end;
-
-fun entries net = subtract (K false) empty net;
-
-
-(* merge *)
-
-fun cons_fst x (xs, y) = (x :: xs, y);
-
-fun dest (Leaf xs) = map (pair []) xs
-  | dest (Net {comb, var, atoms}) =
-      map (cons_fst CombK) (dest comb) @
-      map (cons_fst VarK) (dest var) @
-      maps (fn (a, net) => map (cons_fst (AtomK a)) (dest net)) (Symtab.dest atoms);
-
-fun merge eq (net1, net2) =
-  fold (insert_safe eq) (dest net2) net1;  (* FIXME non-canonical merge order!?! *)
-
-fun content net = map #2 (dest net);
-*)
+fun subtract eq tree1 tree2 = Library.subtract eq (content tree1) (content tree2)
 end;
