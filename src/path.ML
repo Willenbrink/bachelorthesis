@@ -132,6 +132,7 @@ fun append_int eq (k,v) table =
 *)
 fun insert_one eq (key, v) (Node (con,tree)) = (case key of
       End n => Node (append_sym eq (n,v) con, tree)
+    | EndVar => Node (append_sym eq ("",v) con, tree)
     | Fun (n,i,k) =>
       let val tree = SItab.map_default ((n,i),empty) (insert_one eq (k,v)) tree
       in Node (con, tree) end)
@@ -157,6 +158,7 @@ fun delete_one eq (key, v) (Node (con,tree)) =
                         else raise DELETE in
   case key of
       End n => Node (Symtab.map_default (n,[]) rem con, tree)
+    | EndVar => Node (Symtab.map_default ("",[]) rem con, tree)
     | Fun (n,i,k) =>
         Node (con, SItab.map_default ((n,i),empty) (delete_one eq (k,v)) tree)
    end
@@ -179,6 +181,7 @@ fun content (Node (con,tree)) =
 (*Return the list of items at the given node, [] if no such node*)
 fun lookup_one (Node (con,tree)) key = case key of
     End n => (case Symtab.lookup con n of NONE => [] | SOME xs => xs)
+  | EndVar => (case Symtab.lookup con "" of NONE => [] | SOME xs => xs)
   | Fun (n,i,k) => case SItab.lookup tree (n,i) of
       NONE => []
     | SOME x => lookup_one x k
@@ -188,33 +191,69 @@ fun lookup tree keys =
         fun intersect (acc,k) = inter Term.aconv_untyped acc (lookup_one tree k)
     in Library.foldl intersect (acc,keys) end
 
-fun match_term (Node(con,tree) : term net) (t : term) : term list =
+fun lookup_list table key = case Symtab.lookup table key of
+    NONE => []
+  | SOME xs => xs
+
+fun matching unif node term =
   let fun name t = case t of
-              Var _ => ""
-            | Abs _ => ""
-            | Const (n,_) => n
+              Const (n,_) => n
             | Free (n,_) => n
             | Bound i => Name.bound i
-            | f$_ => name f
-      (*fun lookup_list' (table : 'a table) key (f : 'a -> 'b list) = case Table.lookup table key of
-          NONE => []
-        | SOME xs => f xs*)
-      fun lookup_list table key : term list = case Symtab.lookup table key of
-          NONE => []
-        | SOME xs => xs
-  in
-  case t of
-    _ $ _ =>
-      let val (func, args) = strip_comb t
-          fun match_child (index,term) = case SItab.lookup tree (name t,index) of
-              NONE => []
-            | SOME child => match_term child term
-      in
-      Library.fold_index
-        (fn child => fn acc => combine Term.aconv_untyped acc (match_child child))
-        args (lookup_list con (name func))
-      end
-  | rest => lookup_list con (name rest) end
+            | Var _ => ""
+            | Abs _ => ""
+      fun aux (node as Node(con,tree)) t = case t of
+          _ $ _ =>
+            let val (func, args) = strip_comb t
+                fun match_child (index,term) = case SItab.lookup tree (name func,index) of
+                    NONE => []
+                  | SOME child => aux child term
+            in
+            Library.fold_index
+              (fn child => fn acc => inter Term.aconv_untyped acc (match_child child))
+              args (lookup_list con (name func))
+            end
+        | rest => if name rest = "" andalso unif
+                  then content node
+                  else lookup_list con (name rest)
+  in aux node term end
+
+fun unify unif node term =
+  let fun name t = case t of
+              Const (n,_) => n
+            | Free (n,_) => n
+            | Bound i => Name.bound i
+            | Var _ => ""
+            | Abs _ => ""
+
+      fun lookup_term table term = (* Replace var in term arbitrarily *)
+          case term of
+            Var _ => Symtab.dest table |> map snd |> flat
+          | Abs _ => Symtab.dest table |> map snd |> flat
+          | f$t => raise INSERT
+          | rest => lookup_list table (name rest)
+
+      fun lookup_unif table key =
+        if unif
+        then union Term.aconv_untyped (lookup_list table "") (lookup_term table key)
+        else lookup_term table key
+
+      fun aux (node as Node(con,tree)) t = case t of
+          _ $ _ =>
+            let val (func, args) = strip_comb t
+                fun match (index,term) = case SItab.lookup tree (name func,index) of
+                    NONE => (writeln "Error"; writeln (name func); writeln (@{make_string} index); [])
+                  | SOME child => aux child term
+            in
+            Library.fold_index
+              (fn arg => fn acc => inter Term.aconv_untyped acc (match arg))
+              args (aux node func)
+            end
+        | rest => lookup_unif con rest
+  in aux node term end
+
+val match_term = matching false
+val unify_term = unify true
 
 (*
 (*Skipping a term in a net.  Recursively skip 2 levels if a combination*)
