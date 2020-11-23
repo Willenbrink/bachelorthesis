@@ -13,9 +13,6 @@ ML_val \<open>@{typ_pat "int \<Rightarrow> int"}\<close>
 ML \<open>
 exception TEST
 val eq = Term.aconv_untyped
-(* Non-standard foldl for better waterfall/pipelining
-   E.g. replacing "a |> f b1 |> f b2" with "foldl f a b" or "b |> foldl f a" *)
-fun foldl f acc args = Library.foldl (fn (a,b) => f b a) (acc,args)
 fun ins t tree = Path.insert_term eq (t,t) tree
 fun del t tree = Path.delete_term eq (t,t) tree
 val terms =
@@ -30,7 +27,7 @@ val terms =
 @{term "f (g (h a) y z)"} ::
 []
 
-val (pathl as Path.Node (con,rest)) = foldl ins Path.empty terms
+val (pathl as Path.Node (con,rest)) = fold ins terms Path.empty
 fun pterm term = Syntax.pretty_term @{context} term
 fun match unif tree term = Path.match unif tree term |> map pterm
 \<close>
@@ -72,13 +69,11 @@ ML \<open>val Net.Net{atoms,comb,var} = net\<close>
 ML_val \<open>let val Net.Net{atoms,...} = net in Net.look1 (atoms,"f") [] end\<close>
 ML_val \<open>Net.rands false @{term "f"} (net,[])\<close>
 
+ML \<open>val x : 'a = 10\<close>
+ML \<open>val b = (@{term "x"} = @{term "x"})\<close>
+ML \<open>val n = (Path.empty = Path.empty)\<close>
 
+ML "Net.content net |> map pterm"
+ML "Net.entries net |> map pterm"
 
-
-
-
-
-
-
-
-
+ML \<open>@{term_pat "(\<lambda> x. x) a"}\<close>

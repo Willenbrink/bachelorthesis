@@ -118,13 +118,13 @@ fun append_int eq (k,v) table =
   For e.g. f(g(h(x,y))) path from root to h is repeated thrice, for h,x,y
   TODO perhaps drop subkeys from keylist? For f(g(x)) only save <f,1,g,1> = x? Why doesn't that work?
 *)
-fun insert_one eq (key, v) (Node (con,tree)) = (case key of
+fun insert_one eq (key, v) (Node (con,tree)) = case key of
       End n => Node (append_sym eq (n,v) con, tree)
     | Fun (name,ind,key) =>
          insert_one eq (key,v)
       |> (fn x => Inttab.map_default (ind,empty) x)
       |> (fn x => Symtab.map_default (name,Inttab.empty) x tree)
-      |> (fn x => Node (con, x)))
+      |> (fn x => Node (con, x))
 
 fun insert eq (keys,term) net =
   Library.foldl (fn (acc,k) => insert_one eq (k,term) acc) (net,keys)
