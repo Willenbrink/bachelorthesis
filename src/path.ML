@@ -46,52 +46,35 @@ end;
 
 structure Path (*: NET*) =
 struct
-(* TODO should a empty key be valid?
+(* TODO should an empty key be valid?
    TODO should a key list address one node or multiple?
    TODO is_first_order function in term!
-   TODO Var/Abs is sometimes encoded with an empty string. Problematic?
+   TODO Var/Abs is encoded with an empty string. Problematic?
 
  *)
 
-(* Fun(name,index,key_remainder) *)
-datatype key = End of string | Fun of string * int * key | EndVar
+(* Fun(name,index,key_remainder) where key_remainder describes the path to the leaf *)
+datatype key = End of string | Fun of string * int * key
 
-(* Represent terms as trees with functions at their root instead of $ *)
-datatype atom = AtomT of string | VarT
-(* TT(name, args) is a constant when args = [], function elsewise *)
-datatype term_tree = TT of atom * term_tree list
-(* TODO Use strip-comb whenever $ is encountered instead! *)
-fun rev_term term =
-  let fun aux term args = case term of
-      Const (n,_) => TT (AtomT n, args)
-    | Free (n,_) => TT (AtomT n, args)
-    | Bound i => TT (AtomT (Name.bound i), args)
-    | Var _ => TT (VarT, args)
-    | Abs _ => TT (VarT, args)
-    | fst $ snd => aux fst (aux snd [] :: args)
-  in aux term [] end
+fun name t = case t of
+          Const (n,_) => n
+        | Free (n,_) => n
+        | Bound i => Name.bound i
+        | Var _ => ""
+        | Abs _ => ""
+        | fst$_ => name fst
 
-(*convert a term to a list of keys, one key for each {Var,Const,Func} in term*)
-(* TODO implement in a more efficient way by not explicitly creating reversed terms *)
-fun key_of_term (t : term) : key list =
-  let fun aux term = case term of
-      TT (VarT,[]) => [EndVar]
-    | TT (VarT, args) =>
-           map aux args
-        |> map_index (fn (i,t) => map (fn t => (i,t)) t) (*Map every arg to correct index*)
-        |> flat
-        |> map (fn (i,t) => Fun ("",i,t))
-        |> (fn ts => EndVar :: ts) (* Prepend current pos *)
-    | TT (AtomT n, []) => [End n]
-    | TT (AtomT n, args) =>
-           map aux args
-        |> map_index (fn (i,t) => map (fn t => (i,t)) t) (*Map every arg to correct index*)
-        |> flat
-        |> map (fn (i,t) => Fun (n,i,t))
-        |> (fn ts => End n :: ts) (* Prepend current pos *)
-  in rev_term t
-  |> aux
-  end
+fun key_of_term t : key list =
+      let val (func, args) = Term.strip_comb t
+          val n = name func in
+      case args of
+        [] => [End n]
+      | args => args
+             |> map key_of_term
+             |> Library.map_index (fn (i,keys) => map (fn k => Fun(n,i,k)) keys)
+             |> flat
+             |> (fn x => key_of_term func @ x)
+ end
 
 (*encode_type -- for indexing purposes*)
 fun encode_type (Type (c, Ts)) = Term.list_comb (Const (c, dummyT), map encode_type Ts)
@@ -109,7 +92,6 @@ datatype 'a net = Node of 'a content * 'a net Inttab.table Symtab.table
 
 val empty = Node (Symtab.empty, Symtab.empty);
 fun is_empty (Node (c,t)) = Symtab.is_empty c andalso Symtab.is_empty t
-(* TODO potentially, every subtable is empty *)
 
 (*** Insertion into a path index tree ***)
 
@@ -138,7 +120,6 @@ fun append_int eq (k,v) table =
 *)
 fun insert_one eq (key, v) (Node (con,tree)) = (case key of
       End n => Node (append_sym eq (n,v) con, tree)
-    | EndVar => Node (append_sym eq ("",v) con, tree)
     | Fun (name,ind,key) =>
          insert_one eq (key,v)
       |> (fn x => Inttab.map_default (ind,empty) x)
@@ -166,7 +147,6 @@ fun delete_one eq (key, v) (Node (con,tree)) =
                         else raise DELETE in
   case key of
       End n => Node (Symtab.map_default (n,[]) rem con, tree)
-    | EndVar => Node (Symtab.map_default ("",[]) rem con, tree)
     | Fun (n,i,k) =>
       delete_one eq (k,v)
         |> Inttab.map_default (i, empty)
@@ -197,7 +177,6 @@ fun content (Node (con,tree)) =
 (*Return the list of items at the given node, [] if no such node*)
 fun lookup_one (Node (con,tree)) key = case key of
     End n => (case Symtab.lookup con n of NONE => [] | SOME xs => xs)
-  | EndVar => (case Symtab.lookup con "" of NONE => [] | SOME xs => xs)
   | Fun (n,i,k) => case Symtab.lookup tree n of
       NONE => []
     | SOME x => case Inttab.lookup x i of
@@ -211,25 +190,13 @@ fun lookup tree keys =
 
 fun match unif node term =
   let
-    fun name t = case t of
-              Const (n,_) => n
-            | Free (n,_) => n
-            | Bound i => Name.bound i
-            | Var _ => ""
-            | Abs _ => ""
-            | _$_ => raise Fail "Impossible"
-
-    fun lookup_term table term = (* Replace var in term arbitrarily *)
+    fun lookup_term table term =
       case term of
+      (* Replace var in term arbitrarily TODO only for unif! *)
         Var _ => Symtab.dest table |> map snd |> flat
       | Abs _ => Symtab.dest table |> map snd |> flat
-      | _$_ => raise INSERT
+      | _$_ => raise Fail "Impossible"
       | rest => Symtab.lookup_list table (name rest)
-
-   fun lookup_unif table key =
-     if unif
-     then union Term.aconv_untyped (Symtab.lookup_list table "") (lookup_term table key)
-     else lookup_term table key
 
    fun aux (node as Node(con,tree)) t = case t of
       _ $ _ =>
@@ -248,7 +215,10 @@ fun match unif node term =
           (fn arg => fn acc => inter Term.aconv_untyped acc (match arg))
           args (aux node func)
         end
-    | rest => lookup_unif con rest
+    | rest =>
+      if unif
+      then union Term.aconv_untyped (Symtab.lookup_list con "") (lookup_term con rest)
+      else lookup_term con rest
   in aux node term end
 
 val match_term = match false

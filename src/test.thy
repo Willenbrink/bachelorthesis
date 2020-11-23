@@ -31,7 +31,8 @@ val terms =
 []
 
 val (pathl as Path.Node (con,rest)) = foldl ins Path.empty terms
-fun match unif tree term = Path.match unif tree term |> map (Syntax.pretty_term @{context})
+fun pterm term = Syntax.pretty_term @{context} term
+fun match unif tree term = Path.match unif tree term |> map pterm
 \<close>
 
 ML_val \<open> (* Duplicate *)
@@ -47,6 +48,8 @@ ML_val \<open>
 match true tree @{term "f x"};
 match false pathl @{term "f (g x)"};
 match true pathl t;
+Path.empty |> ins @{term "(a b) (c d)"};
+@{term "(a b) (c d)"} |> pterm
 
 \<close>
 
