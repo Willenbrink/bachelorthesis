@@ -154,7 +154,7 @@ exception DELETE;       (*missing item in the net*)
   eq is the equality test for items. *)
 fun delete_one eq (key, v) (Node (con,tree)) =
   let fun rem content = if member eq content v then remove eq v content
-                else raise DELETE in
+                        else raise DELETE in
   case key of
       End n => Node (Symtab.map_default (n,[]) rem con, tree)
     | Fun (n,i,k) =>
@@ -187,6 +187,34 @@ fun lookup tree keys =
     let val acc = content tree
         fun intersect (acc,k) = inter Term.aconv_untyped acc (lookup_one tree k)
     in Library.foldl intersect (acc,keys) end
+
+fun match_term (Node(con,tree) : term net) (t : term) : term list =
+  let fun name t = case t of
+              Var _ => ""
+            | Abs _ => ""
+            | Const (n,_) => n
+            | Free (n,_) => n
+            | Bound i => Name.bound i
+            | f$_ => name f
+      (*fun lookup_list' (table : 'a table) key (f : 'a -> 'b list) = case Table.lookup table key of
+          NONE => []
+        | SOME xs => f xs*)
+      fun lookup_list table key : term list = case Symtab.lookup table key of
+          NONE => []
+        | SOME xs => xs
+  in
+  case t of
+    _ $ _ =>
+      let val (func, args) = strip_comb t
+          fun match_child (index,term) = case SItab.lookup tree (name t,index) of
+              NONE => []
+            | SOME child => match_term child term
+      in
+      Library.fold_index
+        (fn child => fn acc => combine Term.aconv_untyped acc (match_child child))
+        args (lookup_list con (name func))
+      end
+  | rest => lookup_list con (name rest) end
 
 (*
 (*Skipping a term in a net.  Recursively skip 2 levels if a combination*)

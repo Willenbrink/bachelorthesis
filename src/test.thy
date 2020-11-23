@@ -44,6 +44,15 @@ ML_val \<open>Path.SItab.dest tree\<close>
 ML_val \<open>Path.lookup ex ks\<close>
 ML_val \<open>Path.lookup_one ex (ks |> rev |> hd)\<close>
 
+ML \<open>val t = @{term "f x"}\<close>
+ML \<open>val (tree as Path.Node (con,tree')) = Path.empty |> ins t\<close>
+ML_val \<open>
+        Path.match_term tree t
+\<close>
+ML_val \<open>
+        Path.SItab.lookup tree' ("f",0)
+\<close>
+
 ML_val "head_of"
 
 
