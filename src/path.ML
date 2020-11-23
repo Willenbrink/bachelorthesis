@@ -73,7 +73,13 @@ fun rev_term term =
 (* TODO implement in a more efficient way by not explicitly creating reversed terms *)
 fun key_of_term (t : term) : key list =
   let fun aux term = case term of
-      TT (VarT,_) => [EndVar]
+      TT (VarT,[]) => [EndVar]
+    | TT (VarT, args) =>
+           map aux args
+        |> map_index (fn (i,t) => map (fn t => (i,t)) t) (*Map every arg to correct index*)
+        |> flat
+        |> map (fn (i,t) => Fun ("",i,t))
+        |> (fn ts => EndVar :: ts) (* Prepend current pos *)
     | TT (AtomT n, []) => [End n]
     | TT (AtomT n, args) =>
            map aux args
@@ -96,14 +102,12 @@ fun encode_type (Type (c, Ts)) = Term.list_comb (Const (c, dummyT), map encode_t
    There is no empty key.
    TODO Lookup functions preserve order in items stored at same level?
 *)
-structure SItab = Table(type key = string * int
-  val ord = prod_ord fast_string_ord int_ord);
-
 type 'a content = 'a list Symtab.table
-datatype 'a net = Node of 'a content * 'a net SItab.table
+datatype 'a net = Node of 'a content * 'a net Inttab.table Symtab.table
 
-val empty = Node (Symtab.empty, SItab.empty);
-fun is_empty (Node (c,t)) = Symtab.is_empty c andalso SItab.is_empty t
+val empty = Node (Symtab.empty, Symtab.empty);
+fun is_empty (Node (c,t)) = Symtab.is_empty c andalso Symtab.is_empty t
+(* TODO potentially, every subtable is empty *)
 
 (*** Insertion into a path index tree ***)
 
@@ -133,9 +137,11 @@ fun append_int eq (k,v) table =
 fun insert_one eq (key, v) (Node (con,tree)) = (case key of
       End n => Node (append_sym eq (n,v) con, tree)
     | EndVar => Node (append_sym eq ("",v) con, tree)
-    | Fun (n,i,k) =>
-      let val tree = SItab.map_default ((n,i),empty) (insert_one eq (k,v)) tree
-      in Node (con, tree) end)
+    | Fun (name,ind,key) =>
+         insert_one eq (key,v)
+      |> (fn x => Inttab.map_default (ind,empty) x)
+      |> (fn x => Symtab.map_default (name,Inttab.empty) x tree)
+      |> (fn x => Node (con, x)))
 
 fun insert eq (keys,term) net =
   Library.foldl (fn (acc,k) => insert_one eq (k,term) acc) (net,keys)
@@ -160,7 +166,10 @@ fun delete_one eq (key, v) (Node (con,tree)) =
       End n => Node (Symtab.map_default (n,[]) rem con, tree)
     | EndVar => Node (Symtab.map_default ("",[]) rem con, tree)
     | Fun (n,i,k) =>
-        Node (con, SItab.map_default ((n,i),empty) (delete_one eq (k,v)) tree)
+      delete_one eq (k,v)
+        |> Inttab.map_default (i, empty)
+        |> (fn x => Symtab.map_default (n,Inttab.empty) x tree)
+        |> (fn x => Node (con, x))
    end
 
 fun delete eq (keys, x) net =
@@ -174,86 +183,74 @@ fun delete_term_safe eq entry net = delete_term eq entry net handle DELETE => ne
 
 (*** Retrieval functions for discrimination nets ***)
 fun content (Node (con,tree)) =
-  let val con_fst = Symtab.dest con |> map snd |> flat
-      val con_snd = SItab.dest tree |> map snd |> map content |> flat
+  let val con_fst =
+        con |> Symtab.dest 
+            |> maps snd
+      val con_snd =
+        tree |> Symtab.dest
+             |> maps (Inttab.dest o snd)
+             |> maps (content o snd)
   in con_fst @ con_snd end
 
 (*Return the list of items at the given node, [] if no such node*)
 fun lookup_one (Node (con,tree)) key = case key of
     End n => (case Symtab.lookup con n of NONE => [] | SOME xs => xs)
   | EndVar => (case Symtab.lookup con "" of NONE => [] | SOME xs => xs)
-  | Fun (n,i,k) => case SItab.lookup tree (n,i) of
+  | Fun (n,i,k) => case Symtab.lookup tree n of
       NONE => []
-    | SOME x => lookup_one x k
+    | SOME x => case Inttab.lookup x i of
+        NONE => []
+      | SOME x => lookup_one x k
 
 fun lookup tree keys =
     let val acc = content tree
         fun intersect (acc,k) = inter Term.aconv_untyped acc (lookup_one tree k)
     in Library.foldl intersect (acc,keys) end
 
-fun lookup_list table key = case Symtab.lookup table key of
-    NONE => []
-  | SOME xs => xs
-
-fun matching unif node term =
-  let fun name t = case t of
+fun match unif node term =
+  let
+    fun name t = case t of
               Const (n,_) => n
             | Free (n,_) => n
             | Bound i => Name.bound i
             | Var _ => ""
             | Abs _ => ""
-      fun aux (node as Node(con,tree)) t = case t of
-          _ $ _ =>
-            let val (func, args) = strip_comb t
-                fun match_child (index,term) = case SItab.lookup tree (name func,index) of
-                    NONE => []
-                  | SOME child => aux child term
-            in
-            Library.fold_index
-              (fn child => fn acc => inter Term.aconv_untyped acc (match_child child))
-              args (lookup_list con (name func))
-            end
-        | rest => if name rest = "" andalso unif
-                  then content node
-                  else lookup_list con (name rest)
+            | _$_ => raise Fail "Impossible"
+
+    fun lookup_term table term = (* Replace var in term arbitrarily *)
+      case term of
+        Var _ => Symtab.dest table |> map snd |> flat
+      | Abs _ => Symtab.dest table |> map snd |> flat
+      | _$_ => raise INSERT
+      | rest => Symtab.lookup_list table (name rest)
+
+   fun lookup_unif table key =
+     if unif
+     then union Term.aconv_untyped (Symtab.lookup_list table "") (lookup_term table key)
+     else lookup_term table key
+
+   fun aux (node as Node(con,tree)) t = case t of
+      _ $ _ =>
+        let val (func, args) = strip_comb t
+            val inttabs =
+              case (unif, name func = "") of
+                  (true, true) => Symtab.dest tree |> map snd
+                | (true, false) => 
+                    (case Symtab.lookup tree (name func) of NONE => [] | SOME x => [x])
+                  @ (case Symtab.lookup tree "" of NONE => [] | SOME x => [x])
+                | _ => case Symtab.lookup tree (name func) of NONE => [] | SOME x => [x]
+            fun match (index,term) =
+              maps (fn x => case Inttab.lookup x index of SOME x => aux x term | NONE => []) inttabs
+        in
+        Library.fold_index
+          (fn arg => fn acc => inter Term.aconv_untyped acc (match arg))
+          args (aux node func)
+        end
+    | rest => lookup_unif con rest
   in aux node term end
 
-fun unify unif node term =
-  let fun name t = case t of
-              Const (n,_) => n
-            | Free (n,_) => n
-            | Bound i => Name.bound i
-            | Var _ => ""
-            | Abs _ => ""
-
-      fun lookup_term table term = (* Replace var in term arbitrarily *)
-          case term of
-            Var _ => Symtab.dest table |> map snd |> flat
-          | Abs _ => Symtab.dest table |> map snd |> flat
-          | f$t => raise INSERT
-          | rest => lookup_list table (name rest)
-
-      fun lookup_unif table key =
-        if unif
-        then union Term.aconv_untyped (lookup_list table "") (lookup_term table key)
-        else lookup_term table key
-
-      fun aux (node as Node(con,tree)) t = case t of
-          _ $ _ =>
-            let val (func, args) = strip_comb t
-                fun match (index,term) = case SItab.lookup tree (name func,index) of
-                    NONE => (writeln "Error"; writeln (name func); writeln (@{make_string} index); [])
-                  | SOME child => aux child term
-            in
-            Library.fold_index
-              (fn arg => fn acc => inter Term.aconv_untyped acc (match arg))
-              args (aux node func)
-            end
-        | rest => lookup_unif con rest
-  in aux node term end
-
-val match_term = matching false
-val unify_term = unify true
+val match_term = match false
+val unify_term = match true
 
 (*
 (*Skipping a term in a net.  Recursively skip 2 levels if a combination*)
