@@ -1,18 +1,44 @@
 # Tasks
-## Primary
-- [x] Investigate termtables, why/how do they use order?
-- [x] Implement path indexing
-- [ ] Implement another indexing method
-- [ ] Write tests
-- [ ] Create benchmarks
-- [ ] Modify termstructure for indextree?
-- [ ] Understand net.ml in detail (match, unif)
+## TODO
+* Abschlussarbeitanmeldung
+* Codestyle
+    - Kein empty String als Key
+    - Matching schöner hinschreiben
+    - Chaining für Options
+* Inferenzregeln auf Papier (/nicht Latex) aufschreiben (ala strukturelle Induktion)
+* Tests für Path Indexing (als Funktor über NET)
+* Implementiere eine andere Indexing Methode (Substitution Trees?)
+* net.ML: content = entries?
+* Beispiele wo net.ML schlecht funktioniert
+    - Überapproximationen bei Lambdas
+    - Beta-eta-normal form = Eta-long beta-normal form?
+    - Ähnliche Beispiele zu: plus(x,y,150) aus einem Paper
+* Benchmarks (FOL)
+    - DN vs PI vs TT on ground terms
+        + TT braucht weniger Steps (da balanciert) aber immer wieder neuer Vergleich (kein prefix sharing)
+        + Was zeichnet andere Worst-/Best-Cases aus?
+    - DN vs PI in general
+* Vergleiche Nutzung von `net.ML`, `item_net.ml`, termtabs (`term_ord.ml`, `term_sharing.ml`) in Taktiken etc.
+    - Unterschied zwischen Instanzen von TT
+    - Zufällig?
+    - Präferenzen?
+    - Gründe für Präferenzen?
+* Termstruktur ändern für Indextree (Spine representation?)
+* `net.ML` umschreiben und Interface anpassen
+* Itemnet: Quasi zwei stufiges DN, erst Liste für letzten paar Terme, rest im Netz. Komplex, nicht im Detail anschauen
 
-## Secondary
-- [ ] Read Seven Virtues of STT
-- [ ] Investigate representation: FOL, quantifiers, lambdas, theorems. Use print_statement?
-- [ ] Near-eta conversion?
-- [x] What is the beta-eta normalform? See note below
+## Low Priority
+* Seven Virtues of STT lesen
+* Near-eta conversion in net.ML?
+* Isabelle besser herrichten
+* Interne Repräsentation von FOL, Quantifiers, Lambdas, Theorems etc. genauer anschauen, print_satement hernehmen?
+
+## Bis 1.12
+
+
+## Bis 24.11
+* TT und fast_term_ord anschauen. B-Baum 3. Ordnung
+* Path indexing mit selber Signatur wie net.ML
 
 # Questions and Remarks
 ## Theory
