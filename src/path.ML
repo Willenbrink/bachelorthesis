@@ -55,6 +55,8 @@ struct
 
 (* Fun(name,index,key_remainder) where key_remainder describes the path to the leaf *)
 datatype key = End of string | Fun of string * int * key
+type 'a content = 'a list Symtab.table
+datatype 'a net = Node of 'a content * 'a net Inttab.table Symtab.table
 
 fun name t = case t of
           Const (n,_) => n
@@ -76,6 +78,7 @@ fun key_of_term t : key list =
              |> (fn x => key_of_term func @ x)
  end
 
+
 (*encode_type -- for indexing purposes*)
 fun encode_type (Type (c, Ts)) = Term.list_comb (Const (c, dummyT), map encode_type Ts)
   | encode_type (TFree (a, _)) = Free (a, dummyT)
@@ -87,8 +90,6 @@ fun encode_type (Type (c, Ts)) = Term.list_comb (Const (c, dummyT), map encode_t
    There is no empty key.
    TODO Lookup functions preserve order in items stored at same level?
 *)
-type 'a content = 'a list Symtab.table
-datatype 'a net = Node of 'a content * 'a net Inttab.table Symtab.table
 
 val empty = Node (Symtab.empty, Symtab.empty);
 fun is_empty (Node (c,t)) = Symtab.is_empty c andalso Symtab.is_empty t

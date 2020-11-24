@@ -2,7 +2,7 @@ theory "test"
   imports Main
 begin
 
-ML_file "/opt/Isabelle2020/src/Pure/net.ML"
+ML_file "net.ML"
 ML_file "path.ML"
 ML_file "pprinter.ML"
 setup "term_pat_setup"
@@ -50,7 +50,13 @@ Path.empty |> ins @{term "(a b) (c d)"};
 
 \<close>
 
-ML_val "head_of"
+ML \<open>
+val l = Path.key_of_term (@{term "f (x) y"})
+val t = Path.empty |> ins @{term "f x y"}
+\<close>
+
+
+
 
 
 ML "fun ins t n = Net.insert_term eq (t,t) n"
@@ -67,13 +73,11 @@ ML \<open>val net = Net.empty
 
 ML \<open>val Net.Net{atoms,comb,var} = net\<close>
 ML_val \<open>let val Net.Net{atoms,...} = net in Net.look1 (atoms,"f") [] end\<close>
-ML_val \<open>Net.rands false @{term "f"} (net,[])\<close>
 
-ML \<open>val x : 'a = 10\<close>
+
+
 ML \<open>val b = (@{term "x"} = @{term "x"})\<close>
 ML \<open>val n = (Path.empty = Path.empty)\<close>
 
 ML "Net.content net |> map pterm"
 ML "Net.entries net |> map pterm"
-
-ML \<open>@{term_pat "(\<lambda> x. x) a"}\<close>
