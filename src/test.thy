@@ -1,10 +1,11 @@
 theory "test"
-  imports Main
+  imports Main Spec_Check.Spec_Check
 begin
 
 ML_file "net.ML"
 ML_file "path.ML"
 ML_file "pprinter.ML"
+ML_file "tester.ML"
 setup "term_pat_setup"
 setup "type_pat_setup"
 ML_val \<open>@{term_pat "Suc (?x::nat)"}\<close>
@@ -81,3 +82,8 @@ ML \<open>val n = (Path.empty = Path.empty)\<close>
 
 ML "Net.content net |> map pterm"
 ML "Net.entries net |> map pterm"
+
+ML_command \<open>check_property "ALL xs. xs = rev xs"\<close>
+ML \<open>
+structure PathTest = Tester(Path)
+\<close>

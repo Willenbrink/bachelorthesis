@@ -2,9 +2,7 @@
 ## TODO
 * Abschlussarbeitanmeldung
 * Codestyle
-    - Kein empty String als Key
     - Matching schöner hinschreiben
-    - Chaining für Options
 * Inferenzregeln auf Papier (/nicht Latex) aufschreiben (ala strukturelle Induktion)
 * Tests für Path Indexing (als Funktor über NET)
 * Implementiere eine andere Indexing Methode (Substitution Trees?)
@@ -34,6 +32,9 @@
 * Interne Repräsentation von FOL, Quantifiers, Lambdas, Theorems etc. genauer anschauen, print_satement hernehmen?
 
 ## Bis 1.12
+* Codestyle
+    - Kein empty String als Key
+    - Chaining für Options: Siehe Standardbibliothek, Options.map
 
 
 ## Bis 24.11
