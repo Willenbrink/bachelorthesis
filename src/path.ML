@@ -83,7 +83,7 @@ fun key_of_term t : key list =
         [] => [End sym]
       | args => args
              |> map key_of_term
-             |> Library.map_index (fn (i,keys) => map (fn k => Fun(sym,i,k)) keys)
+             |> map_index (fn (i,keys) => map (fn k => Fun(sym,i,k)) keys)
              |> flat
              |> (fn x => key_of_term func @ x)
  end
@@ -162,7 +162,7 @@ fun delete_one eq (key, v) (Node (con,tree)) =
       End n => Node (Stab.map_default (n,[]) rem con, tree)
     | Fun (name,index,key) =>
            delete_one eq (key,v)
-        |> (fn f => Library.nth_map index (fn xs => f xs))
+        |> (fn f => nth_map index (fn xs => f xs))
         |> (fn x => Stab.map_default (name,[]) x tree)
         |> (fn x => Node (con, x))
    end
@@ -177,22 +177,24 @@ fun delete_term_safe eq entry net = delete_term eq entry net handle DELETE => ne
 
 
 (*** Retrieval functions for discrimination nets ***)
-fun content (Node (con,tree)) =
-  let val con_fst =
-        con |> Stab.dest 
-            |> maps snd
-      val con_snd =
-        tree |> Stab.dest
-             |> maps snd
-             |> maps content
-  in con_fst @ con_snd end
+fun content n =
+  let fun aux (Node (con,tree)) =
+    let val con_fst =
+          con |> Stab.dest 
+              |> maps snd
+        val con_snd =
+          tree |> Stab.dest
+               |> maps snd
+               |> maps aux
+    in con_fst @ con_snd end
+  in aux n |> distinct Term.aconv_untyped end
 
 (*Return the list of items at the given node, [] if no such node*)
 fun lookup_one (Node (con,tree)) key = case key of
     End n => (case Stab.lookup con n of NONE => [] | SOME xs => xs)
   | Fun (name,index,key) =>
        Stab.lookup tree name
-       >>= (fn xs => Library.nth xs index)
+       >>= (fn xs => nth xs index)
        >>= (fn x => lookup_one x key)
        |> Option.valOf
 
@@ -201,60 +203,29 @@ fun lookup tree keys =
         fun intersect (acc,k) = inter Term.aconv_untyped acc (lookup_one tree k)
     in Library.foldl intersect (acc,keys) end
 
-fun match unif node term =
-  let
-    fun lookup_term table term =
-      case term of
-      (* Replace var in term arbitrarily TODO only for unif! *)
-        Var _ => Stab.dest table |> maps snd
-      | Abs _ => Stab.dest table |> maps snd
-      | _$_ => raise Fail "Impossible"
-      | rest => Stab.lookup_list table (symbol_of_term rest)
-
-   fun aux (node as Node(con,tree)) t = case strip_comb t of
-      (symbol,[]) =>
-      if unif
-      then union Term.aconv_untyped (Stab.lookup_list con VarS) (lookup_term con symbol)
-      else lookup_term con symbol
-    | (func,args) =>
-        let
-            val inttabs =
-              case (unif, symbol_of_term func) of
-                  (true, VarS) => Stab.dest tree |> map snd
-                | (true, atom) => 
-                    (case Stab.lookup tree atom of NONE => [] | SOME x => [x])
-                  @ (case Stab.lookup tree VarS of NONE => [] | SOME x => [x])
-                | (false, symbol) => case Stab.lookup tree symbol of NONE => [] | SOME x => [x]
-            fun match (index,term) =
-              maps (fn x => Library.nth x index |> (fn x =>  aux x term)) inttabs
-        in
-        Library.fold_index
-          (fn arg => fn acc => inter Term.aconv_untyped acc (match arg))
-          args (aux node func)
-        end
-  in aux node term end
-
 fun match unif (node as Node (con,tree)) term =
-  let val handle_var = content node
+  let val var_terms = Stab.lookup_list con VarS
+      val handle_var = if unif then content node else var_terms
       fun handle_sym sym = Stab.lookup_list con sym
+      fun handle_func func args =
+        let val list = Stab.lookup_list tree (symbol_of_term func)
+            fun arg_to_terms index arg = match unif (nth list index) arg handle Subscript => []
+            fun intersect fst snd = inter Term.aconv_untyped fst snd
+        in
+        fold_index (fn (index,arg) => fn acc => intersect (arg_to_terms index arg) acc)
+          args (content node)
+        end
   in
   case strip_comb term of
     (Var _,_) => handle_var
   | (Abs _,_) => handle_var
   | (_$_,_) => raise Fail "Impossible"
-  | (sym,[]) => handle_sym (symbol_of_term sym)
-  | (func,args) =>
-      let val list = Stab.lookup_list tree (symbol_of_term func)
-          fun arg_to_term index arg = match unif (Library.nth list index) arg
-          fun intersect fst snd = inter Term.aconv_untyped fst snd
-      in
-      Library.fold_index (fn (index,arg) => fn acc => intersect (arg_to_term index arg) acc)
-        args (content node)
-      end 
+  | (sym,[]) => (if unif then var_terms else []) @ (handle_sym (symbol_of_term sym))
+  | (func,args) => (if unif then var_terms else []) @ (handle_func func args)
   end
 
-val match_term = match false
-val unify_term = match true
+fun match_term n t = match false n t |> distinct Term.aconv_untyped
+fun unify_term n t = match true n t |> distinct Term.aconv_untyped
 
 val entries = content (* TODO are they really the same? *)
 
@@ -262,4 +233,17 @@ fun merge eq (tree1, tree2) =
   fold (fn t => insert_term_safe eq (t,t)) (content tree2) tree1  (* FIXME non-canonical merge order!?! *)
 
 fun subtract eq tree1 tree2 = Library.subtract eq (content tree1) (content tree2)
+
+(* Useful for what exactly?
+fun dot_of_node (node as Node(con,tree)) =
+  let
+    fun print_content i con =
+    fun print_node prev_i curr_i (Node(con,tree)) =
+      string_of_int prev_i ^ "->" ^ string_of_int curr_i ^ ";\n" ^
+      fst (fold (fn x => fn (acc,i) => (acc ^ print_node curr_i i x,i+1))
+        (Stab.dest tree |> maps snd) ("",curr_i+1))
+  in
+  "strict graph Pathindexing {" ^ print_node 0 0 node ^ "}"
+  end
+*)
 end;
