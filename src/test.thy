@@ -28,7 +28,7 @@ val terms =
 @{term "f (g (h a) y z)"} ::
 []
 
-val (pathl as Path.Node (con,rest)) = fold ins terms Path.empty
+val pathl as Path.Node (con,rest) = fold ins terms Path.empty
 fun pterm term = Syntax.pretty_term @{context} term
 fun match unif tree term = Path.match unif tree term |> map pterm
 \<close>
@@ -43,12 +43,9 @@ ML \<open>val ks = Path.key_of_term @{term "f (g x y)"}\<close>
 ML \<open>val t = @{term_pat "?f ?g y"}\<close>
 ML \<open>val (tree as Path.Node (con,tree')) = Path.empty |> ins t\<close>
 ML_val \<open>
-match true tree @{term "f x"};
-match false pathl @{term "f (g x)"};
-match true pathl t;
-Path.empty |> ins @{term "(a b) (c d)"};
-@{term "(a b) (c d)"} |> pterm
-
+val a = match true tree @{term "f x"};
+val b = match false pathl @{term "f (g x y)"};
+val c = match true pathl t;
 \<close>
 
 ML \<open>
