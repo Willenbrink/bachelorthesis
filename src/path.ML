@@ -211,9 +211,13 @@ fun match unif node term =
       | _$_ => raise Fail "Impossible"
       | rest => Stab.lookup_list table (symbol_of_term rest)
 
-   fun aux (node as Node(con,tree)) t = case t of
-      _ $ _ =>
-        let val (func, args) = strip_comb t
+   fun aux (node as Node(con,tree)) t = case strip_comb t of
+      (symbol,[]) =>
+      if unif
+      then union Term.aconv_untyped (Stab.lookup_list con VarS) (lookup_term con symbol)
+      else lookup_term con symbol
+    | (func,args) =>
+        let
             val inttabs =
               case (unif, symbol_of_term func) of
                   (true, VarS) => Stab.dest tree |> map snd
@@ -228,11 +232,26 @@ fun match unif node term =
           (fn arg => fn acc => inter Term.aconv_untyped acc (match arg))
           args (aux node func)
         end
-    | rest =>
-      if unif
-      then union Term.aconv_untyped (Stab.lookup_list con VarS) (lookup_term con rest)
-      else lookup_term con rest
   in aux node term end
+
+fun match unif (node as Node (con,tree)) term =
+  let val handle_var = content node
+      fun handle_sym sym = Stab.lookup_list con sym
+  in
+  case strip_comb term of
+    (Var _,_) => handle_var
+  | (Abs _,_) => handle_var
+  | (_$_,_) => raise Fail "Impossible"
+  | (sym,[]) => handle_sym (symbol_of_term sym)
+  | (func,args) =>
+      let val list = Stab.lookup_list tree (symbol_of_term func)
+          fun arg_to_term index arg = match unif (Library.nth list index) arg
+          fun intersect fst snd = inter Term.aconv_untyped fst snd
+      in
+      Library.fold_index (fn (index,arg) => fn acc => intersect (arg_to_term index arg) acc)
+        args (content node)
+      end 
+  end
 
 val match_term = match false
 val unify_term = match true
