@@ -44,7 +44,7 @@ sig
   val content: 'a net -> 'a list
 end;
 
-structure Path : NET =
+structure Path (*: NET*) =
 struct
 (* TODO should an empty key be valid?
    TODO should a key list address one node or multiple?

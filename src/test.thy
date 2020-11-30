@@ -78,7 +78,6 @@ ML_val \<open>let val Net.Net{atoms,...} = net in Net.look1 (atoms,"f") [] end\<
 
 
 ML \<open>val b = (@{term "x"} = @{term "x"})\<close>
-ML \<open>val n = (Path.empty = Path.empty)\<close>
 
 ML "Net.content net |> map pterm"
 ML "Net.entries net |> map pterm"
