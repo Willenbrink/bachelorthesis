@@ -1,7 +1,6 @@
 theory "test"
-  imports Main Spec_Check.Spec_Check
-begin
-
+  imports Main "Spec_Check/Spec_Check"
+  begin
 ML_file "net.ML"
 ML_file "path.ML"
 ML_file "pprinter.ML"

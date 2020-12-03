@@ -1,6 +1,5 @@
 # Tasks
 ## TODO
-* SpecCheck Verwendungen in der Distro? Irgendwo auf Github?
 * Tests für path indexing
   - Generator fuer Variablennamen, Konstantennamen, bound variables
   - Frequenzen von Applications, Abstractions
@@ -36,6 +35,8 @@
 
 ## Bis 8.12
 * Inferenzregeln auf Papier (nicht Latex) aufschreiben (ala strukturelle Induktion)
+* SpecCheck Verwendungen in der Distro? Irgendwo auf Github?
+  - Wird weder in der Distro noch auf Github irgendwo verwendet. Das Tool Qcheck für OCaml nutzt auch Kombinatoren für die Generatoren
 
 ## Bis 1.12
 * Abschlussarbeitanmeldung
