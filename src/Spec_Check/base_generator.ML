@@ -62,6 +62,7 @@ type rand = real
 val a = 16807.0
 val m = 2147483647.0
 
+(* This just multiplies the last seed with a modulo m. Can't we do better? *)
 fun nextrand seed =
   let
     val t = a * seed

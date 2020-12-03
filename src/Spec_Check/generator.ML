@@ -40,6 +40,7 @@ signature GENERATOR = sig
   val ref' : 'a gen -> 'a Unsynchronized.ref gen
   (* more generators *)
   val term : int -> term gen
+  val term_fol : int -> term gen
   val typ : int -> typ gen
 
   val stream : stream
@@ -231,5 +232,38 @@ fun term n =
     if n = 0 then chooseL [const, free, var, bound]
     else chooseL [const, free, var, bound, abs (n - 1), app (n div 2)]
   end;
+
+val symbol =
+  let
+    val const = map Const (zip (const_string, typ 10))
+    val free = map Free (zip (var_string, typ 10))
+    val var = map Var (zip (zip (var_string, index), typ 10))
+    val bound = map Bound bound_index
+  in
+  chooseL [const, free, var, bound]
+  end
+
+datatype 'a node = Node of 'a * 'a node list
+
+fun term_fol num_sym r =
+  let
+    fun ins target value (Node (node,children)) =
+      if node = target
+      then Node (node, Node (value, [])::children)
+      else Node (node, List.map (ins target value) children)
+    fun ins_at_random i (tree,r) =
+      let val (target,r) = range (0,i-1) r
+      in
+      (ins target i tree, r)
+      end
+    (* Abuse Bound to store the number of args without specifying a type *)
+    fun conv_node (Node (_, [])) r = (Bound 0,r)
+      | conv_node (Node (_, args)) r =
+        (Bound (List.length args),r)
+        |> fold (fn x => fn (acc,r) => conv_node x r |>> (fn x => acc $ x)) args 
+  in
+  fold ins_at_random (1 upto (num_sym - 1)) (Node (0,[]), r)
+  |-> conv_node
+  end
 
 end

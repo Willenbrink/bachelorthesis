@@ -52,7 +52,8 @@
 # Questions and Remarks
 ## Scratch
 * Pathindexing assumes terms as trees with functions above the args. This is opposite from Isabelles term. Does the path structure really make sense?
-* Quickchecktestgenerator richtig hinzufügen
+* Wie bricht man eine Endlosschleife in Isabelle ab? Fehlermeldung sagt was von IO-Monitor
+* Sollen die Typen der generierten Terme konsistent sein?
 
 ## Theory
 * In [this paper sections 6.1](https://apps.dtic.mil/dtic/tr/fulltext/u2/a460990.pdf) it is mentioned that discrimination nets are the same as tries. Despite this discrimination {net,tree} are apparently used equivalently but distinctly from tries which are used only for the data structure on which DNs are built.

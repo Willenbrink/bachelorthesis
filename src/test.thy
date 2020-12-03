@@ -32,6 +32,9 @@ fun pterm term = Syntax.pretty_term @{context} term
 fun match unif tree term = Path.match unif tree term |> map pterm
 \<close>
 
+ML_val "Generator.term_fol 10 0.19 |>> pterm"
+ML_val \<open>@{term_pat "f x y"}\<close>
+
 ML_val \<open> (* Duplicate *)
 let val _ = ins @{term "f"} pathl in raise TEST end handle Path.INSERT => "Success"\<close>
 (* TODO equality type for net? table is insert-order dependent *)
