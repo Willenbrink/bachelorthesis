@@ -1,18 +1,21 @@
 # Tasks
 ## TODO
-* Abschlussarbeitanmeldung
-* Codestyle
-    - Matching schöner hinschreiben
-* Inferenzregeln auf Papier (/nicht Latex) aufschreiben (ala strukturelle Induktion)
+* SpecCheck Verwendungen in der Distro? Irgendwo auf Github?
+* Tests für path indexing
+  - Generator fuer Variablennamen, Konstantennamen, bound variables
+  - Frequenzen von Applications, Abstractions
 * Tests für Path Indexing (als Funktor über NET)
 * Implementiere eine andere Indexing Methode (Substitution Trees?)
 * net.ML: content = entries?
-* Beispiele wo net.ML schlecht funktioniert
+* Beispiele wo net.ML schlecht funktioniert (net.ML ist nicht HOL?)
     - Überapproximationen bei Lambdas
     - Beta-eta-normal form = Eta-long beta-normal form?
     - Ähnliche Beispiele zu: plus(x,y,150) aus einem Paper
+* Beispiele wo pathindexing schlecht funktioniert
+    - Kurze Terme: Alle längeren 
+    - Konsistente Typen bei Indexing!
 * Benchmarks (FOL)
-    - DN vs PI vs TT on ground terms
+    - DN vs PI vs TT on ground terms (ohne Variablen)
         + TT braucht weniger Steps (da balanciert) aber immer wieder neuer Vergleich (kein prefix sharing)
         + Was zeichnet andere Worst-/Best-Cases aus?
     - DN vs PI in general
@@ -31,10 +34,15 @@
 * Isabelle besser herrichten
 * Interne Repräsentation von FOL, Quantifiers, Lambdas, Theorems etc. genauer anschauen, print_satement hernehmen?
 
+## Bis 8.12
+* Inferenzregeln auf Papier (nicht Latex) aufschreiben (ala strukturelle Induktion)
+
 ## Bis 1.12
+* Abschlussarbeitanmeldung
 * Codestyle
     - Kein empty String als Key
     - Chaining für Options: Siehe Standardbibliothek, Options.map
+    - Matching schöner hinschreiben
 
 ## Bis 24.11
 * TT und fast_term_ord anschauen. B-Baum 3. Ordnung
@@ -43,6 +51,7 @@
 # Questions and Remarks
 ## Scratch
 * Pathindexing assumes terms as trees with functions above the args. This is opposite from Isabelles term. Does the path structure really make sense?
+* Quickchecktestgenerator richtig hinzufügen
 
 ## Theory
 * In [this paper sections 6.1](https://apps.dtic.mil/dtic/tr/fulltext/u2/a460990.pdf) it is mentioned that discrimination nets are the same as tries. Despite this discrimination {net,tree} are apparently used equivalently but distinctly from tries which are used only for the data structure on which DNs are built.
