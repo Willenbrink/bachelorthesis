@@ -187,7 +187,7 @@ fun content n =
                |> maps snd
                |> maps aux
     in con_fst @ con_snd end
-  in aux n |> distinct Term.aconv_untyped end
+  in aux n (*|> distinct Term.aconv_untyped this fixes the type to term. Rework interface first! *)end
 
 (*Return the list of items at the given node, [] if no such node*)
 fun lookup_one (Node (con,tree)) key = case key of
@@ -204,8 +204,7 @@ fun lookup tree keys =
     in Library.foldl intersect (acc,keys) end
 
 fun match unif (node as Node (con,tree)) term =
-  let val var_terms = Stab.lookup_list con VarS
-      val handle_var = if unif then content node else var_terms
+  let val handle_var = if unif then content node else Stab.lookup_list con VarS
       fun handle_sym sym = Stab.lookup_list con sym
       fun handle_func func args =
         let val list = Stab.lookup_list tree (symbol_of_term func)
