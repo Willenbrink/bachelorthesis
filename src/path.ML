@@ -204,7 +204,8 @@ fun lookup tree keys =
     in Library.foldl intersect (acc,keys) end
 
 fun match unif (node as Node (con,tree)) term =
-  let val handle_var = if unif then content node else Stab.lookup_list con VarS
+  let val var_terms = Stab.lookup_list con VarS
+      val handle_var = if unif then content node else var_terms
       fun handle_sym sym = Stab.lookup_list con sym
       fun handle_func func args =
         let val list = Stab.lookup_list tree (symbol_of_term func)
