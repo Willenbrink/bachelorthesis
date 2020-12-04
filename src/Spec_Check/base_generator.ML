@@ -8,7 +8,6 @@ Basic random generators.
 signature BASE_GENERATOR =
 sig
 type 'a gen = Random.rand -> 'a * Random.rand
-
 type ('a, 'b) co = 'a -> 'b gen -> 'b gen
 type ('a, 'b) reader = 'b -> ('a * 'b) option
 

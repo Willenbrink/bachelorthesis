@@ -41,7 +41,7 @@ signature GENERATOR = sig
   (* more generators *)
   val term : int -> term gen
   val term_fol : int -> term gen
-  val term_fol2 : int -> int -> int -> term gen
+  val term_fol2 : int -> int -> term gen
   val typ : int -> typ gen
 
   val stream : stream
@@ -264,15 +264,21 @@ fun term_fol1 num_sym r =
   |-> conv_node
   end
 
-fun term_fol2 num_sym avg_args bal_offset r =
+fun term_fol2 avg_args num_sym r =
   if num_sym <= 1
   then (Bound 0, r)
   else let
-    val (num_args,r) = binom_dist 0.25 (avg_args * 4) r
+    val term_fol_rec = term_fol2 avg_args
+    val (num_args,r) =
+      binom_dist 0.25 (avg_args * 4) r
+      |>> (fn x => if x > num_sym then num_sym else x)
+    val num_sym = num_sym - num_args
+    (* Abuse Bound to store the number of args without specifying a type *)
     val (func,r) = (Bound num_args,r)
-    val args2_gen = List.tabulate (num_args, (fn _ => term_fol2 (num_sym div num_args) avg_args bal_offset))
-    val (args2,r) = fold (fn x => fn (acc,r) => x r |>> (fn x => x::acc)) args2_gen ([],r)
-  in (Term.list_comb (func,args2),r) end
+    (* Replace with a random splitting of an interval *)
+    val args_gen = List.tabulate (num_args, (fn _ => term_fol_rec (num_sym div num_args)))
+    val (args,r) = fold (fn x => fn (acc,r) => x r |>> (fn x => x::acc)) args_gen ([],r)
+  in (Term.list_comb (func,args),r) end
 
 val term_fol = term_fol1
 
