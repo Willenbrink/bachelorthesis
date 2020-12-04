@@ -41,6 +41,7 @@ signature GENERATOR = sig
   (* more generators *)
   val term : int -> term gen
   val term_fol : int -> term gen
+  val term_fol2 : int -> int -> int -> term gen
   val typ : int -> typ gen
 
   val stream : stream
@@ -51,10 +52,7 @@ struct
 
 open Base_Generator
 
-val stream = start (new())
-
-type 'a gen = rand -> 'a * rand
-type ('a, 'b) co = 'a -> 'b gen -> 'b gen
+val stream = start (Random.new())
 
 (* text *)
 
@@ -63,8 +61,8 @@ type string = String.string
 type substring = Substring.substring
 
 
-val char = map Char.chr (range (0, Char.maxOrd))
-fun charRange (lo, hi) = map Char.chr (range (Char.ord lo, Char.ord hi))
+val char = map Char.chr (Random.range (0, Char.maxOrd))
+fun charRange (lo, hi) = map Char.chr (Random.range (Char.ord lo, Char.ord hi))
 
 fun charFrom s =
   choose (Vector.tabulate (String.size s, fn i => lift (String.sub (s, i))))
@@ -76,8 +74,8 @@ val string = vector CharVector.tabulate
 fun substring gen r =
   let
     val (s, r') = gen r
-    val (i, r'') = range (0, String.size s) r'
-    val (j, r''') = range (0, String.size s - i) r''
+    val (i, r'') = Random.range (0, String.size s) r'
+    val (j, r''') = Random.range (0, String.size s - i) r''
   in
     (Substring.substring (s, i, j), r''')
   end
@@ -93,7 +91,7 @@ fun costring s = cosubstring (Substring.full s)
 (* integers *)
 val digit = charRange (#"0", #"9")
 val nonzero = string (lift 1, charRange (#"1", #"9"))
-fun digits' n = string (range (0, n-1), digit)
+fun digits' n = string (Random.range (0, n-1), digit)
 fun digits n = map2 op^ (nonzero, digits' n)
 
 val maxDigits = 64
@@ -118,7 +116,7 @@ fun coint n =
   else variant 2 o coint (n div 2)
 
 (* reals *)
-val digits = string (range(1, Real.precision), charRange(#"0", #"9"))
+val digits = string (Random.range(1, Real.precision), charRange(#"0", #"9"))
 
 fun real_frac r =
   let val (s, r') = digits r
@@ -133,7 +131,7 @@ fun mk r =
   let
     val (a, r') = digits r
     val (b, r'') = digits r'
-    val (e, r''') = range (minExp div 4, maxExp div 4) r''
+    val (e, r''') = Random.range (minExp div 4, maxExp div 4) r''
     val x = String.concat [a, ".", b, "E", Int.toString e]
   in
     (the (Real.fromString x), r''')
@@ -208,11 +206,11 @@ val var_string = selectL ["x", "y", "z"];
 val index = selectL [0, 1, 2, 3];
 val bound_index = selectL [0, 1, 2, 3];
 
-val sort = list (flip' (1, 2)) sort_string;
+val sort = list (flip' (1.0/3.0)) sort_string;
 
 fun typ n =
   let
-    fun type' m = map Type (zip (type_string, list (flip' (1, 3)) (typ m)))
+    fun type' m = map Type (zip (type_string, list (flip' 0.25) (typ m)))
     val tfree = map TFree (zip (tvar_string, sort))
     val tvar = map TVar (zip (zip (tvar_string, index), sort))
   in
@@ -245,14 +243,14 @@ val symbol =
 
 datatype 'a node = Node of 'a * 'a node list
 
-fun term_fol num_sym r =
+fun term_fol1 num_sym r =
   let
     fun ins target value (Node (node,children)) =
       if node = target
       then Node (node, Node (value, [])::children)
       else Node (node, List.map (ins target value) children)
     fun ins_at_random i (tree,r) =
-      let val (target,r) = range (0,i-1) r
+      let val (target,r) = Random.range (0,i-1) r
       in
       (ins target i tree, r)
       end
@@ -265,5 +263,26 @@ fun term_fol num_sym r =
   fold ins_at_random (1 upto (num_sym - 1)) (Node (0,[]), r)
   |-> conv_node
   end
+
+fun int_of_bool b = if b then 1 else 0
+
+fun binom_dist _ 0 r = (0,r)
+  | binom_dist p n r =
+      flip' p r
+      |>> int_of_bool
+      ||> binom_dist p (n-1)
+      |> (fn (x,(acc,r)) => (acc + x, r))
+
+fun term_fol2 num_sym avg_args bal_offset r =
+  if num_sym <= 1
+  then (Bound 0, r)
+  else let
+    val (num_args,r) = binom_dist 0.25 (avg_args * 4) r
+    val (func,r) = (Bound num_args,r)
+    val args2_gen = List.tabulate (num_args, (fn _ => term_fol2 (num_sym div num_args) avg_args bal_offset))
+    val (args2,r) = fold (fn x => fn (acc,r) => x r |>> (fn x => x::acc)) args2_gen ([],r)
+  in (Term.list_comb (func,args2),r) end
+
+val term_fol = term_fol1
 
 end

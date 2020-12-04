@@ -9,38 +9,49 @@ signature RANDOM =
 sig
   type rand
   val new : unit -> rand
+  val next : rand -> rand
+  (* range (x,y) r in [x;y) *)
   val range : int * int -> rand -> int * rand
+  (* perc r in [0;1). Theoretically 2^31 equidistant discrete steps *)
+  val perc : rand -> real * rand
   val split : rand -> rand * rand
 end
 
 structure Random : RANDOM  =
 struct
 
-type rand = real
+type rand = int
 
-val a = 16807.0
-val m = 2147483647.0
+(*This is a Lehmer random number generator:
+   https://en.wikipedia.org/wiki/Lehmer_random_number_generator
+   We use int to avoid any float imprecision problems (and the seed is an int anyway)
+   a and m are selected according to the recommendation in the article above
+*)
 
-fun nextrand seed =
-  let
-    val t = a * seed
-  in
-    t - m * real(floor(t/m))
-  end
+val a = 48271
+val m = 2147483647 (* 2^31 - 1 *)
 
-val new = nextrand o Time.toReal o Time.now
+fun next seed = (seed * a) mod m
+
+fun new () =
+  Time.now ()
+  |> Time.toMicroseconds
+  |> (fn x => Int.max(1,x mod m)) (* The seed must be within [1;m) *)
+  |> next (* Time is not sufficiently random when polled rapidly *)
 
 fun range (min, max) =
-  if min > max then raise Domain (* TODO: raise its own error *)
-  else fn r => (min + (floor(real(max-min+1) * r / m)), nextrand r)
+  if min > max then raise Domain
+  else fn r => (min + ((max - min + 1) * r) div m, next r)
 
+(* TODO test whether this works as well as it should *)
 fun split r =
   let
-    val r = r / a
-    val r0 = real(floor r)
+    val r0 = next r
     val r1 = r - r0
   in
-    (nextrand r0, nextrand r1)
+    (next r0, next r1)
   end
+
+fun perc r = ((Real.fromInt r) / (Real.fromInt m), next r)
 
 end

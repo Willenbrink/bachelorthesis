@@ -7,13 +7,8 @@ Basic random generators.
 
 signature BASE_GENERATOR =
 sig
-
-type rand
-type 'a gen = rand -> 'a * rand
+type 'a gen = Random.rand -> 'a * Random.rand
 type ('a, 'b) co = 'a -> 'b gen -> 'b gen
-
-val new : unit -> rand
-val range : int * int -> rand -> int * rand
 type ('a, 'b) reader = 'b -> ('a * 'b) option
 
 val lift : 'a -> 'a gen
@@ -34,7 +29,7 @@ val map3 : ('a * 'b * 'c -> 'd) -> ('a gen * 'b gen * 'c gen) -> 'd gen
 val map4 : ('a * 'b * 'c * 'd -> 'e) -> ('a gen * 'b gen * 'c gen * 'd gen) -> 'e gen
 
 val flip : bool gen
-val flip' : int * int -> bool gen
+val flip' : real -> bool gen
 
 val list : bool gen -> 'a gen -> 'a list gen
 val option : bool gen -> 'a gen -> 'a option gen
@@ -47,7 +42,7 @@ val colist : ('a, 'b) co -> ('a list, 'b) co
 val coopt : ('a, 'b) co -> ('a option, 'b) co
 
 type stream
-val start : rand -> stream
+val start : Random.rand -> stream
 val limit : int -> 'a gen -> ('a, stream) reader
 
 end
@@ -55,58 +50,19 @@ end
 structure Base_Generator : BASE_GENERATOR =
 struct
 
-(* random number engine *)
-
-type rand = int
-
-(*This is called a Lehmer random number generator:
-   https://en.wikipedia.org/wiki/Lehmer_random_number_generator
-   We use int to avoid any float imprecision problems (and the seed is a float anyway)
-   a and m are selected according to the recommendation in the article above
-*)
-
-val a = 48271
-val m = 2147483647 (* 2^31 - 1 *)
-
-fun nextrand seed =
-  let
-    val t = a * seed
-  in
-    t mod m
-  end
-
-fun new () =
-  Time.now ()
-  |> Time.toMicroseconds
-  |> (fn x => x mod m) (* The seed must be within (0;m) *)
-  |> nextrand
-
-fun range (min, max) =
-  if min > max then raise Domain (* TODO: raise its own error *)
-  else fn r => (min + (max - min + 1) * r div m, nextrand r)
-
-fun split r =
-  let
-    val r0 = nextrand r
-    val r1 = r - r0
-  in
-    (nextrand r0, nextrand r1)
-  end
-
 (* generators *)
 
-type 'a gen = rand -> 'a * rand
+type 'a gen = Random.rand -> 'a * Random.rand
 type ('a, 'b) reader = 'b -> ('a * 'b) option
 
 fun lift obj r = (obj, r)
 
 local (* Isabelle does not use vectors? *)
-(* Creates a list of length freq with elems gen. Prepends to acc *)
   fun explode ((freq, gen), acc) =
     List.tabulate (freq, fn _ => gen) @ acc
 in
   fun choose v r =
-    let val (i, r) = range(0, Vector.length v - 1) r
+    let val (i, r) = Random.range(0, Vector.length v - 1) r
     in Vector.sub (v, i) r end
   fun choose' v = choose (Vector.fromList (Vector.foldr explode [] v))
   fun select v = choose (Vector.map lift v)
@@ -137,8 +93,8 @@ fun filter p gen r =
     loop (gen r)
   end
 
-val flip = selectL [true, false]
-fun flip' (p, q) = chooseL' [(p, lift true), (q, lift false)]
+fun flip' prob r = let val (x,r) = Random.perc r in (x < prob, r) end
+fun flip r = flip' 0.5 r
 
 fun list flip g r =
   case flip r of
@@ -166,7 +122,7 @@ fun vector tabulate (int, elem) r =
     (tabulate(n, g), !p)
   end
 
-type stream = rand Unsynchronized.ref * int
+type stream = Random.rand Unsynchronized.ref * int
 
 fun start r = (Unsynchronized.ref r, 0)
 
@@ -186,7 +142,7 @@ type ('a, 'b) co = 'a -> 'b gen -> 'b gen
 fun variant v g r =
   let
     fun nth (i, r) =
-      let val (r1, r2) = split r
+      let val (r1, r2) = Random.split r
       in if i = 0 then r1 else nth (i-1, r2) end
   in
     g (nth (v, r))
@@ -194,7 +150,7 @@ fun variant v g r =
 
 fun arrow (cogen, gen) r =
   let
-    val (r1, r2) = split r
+    val (r1, r2) = Random.split r
     fun g x = fst (cogen x gen r1)
   in (g, r2) end
 
