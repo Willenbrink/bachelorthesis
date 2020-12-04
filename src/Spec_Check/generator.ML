@@ -61,8 +61,8 @@ type string = String.string
 type substring = Substring.substring
 
 
-val char = map Char.chr (Random.range (0, Char.maxOrd))
 fun charRange (lo, hi) = map Char.chr (Random.range (Char.ord lo, Char.ord hi))
+val char = charRange (Char.minChar, Char.maxChar)
 
 fun charFrom s =
   choose (Vector.tabulate (String.size s, fn i => lift (String.sub (s, i))))
@@ -206,11 +206,11 @@ val var_string = selectL ["x", "y", "z"];
 val index = selectL [0, 1, 2, 3];
 val bound_index = selectL [0, 1, 2, 3];
 
-val sort = list (flip' (1.0/3.0)) sort_string;
+val sort = list (flip (1.0/3.0)) sort_string;
 
 fun typ n =
   let
-    fun type' m = map Type (zip (type_string, list (flip' 0.25) (typ m)))
+    fun type' m = map Type (zip (type_string, list (flip 0.25) (typ m)))
     val tfree = map TFree (zip (tvar_string, sort))
     val tvar = map TVar (zip (zip (tvar_string, index), sort))
   in
@@ -263,15 +263,6 @@ fun term_fol1 num_sym r =
   fold ins_at_random (1 upto (num_sym - 1)) (Node (0,[]), r)
   |-> conv_node
   end
-
-fun int_of_bool b = if b then 1 else 0
-
-fun binom_dist _ 0 r = (0,r)
-  | binom_dist p n r =
-      flip' p r
-      |>> int_of_bool
-      ||> binom_dist p (n-1)
-      |> (fn (x,(acc,r)) => (acc + x, r))
 
 fun term_fol2 num_sym avg_args bal_offset r =
   if num_sym <= 1

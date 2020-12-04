@@ -8,6 +8,7 @@ Basic random generators.
 signature BASE_GENERATOR =
 sig
 type 'a gen = Random.rand -> 'a * Random.rand
+
 type ('a, 'b) co = 'a -> 'b gen -> 'b gen
 type ('a, 'b) reader = 'b -> ('a * 'b) option
 
@@ -28,9 +29,8 @@ val map2 : ('a * 'b -> 'c) -> ('a gen * 'b gen) -> 'c gen
 val map3 : ('a * 'b * 'c -> 'd) -> ('a gen * 'b gen * 'c gen) -> 'd gen
 val map4 : ('a * 'b * 'c * 'd -> 'e) -> ('a gen * 'b gen * 'c gen * 'd gen) -> 'e gen
 
-val flip : bool gen
-val flip' : real -> bool gen
-
+val flip : real -> bool gen
+val binom_dist : real -> int -> int gen
 val list : bool gen -> 'a gen -> 'a list gen
 val option : bool gen -> 'a gen -> 'a option gen
 val vector : (int * (int -> 'a) -> 'b) -> int gen * 'a gen -> 'b gen
@@ -50,9 +50,21 @@ end
 structure Base_Generator : BASE_GENERATOR =
 struct
 
-(* generators *)
-
+(* Generators *)
 type 'a gen = Random.rand -> 'a * Random.rand
+
+
+fun flip prob r = let val (x,r) = Random.perc r in (x < prob, r) end
+
+fun binom_dist _ 0 r = (0,r)
+  | binom_dist p n r =
+    let fun int_of_bool b = if b then 1 else 0 in
+      flip p r
+      |>> int_of_bool
+      ||> binom_dist p (n-1)
+      |> (fn (x,(acc,r)) => (acc + x, r))
+    end
+
 type ('a, 'b) reader = 'b -> ('a * 'b) option
 
 fun lift obj r = (obj, r)
@@ -92,9 +104,6 @@ fun filter p gen r =
   in
     loop (gen r)
   end
-
-fun flip' prob r = let val (x,r) = Random.perc r in (x < prob, r) end
-fun flip r = flip' 0.5 r
 
 fun list flip g r =
   case flip r of
