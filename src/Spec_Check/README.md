@@ -11,6 +11,8 @@ Quick Usage
   - Look at examples in Examples.thy
   - write specifications with the ML invocation
       check_property "ALL x. P x"
+      
+![Dependency Graph](./dependencies.svg)
 
 Notes
 

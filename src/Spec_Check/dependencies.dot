@@ -1,0 +1,14 @@
+digraph G {
+        Base_Generator -> Random
+        Generator -> Base_Generator
+        Generator -> Random
+        Spec_Check -> Property
+        Spec_Check -> Config
+        Spec_Check -> Generator
+        Spec_Check -> Gen_Construction
+        Gen_Construction -> Generator
+        Gen_Construction -> Property
+        Output_Style -> Property
+        Output_Style -> Spec_Check
+        Output_Style -> Config
+}
