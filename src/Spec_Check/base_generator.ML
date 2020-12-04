@@ -57,29 +57,37 @@ struct
 
 (* random number engine *)
 
-type rand = real
+type rand = int
 
-val a = 16807.0
-val m = 2147483647.0
+(*This is called a Lehmer random number generator:
+   https://en.wikipedia.org/wiki/Lehmer_random_number_generator
+   We use int to avoid any float imprecision problems (and the seed is a float anyway)
+   a and m are selected according to the recommendation in the article above
+*)
 
-(* This just multiplies the last seed with a modulo m. Can't we do better? *)
+val a = 48271
+val m = 2147483647 (* 2^31 - 1 *)
+
 fun nextrand seed =
   let
     val t = a * seed
   in
-    t - m * real (floor (t / m))
+    t mod m
   end
 
-val new = nextrand o Time.toReal o Time.now
+fun new () =
+  Time.now ()
+  |> Time.toMicroseconds
+  |> (fn x => x mod m) (* The seed must be within (0;m) *)
+  |> nextrand
 
 fun range (min, max) =
   if min > max then raise Domain (* TODO: raise its own error *)
-  else fn r => (min + (floor (real (max - min + 1) * r / m)), nextrand r)
+  else fn r => (min + (max - min + 1) * r div m, nextrand r)
 
 fun split r =
   let
-    val r = r / a
-    val r0 = real (floor r)
+    val r0 = nextrand r
     val r1 = r - r0
   in
     (nextrand r0, nextrand r1)
@@ -93,6 +101,7 @@ type ('a, 'b) reader = 'b -> ('a * 'b) option
 fun lift obj r = (obj, r)
 
 local (* Isabelle does not use vectors? *)
+(* Creates a list of length freq with elems gen. Prepends to acc *)
   fun explode ((freq, gen), acc) =
     List.tabulate (freq, fn _ => gen) @ acc
 in
