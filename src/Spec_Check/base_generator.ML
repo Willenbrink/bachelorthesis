@@ -30,6 +30,7 @@ val map4 : ('a * 'b * 'c * 'd -> 'e) -> ('a gen * 'b gen * 'c gen * 'd gen) -> '
 
 val flip : real -> bool gen
 val binom_dist : real -> int -> int gen
+val binom_dist_avg : real -> int -> int gen
 val list : bool gen -> 'a gen -> 'a list gen
 val option : bool gen -> 'a gen -> 'a option gen
 val vector : (int * (int -> 'a) -> 'b) -> int gen * 'a gen -> 'b gen
@@ -63,6 +64,8 @@ fun binom_dist _ 0 r = (0,r)
       ||> binom_dist p (n-1)
       |> (fn (x,(acc,r)) => (acc + x, r))
     end
+
+fun binom_dist_avg p avg r = binom_dist p (Real.toInt IEEEReal.TO_NEAREST (Real.fromInt avg / p)) r
 
 type ('a, 'b) reader = 'b -> ('a * 'b) option
 

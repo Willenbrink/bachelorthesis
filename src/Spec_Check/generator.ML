@@ -41,7 +41,8 @@ signature GENERATOR = sig
   (* more generators *)
   val term : int -> term gen
   val term_fol : int -> term gen
-  val term_fol2 : int -> int -> term gen
+  val term_fol_structure : int -> int -> term gen
+  val term_fol_map : real * real * real -> term -> term gen
   val typ : int -> typ gen
 
   val stream : stream
@@ -201,8 +202,9 @@ val sort_string = selectL ["sort1", "sort2", "sort3"];
 val type_string = selectL ["TCon1", "TCon2", "TCon3"];
 val tvar_string = selectL ["a", "b", "c"];
 
-val const_string = selectL ["c1", "c2", "c3"];
-val var_string = selectL ["x", "y", "z"];
+val func_string = selectL ((Char.ord #"f" upto Char.ord #"h") |> List.map (Char.chr #> Char.toString));
+val const_string = selectL ((Char.ord #"a" upto Char.ord #"f" - 1) |> List.map (Char.chr #> Char.toString));
+val var_string = selectL ((Char.ord #"x" upto Char.ord #"z") |> List.map (Char.chr #> Char.toString));
 val index = selectL [0, 1, 2, 3];
 val bound_index = selectL [0, 1, 2, 3];
 
@@ -231,16 +233,6 @@ fun term n =
     else chooseL [const, free, var, bound, abs (n - 1), app (n div 2)]
   end;
 
-val symbol =
-  let
-    val const = map Const (zip (const_string, typ 10))
-    val free = map Free (zip (var_string, typ 10))
-    val var = map Var (zip (zip (var_string, index), typ 10))
-    val bound = map Bound bound_index
-  in
-  chooseL [const, free, var, bound]
-  end
-
 datatype 'a node = Node of 'a * 'a node list
 
 fun term_fol1 num_sym r =
@@ -264,21 +256,76 @@ fun term_fol1 num_sym r =
   |-> conv_node
   end
 
-fun term_fol2 avg_args num_sym r =
+fun zip_list xs ys = case (xs,ys) of
+     ([],_) => []
+   | (_,[]) => []
+   | (x::xs,y::ys) => (x,y) :: zip_list xs ys
+
+fun clamp (lower,upper) x = if x < lower then lower else if x > upper then upper else x
+
+fun get_num_args avg_args num_sym r =
+  binom_dist 0.5 (avg_args * 2) r
+  |>> clamp (0,num_sym)
+
+fun distribute_num_sym num_args num_sym r =
+  let fun f (acc,r) = Random.range (0,num_args) r |>> (fn x => x::acc)
+      val (intervals,r) = fold (fn _ => f) (1 upto num_args - 1) ([],r) |>> Library.sort int_ord
+      val intervals = 0::intervals @ [num_sym]
+      val args_size = zip_list (tl intervals) intervals |> List.map (fn (x,y) => x - y)
+  in (args_size,r) end
+
+fun term_fol_structure avg_args num_sym r =
   if num_sym <= 1
   then (Bound 0, r)
   else let
-    val term_fol_rec = term_fol2 avg_args
-    val (num_args,r) =
-      binom_dist 0.25 (avg_args * 4) r
-      |>> (fn x => if x > num_sym then num_sym else x)
-    val num_sym = num_sym - num_args
+    val num_sym = num_sym - 1 (* Function *)
+    val (num_args,r) = get_num_args avg_args num_sym r
     (* Abuse Bound to store the number of args without specifying a type *)
     val (func,r) = (Bound num_args,r)
-    (* Replace with a random splitting of an interval *)
-    val args_gen = List.tabulate (num_args, (fn _ => term_fol_rec (num_sym div num_args)))
-    val (args,r) = fold (fn x => fn (acc,r) => x r |>> (fn x => x::acc)) args_gen ([],r)
+    val (args_size,r) =
+      if num_args = 0
+      then ([],r) (* This drops some symbols => lower total than requested by num_sym *)
+      else distribute_num_sym num_args num_sym r
+    val (args,r) =
+      fold (fn x => fn (acc,r) => term_fol_structure avg_args x r |>> (fn y => y :: acc)) args_size ([],r)
   in (Term.list_comb (func,args),r) end
+
+fun ifMult _ _ [] [x] = x
+  | ifMult rand cumulativ (f::fs) (x::xs) =
+    let val c = cumulativ + f in
+    if rand < c then x
+    else ifMult rand c fs xs
+    end
+  | ifMult _ _ _ _ = raise Fail "Invalid arguments to ifMult"
+
+fun generic_type 0 = TVar (("'a", 0), [])
+  | generic_type n =
+      let val name = "'" ^ Char.toString (Char.chr (Char.ord #"a" + n)) in
+      Type ("fun", [TVar ((name,0), []), generic_type (n-1)]) end
+
+(* Implement more sophisticated selection. Remember already used variables and their types.
+  Choose different names for free etc. *)
+fun var 0 = map Var (zip (zip (var_string, index), lift (generic_type 0)))
+  | var n = map Var (zip (zip (func_string, index), lift (generic_type n)))
+fun const 0 = map Const (zip (const_string, lift (generic_type 0)))
+  | const n = map Const (zip (func_string, lift (generic_type n)))
+fun free 0 = map Free (zip (const_string, lift (generic_type 0)))
+  | free n = map Free (zip (func_string, lift (generic_type n)))
+
+fun term_fol_map (freq_bound, freq_free, freq_var) term r =
+  let fun aux bounds types term r =
+        let val (rand,r) = Random.perc r
+            val ifMult = ifMult rand 0.0 [freq_bound, freq_free, freq_var]
+        in case term of
+            Bound n =>
+              ifMult [lift (Bound 0), free n, var n, const n] r
+          | fst$snd =>
+            let val (fst,r) = aux bounds types fst r
+                val (snd,r) = aux bounds types snd r
+            in (fst$snd, r) end
+          | _ => raise Fail "Term must only consist of $ and Bounds where index = number of args"
+        end
+  in aux [] [] term r end
 
 val term_fol = term_fol1
 
