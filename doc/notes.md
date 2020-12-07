@@ -54,6 +54,10 @@
 * Pathindexing assumes terms as trees with functions above the args. This is opposite from Isabelles term. Does the path structure really make sense?
 * Wie bricht man eine Endlosschleife in Isabelle ab? Fehlermeldung sagt was von IO-Monitor
 * Sollen die Typen der generierten Terme konsistent sein?
+* Termgeneration ist quasi eine rekursive Intervalteilung. 50 Symbole gesamt: 1-50 bei Toplevel, dann Aufteilung auf Kinder. Bei erstem Kind dann bspw. 1-10. Wie genau soll Gleichverteilung sichergestellt werden?
+  - Zufällige Zahlen ziehen, dann auf Interval [0;1] mappen. Jedes Interval hat jetzt eine Prozentzahl der gesamten Symbole zugeordnet.
+  - Zufällige Zahlen generieren (Größe der Intervalle). Danach zufällig auf Intervalle mappen. D.h. die 2 Schritte entkoppeln. Nur die Größe der Intervalle kann mit Parametern modifiziert werden.
+* Ist ??.Konstantenname eine Fehlermeldung wie bei Bound?
 
 ## Theory
 * In [this paper sections 6.1](https://apps.dtic.mil/dtic/tr/fulltext/u2/a460990.pdf) it is mentioned that discrimination nets are the same as tries. Despite this discrimination {net,tree} are apparently used equivalently but distinctly from tries which are used only for the data structure on which DNs are built.

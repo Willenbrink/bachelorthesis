@@ -7,8 +7,9 @@ ML_file "pprinter.ML"
 ML_file "tester.ML"
 setup "term_pat_setup"
 setup "type_pat_setup"
-ML_val \<open>@{term_pat "Suc (?x::nat)"}\<close>
-ML_val \<open>@{typ_pat "int \<Rightarrow> int"}\<close>
+ML \<open>ML_system_pp (fn _ => fn _ => Pretty.to_polyml o raw_pp_typ)\<close>
+ML_val \<open>@{term_pat "f x y"}\<close>
+ML_val \<open>@{typ_pat "'a \<Rightarrow> 'b \<Rightarrow> 'c"}\<close>
 
 ML \<open>
 exception TEST
@@ -33,9 +34,12 @@ fun match unif tree term = Path.match unif tree term |> map pterm
 \<close>
 
 ML_val \<open>
-Generator.term_fol 30 (Random.new ()) |>> pterm |> ignore;
-Generator.term_fol2 3 100 (Random.new ()) |>> pterm;
-
+val r = Random.new ()
+fun f r = Generator.term_fol_structure 3 20 r
+|-> Generator.term_fol_map (0.0, 0.0, 0.0)
+|> fst;
+val x = f r |> pterm;
+val y = f r;
 \<close>
 ML_val \<open>@{term_pat "ALL x. f x y"}\<close>
 
