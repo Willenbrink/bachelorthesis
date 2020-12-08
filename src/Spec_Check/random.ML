@@ -8,7 +8,6 @@ We use int to avoid any float imprecision problems (and the seed is an int anywa
 a and m are selected according to the recommendation in the article above
 
 Contains only those functions that rely on the internal integer representation of rand.
-Should only be used by base_generator as that implements many helper functions.
 *)
 
 signature RANDOM =
@@ -16,13 +15,15 @@ sig
 type rand
 val new : unit -> rand
 val next : rand -> rand
+(* Use this function for a semi-random generator *)
+val deterministic_seed : int -> rand
 
-(* range (x,y) r in [x;y) *)
-val range : int * int -> rand -> int * rand
-(* perc r in [0;1). Theoretically 2^31 equidistant discrete steps *)
-val perc : rand -> real * rand
+(* range_X (x,y) r returns a value in [x;y) *)
+val range_int : int * int -> rand -> int * rand
+val range_real : real * real -> rand -> real * rand
+(* real r returns a real in [0;1). Theoretically 2^31 equidistant discrete steps *)
+val real : rand -> real * rand
 val split : rand -> rand * rand
-
 end
 
 structure Random : RANDOM  =
@@ -41,8 +42,10 @@ fun new () =
   |> (fn x => Int.max(1,x mod m)) (* The seed must be within [1;m) *)
   |> next (* Time is not sufficiently random when polled rapidly *)
 
-fun range (min, max) r =
-  if min > max then raise Fail ("Range: " ^ @{make_string} min ^ " > " ^ @{make_string} max)
+fun deterministic_seed i = i
+
+fun range_int (min, max) r =
+  if min > max then raise Fail ("Range_Int: " ^ @{make_string} min ^ " > " ^ @{make_string} max)
   else (min + ((max - min + 1) * r) div m, next r)
 
 (* TODO test whether this works as well as it should *)
@@ -54,6 +57,9 @@ fun split r =
     (next r0, next r1)
   end
 
-fun perc r = ((Real.fromInt r) / (Real.fromInt m), next r)
+fun real r = ((Real.fromInt r) / (Real.fromInt m), next r)
+fun range_real (min, max) r =
+  if min > max then raise Fail ("Range_Real: " ^ @{make_string} min ^ " > " ^ @{make_string} max)
+  else real r |>> (fn x => min + x * (max - min))
 
 end

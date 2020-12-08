@@ -34,8 +34,11 @@ fun match unif tree term = Path.match unif tree term |> map pterm
 \<close>
 
 ML_val \<open>
+Generator.term_fol_structure 10 10 (Random.new ()) |> fst |> pterm
+\<close>
+ML_val \<open>
 val r = Random.new ()
-fun f r = Generator.term_fol_structure 10 1 r
+fun f r = Generator.term_fol_structure 3 10 r
 |-> Generator.term_fol_map (0.0, 0.0, 0.0)
 |> fst;
 val x = f r |> pterm;

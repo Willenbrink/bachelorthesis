@@ -54,7 +54,7 @@ struct
 type 'a gen = Random.rand -> 'a * Random.rand
 
 
-fun flip prob r = let val (x,r) = Random.perc r in (x < prob, r) end
+fun flip prob r = let val (x,r) = Random.real r in (x < prob, r) end
 
 fun binom_dist _ 0 r = (0,r)
   | binom_dist p n r =
@@ -76,7 +76,7 @@ local (* Isabelle does not use vectors? *)
     List.tabulate (freq, fn _ => gen) @ acc
 in
   fun choose v r =
-    let val (i, r) = Random.range(0, Vector.length v - 1) r
+    let val (i, r) = Random.range_int (0, Vector.length v - 1) r
     in Vector.sub (v, i) r end
   fun choose' v = choose (Vector.fromList (Vector.foldr explode [] v))
   fun select v = choose (Vector.map lift v)

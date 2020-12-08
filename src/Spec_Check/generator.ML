@@ -62,7 +62,7 @@ type string = String.string
 type substring = Substring.substring
 
 
-fun charRange (lo, hi) = map Char.chr (Random.range (Char.ord lo, Char.ord hi))
+fun charRange (lo, hi) = map Char.chr (Random.range_int (Char.ord lo, Char.ord hi))
 val char = charRange (Char.minChar, Char.maxChar)
 
 fun charFrom s =
@@ -75,8 +75,8 @@ val string = vector CharVector.tabulate
 fun substring gen r =
   let
     val (s, r') = gen r
-    val (i, r'') = Random.range (0, String.size s) r'
-    val (j, r''') = Random.range (0, String.size s - i) r''
+    val (i, r'') = Random.range_int (0, String.size s) r'
+    val (j, r''') = Random.range_int (0, String.size s - i) r''
   in
     (Substring.substring (s, i, j), r''')
   end
@@ -92,7 +92,7 @@ fun costring s = cosubstring (Substring.full s)
 (* integers *)
 val digit = charRange (#"0", #"9")
 val nonzero = string (lift 1, charRange (#"1", #"9"))
-fun digits' n = string (Random.range (0, n-1), digit)
+fun digits' n = string (Random.range_int (0, n-1), digit)
 fun digits n = map2 op^ (nonzero, digits' n)
 
 val maxDigits = 64
@@ -117,7 +117,7 @@ fun coint n =
   else variant 2 o coint (n div 2)
 
 (* reals *)
-val digits = string (Random.range(1, Real.precision), charRange(#"0", #"9"))
+val digits = string (Random.range_int (1, Real.precision), charRange(#"0", #"9"))
 
 fun real_frac r =
   let val (s, r') = digits r
@@ -132,7 +132,7 @@ fun mk r =
   let
     val (a, r') = digits r
     val (b, r'') = digits r'
-    val (e, r''') = Random.range (minExp div 4, maxExp div 4) r''
+    val (e, r''') = Random.range_int  (minExp div 4, maxExp div 4) r''
     val x = String.concat [a, ".", b, "E", Int.toString e]
   in
     (the (Real.fromString x), r''')
@@ -242,7 +242,7 @@ fun term_fol1 num_sym r =
       then Node (node, Node (value, [])::children)
       else Node (node, List.map (ins target value) children)
     fun ins_at_random i (tree,r) =
-      let val (target,r) = Random.range (0,i-1) r
+      let val (target,r) = Random.range_int (0,i-1) r
       in
       (ins target i tree, r)
       end
@@ -268,7 +268,7 @@ fun get_num_args avg_args num_sym r =
   |>> clamp (0,num_sym)
 
 fun distribute_num_sym num_args num_sym r =
-  let fun f (acc,r) = Random.range (0,num_args) r |>> (fn x => x::acc)
+  let fun f (acc,r) = Random.range_int (0,num_args) r |>> (fn x => x::acc)
       val (intervals,r) = fold (fn _ => f) (1 upto num_args - 1) ([],r) |>> Library.sort int_ord
       val intervals = 0::intervals @ [num_sym]
       val args_size = zip_list (tl intervals) intervals |> List.map (fn (x,y) => x - y)
@@ -314,7 +314,7 @@ fun free 0 = map Free (zip (const_string, lift (generic_type 0)))
 
 fun term_fol_map (freq_bound, freq_free, freq_var) term r =
   let fun aux bounds types term r =
-        let val (rand,r) = Random.perc r
+        let val (rand,r) = Random.real r
             val ifMult = ifMult rand 0.0 [freq_bound, freq_free, freq_var]
         in case term of
             Bound n =>

@@ -3,16 +3,16 @@ struct
 val eq = Term.aconv_untyped
 fun set_eq fst snd = eq_set eq (fst,snd)
 fun termgen n r =
-  let val (num,r) = Random.range (0,n) r (* TODO find better solution for spread *)
+  let val (num,r) = Random.range_int (0,n) r (* TODO find better solution for spread *)
   in Generator.term_fol (0.0, 0.3, 0.3) 5 num r end
 fun netgen term_size num_term r =
   let fun aux term_size num_term r = case num_term of
             0 => (Net.empty,r)
-          | _ => let
-            val (term,r) = termgen term_size r
-            val (base,r) = aux term_size (num_term - 1) r
-          in (Net.insert_term_safe eq (term,term) base,r) end
-      val (num_term,r) = Random.range (0,num_term) r (* TODO find better solution for spread *)
+          | _ =>
+            let val (term,r) = termgen term_size r
+                val (base,r) = aux term_size (num_term - 1) r
+            in (Net.insert_term_safe eq (term,term) base,r) end
+      val (num_term,r) = Random.range_int (0,num_term) r (* TODO find better solution for spread *)
   in aux term_size num_term r end
 
 fun check_pred gen name pred = Spec_Check.checkGen @{context} (gen, NONE) (name, pred)
