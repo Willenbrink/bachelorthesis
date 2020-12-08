@@ -1,32 +1,41 @@
 functor Tester (Net : NET) = 
 struct
 val eq = Term.aconv_untyped
-fun netgen _ 0 = Generator.lift Net.empty
-  | netgen term_size num_term : term Net.net Generator.gen =
-  let
-    val t = Generator.term term_size
-    val base = netgen term_size (num_term - 1)
-  in
-  Generator.map2 (fn (t,base) => Net.insert_term_safe eq (t,t) base) (t,base)
-  end
+fun set_eq fst snd = eq_set eq (fst,snd)
+fun termgen n r =
+  let val (num,r) = Random.range (0,n) r (* TODO find better solution for spread *)
+  in Generator.term_fol (0.0, 0.3, 0.3) 5 num r end
+fun netgen term_size num_term r =
+  let fun aux term_size num_term r = case num_term of
+            0 => (Net.empty,r)
+          | _ => let
+            val (term,r) = termgen term_size r
+            val (base,r) = aux term_size (num_term - 1) r
+          in (Net.insert_term_safe eq (term,term) base,r) end
+      val (num_term,r) = Random.range (0,num_term) r (* TODO find better solution for spread *)
+  in aux term_size num_term r end
 
-fun check name f = Spec_Check.checkGen @{context}
- (netgen 20 20, NONE)
- (name, Property.pred f)
+fun check_pred gen name pred = Spec_Check.checkGen @{context} (gen, NONE) (name, pred)
+fun check gen name prop = check_pred gen name (Property.pred prop)
 
-fun checks msg prop = (writeln msg; check_property prop)
+fun ins t n = Net.insert_term_safe eq (t,t) n
 
-fun checkb msg bool = (writeln msg; if not bool then raise Fail "" else writeln "Check OK")
-
-fun test () = (
-check "Empty net is empty" (fn _ => Net.content Net.empty = []);
-checks "Insertion adds value to content:"
-"ALL term. Library.eq_set Term.aconv_untyped\
-\ ([term], Net.insert_term Term.aconv_untyped (term,term) Net.empty |> Net.content)";
-check "content = entries" (fn net => Library.eq_set eq (Net.entries net, Net.content net));
-check "Match (f x)"
-  (fn net => let val t = @{term "f x"} in
-             if member eq (Net.content net) t
-             then member eq (Net.match_term net t) t else true end);
+val () = (
+check (Generator.unit) "Empty net is empty" (fn _ => Net.content Net.empty = []);
+check (Generator.zip (termgen 10, netgen 10 30)) "Insertion adds value to content"
+      (fn (t,n) => set_eq (t :: Net.content n) (ins t n |> Net.content));
+check (netgen 10 30) "content = entries" (fn n => set_eq (Net.entries n) (Net.content n));
+let fun net_size n = Net.content n |> List.length in
+check_pred (Generator.zip (termgen 10, netgen 10 30)) "Deletion removes term"
+      (Property.==> (fn (t,n) => member eq (Net.content n) t,
+                     fn (t,n) => ((Net.delete_term eq (t,t) n) |> net_size) = (net_size n - 1)))
+end;
 ())
+
+fun print_spread () = (
+check (termgen 20) "Termsize spread"
+      (fn t => (writeln (@{make_string} (Term.size_of_term t)); true));
+check (netgen 10 30) "Netsize spread"
+      (fn n => (writeln (@{make_string} (Net.content n |> List.length)); true)))
+
 end;

@@ -42,7 +42,7 @@ fun new () =
   |> next (* Time is not sufficiently random when polled rapidly *)
 
 fun range (min, max) r =
-  if min > max then raise Domain
+  if min > max then raise Fail ("Range: " ^ @{make_string} min ^ " > " ^ @{make_string} max)
   else (min + ((max - min + 1) * r) div m, next r)
 
 (* TODO test whether this works as well as it should *)

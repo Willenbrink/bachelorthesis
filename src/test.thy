@@ -35,7 +35,7 @@ fun match unif tree term = Path.match unif tree term |> map pterm
 
 ML_val \<open>
 val r = Random.new ()
-fun f r = Generator.term_fol_structure 3 20 r
+fun f r = Generator.term_fol_structure 10 1 r
 |-> Generator.term_fol_map (0.0, 0.0, 0.0)
 |> fst;
 val x = f r |> pterm;
@@ -63,10 +63,6 @@ val l = Path.key_of_term (@{term "f (x) y"})
 val t = Path.empty |> ins @{term "f x y"}
 \<close>
 
-
-
-
-
 ML "fun ins t n = Net.insert_term eq (t,t) n"
 ML \<open>val net = Net.empty
  |> ins @{term "f x"}
@@ -82,33 +78,5 @@ ML \<open>val net = Net.empty
 ML \<open>val Net.Net{atoms,comb,var} = net\<close>
 ML_val \<open>let val Net.Net{atoms,...} = net in Net.look1 (atoms,"f") [] end\<close>
 
-
-
-ML \<open>val b = (@{term "x"} = @{term "x"})\<close>
-
-ML "Net.content net |> map pterm"
-ML "Net.entries net |> map pterm"
-
-ML \<open>
-val ctxt = Config.put show_types false @{context}
-fun prterm t = Syntax.pretty_term ctxt t |> Pretty.writeln
-val terms =
-  let fun f _ (xs,r) = let val (x,y) = Generator.term 20 r in prterm x; (x::xs,y) end in
-  fold f (0 upto 100) ([],Generator.new ())
-end
-\<close>
-
-ML \<open>
-val t =
- map (Real.fromInt #> Generator.term 50 #> fst #> Syntax.pretty_term ctxt) (0 upto 100)
- |> map Pretty.writeln;
-\<close>
-
-ML \<open>
-structure PathTest = Tester(Net);
-val _ = PathTest.test ()
-
-val x = Spec_Check.checkGen @{context}
- (PathTest.netgen 10 10, SOME (fn x => "abc"))
- ("Testname", Property.pred (fn net => Net.content net = []))
-\<close>
+ML \<open>structure PathTest = Tester(Net)\<close>
+ML \<open>PathTest.print_spread ()\<close>

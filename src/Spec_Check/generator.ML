@@ -40,7 +40,7 @@ signature GENERATOR = sig
   val ref' : 'a gen -> 'a Unsynchronized.ref gen
   (* more generators *)
   val term : int -> term gen
-  val term_fol : int -> term gen
+  val term_fol : real * real * real -> int -> int -> term gen
   val term_fol_structure : int -> int -> term gen
   val term_fol_map : real * real * real -> term -> term gen
   val typ : int -> typ gen
@@ -327,6 +327,8 @@ fun term_fol_map (freq_bound, freq_free, freq_var) term r =
         end
   in aux [] [] term r end
 
-val term_fol = term_fol1
+fun term_fol freq avg_args num_sym r =
+  term_fol_structure avg_args num_sym r
+  |-> term_fol_map freq
 
 end
