@@ -1,8 +1,13 @@
 # Tasks
 ## TODO
-* Tests für path indexing
-  - Generator fuer Variablennamen, Konstantennamen, bound variables
-  - Frequenzen von Applications, Abstractions
+* Context genauer anschauen. Evtl RNG-Seed darin speichern?
+* Isabelle/Isar Impl. Manual: 0.8 (0.8.2) überfliegen
+* Lambda Term Generation Idee: Ohne Probability
+  - Höhe -> Index -> State -> (Symbol,Num_Args) (evtl. Path, bisheriger Term)
+    Höhe + Index: Ebenenweise und global. D.h. bei Binärbaum in 2./3. Ebene: 1,2,3,4 statt 1,2,1,2
+  - Paper für Lambda Term Generators
+  - Typkorrektheit erstmal vernachlässigen
+  - Wie Application lösen? Also: Funktion hängt von Argumenten ab
 * Tests für Path Indexing (als Funktor über NET)
 * Implementiere eine andere Indexing Methode (Substitution Trees?)
 * net.ML: content = entries?
@@ -37,6 +42,9 @@
 * Inferenzregeln auf Papier (nicht Latex) aufschreiben (ala strukturelle Induktion)
 * SpecCheck Verwendungen in der Distro? Irgendwo auf Github?
   - Wird weder in der Distro noch auf Github irgendwo verwendet. Das Tool Qcheck für OCaml nutzt auch Kombinatoren für die Generatoren
+* Tests für path indexing PROBABILITY-based
+  - Generator fuer Variablennamen, Konstantennamen, bound variables
+  - Frequenzen von Applications, Abstractions
 
 ## Bis 1.12
 * Abschlussarbeitanmeldung
@@ -52,8 +60,6 @@
 # Questions and Remarks
 ## Scratch
 * Pathindexing assumes terms as trees with functions above the args. This is opposite from Isabelles term. Does the path structure really make sense?
-* Wie bricht man eine Endlosschleife in Isabelle ab? Fehlermeldung sagt was von IO-Monitor
-* Sollen die Typen der generierten Terme konsistent sein?
 * Termgeneration ist quasi eine rekursive Intervalteilung. 50 Symbole gesamt: 1-50 bei Toplevel, dann Aufteilung auf Kinder. Bei erstem Kind dann bspw. 1-10. Wie genau soll Gleichverteilung sichergestellt werden?
   - Zufällige Zahlen ziehen, dann auf Interval [0;1] mappen. Jedes Interval hat jetzt eine Prozentzahl der gesamten Symbole zugeordnet.
   - Zufällige Zahlen generieren (Größe der Intervalle). Danach zufällig auf Intervalle mappen. D.h. die 2 Schritte entkoppeln. Nur die Größe der Intervalle kann mit Parametern modifiziert werden.
@@ -88,6 +94,6 @@ See the cookbook for more information (p.25). Higher order functions should be f
 ## Net.ML
 ### Beware of optimisations!
 
-- [ ] What is implemented in net.ml? It implies discrimination nets but function and variables names are completely disregarded.
+- [x] What is implemented in net.ml? It implies discrimination nets but function and variables names are completely disregarded. Apparently it's a first order DN. Whenever higher order terms (functions/variables) are encountered everything below that point is returned.
 
 - [ ] Why is the type of the actual key used in every function exposed as "key list". Shouldn't this be hidden by the interface? "VarK $ X" discards X (see key_of_term). As the type is exposed, a user could construct an arbitrary key list. Instead the key list could be replaced by a tree (e.g. tree = Comb of (tree * tree) | CombVar (no child necessary) | Atom)
