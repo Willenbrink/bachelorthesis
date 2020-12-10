@@ -34,7 +34,12 @@ fun match unif tree term = Path.match unif tree term |> map pterm
 \<close>
 
 ML_val \<open>
-Generator.term_fol_structure 10 10 (Random.new ()) |> fst |> pterm
+Generator.term_det (fn (height,index,r) =>
+  let val (sym,r) = Generator.free 0 r in
+   if height < 3
+   then (sym,index,r)
+   else (sym, 0, r)
+   end) (Random.new ())
 \<close>
 ML_val \<open>
 val r = Random.new ()

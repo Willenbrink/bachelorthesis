@@ -43,6 +43,10 @@ signature GENERATOR = sig
   val term_fol : real * real * real -> int -> int -> term gen
   val term_fol_structure : int -> int -> term gen
   val term_fol_map : real * real * real -> term -> term gen
+  val term_det : (int * int * 'a -> term * int * 'a) -> 'a -> term
+  val free : int -> term gen
+  val var : int -> term gen
+  val const : int -> term gen
   val typ : int -> typ gen
 
   val stream : stream
@@ -331,4 +335,24 @@ fun term_fol freq avg_args num_sym r =
   term_fol_structure avg_args num_sym r
   |-> term_fol_map freq
 
+fun incr_nth (x::xs) 0 = x+1 :: xs
+  | incr_nth [] n = incr_nth (0::[]) n
+  | incr_nth (x::xs) n = x :: incr_nth xs (n-1)
+
+fun term_det f init_acc =
+  let fun aux indices height acc =
+    let
+      val indices = incr_nth indices height
+      val index = nth indices height
+      (* indices stores the amount of symbols so far at each height *)
+      val (sym,num_args,acc) = f (height,index,acc)
+      fun fold_aux (acc, state) = aux indices (height + 1) state |>> (fn x => x :: acc)
+      val (args,acc) =
+        fold (fn _ => fold_aux) (1 upto num_args) ([],acc)
+    in
+    (fold (curry op $) args sym,acc)
+    end
+  in
+  aux [] 0 init_acc |> fst
+  end
 end

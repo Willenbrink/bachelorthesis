@@ -1,7 +1,6 @@
 # Tasks
 ## TODO
 * Context genauer anschauen. Evtl RNG-Seed darin speichern?
-* Isabelle/Isar Impl. Manual: 0.8 (0.8.2) überfliegen
 * Lambda Term Generation Idee: Ohne Probability
   - Höhe -> Index -> State -> (Symbol,Num_Args) (evtl. Path, bisheriger Term)
     Höhe + Index: Ebenenweise und global. D.h. bei Binärbaum in 2./3. Ebene: 1,2,3,4 statt 1,2,1,2
@@ -37,6 +36,10 @@
 * Near-eta conversion in net.ML?
 * Isabelle besser herrichten
 * Interne Repräsentation von FOL, Quantifiers, Lambdas, Theorems etc. genauer anschauen, print_satement hernehmen?
+
+## Bis 15.12
+* Isabelle/Isar Impl. Manual: 0.8 (0.8.2) überfliegen. Implizites Multithreading reicht
+
 
 ## Bis 8.12
 * Inferenzregeln auf Papier (nicht Latex) aufschreiben (ala strukturelle Induktion)
