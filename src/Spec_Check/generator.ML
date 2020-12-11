@@ -342,17 +342,18 @@ fun incr_nth (x::xs) 0 = x+1 :: xs
 fun term_det f init_acc =
   let fun aux indices height acc =
     let
+      (* indices stores the amount of symbols so far at each height *)
       val indices = incr_nth indices height
       val index = nth indices height
-      (* indices stores the amount of symbols so far at each height *)
       val (sym,num_args,acc) = f (height,index,acc)
-      fun fold_aux (acc, state) = aux indices (height + 1) state |>> (fn x => x :: acc)
-      val (args,acc) =
-        fold (fn _ => fold_aux) (1 upto num_args) ([],acc)
+      fun fold_aux (acc, indices, state) = aux indices (height + 1) state |> (fn (x,y,z) => (x :: acc,y,z))
+      val () = writeln (@{make_string} sym ^ @{make_string} num_args ^ @{make_string} indices)
+      val (args,indices,acc) = fold (fn _ => fold_aux) (1 upto num_args) ([],indices,acc)
+      val () = writeln (@{make_string} args)
     in
-    (fold (curry op $) args sym,acc)
+    (fold (fn x => fn y => y $ x) (rev args) sym, indices, acc)
     end
   in
-  aux [] 0 init_acc |> fst
+  aux [] 0 init_acc |> (fn (x,y,z) => x)
   end
 end

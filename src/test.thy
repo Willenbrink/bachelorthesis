@@ -7,7 +7,7 @@ ML_file "pprinter.ML"
 ML_file "tester.ML"
 setup "term_pat_setup"
 setup "type_pat_setup"
-ML \<open>ML_system_pp (fn _ => fn _ => Pretty.to_polyml o raw_pp_typ)\<close>
+(*ML \<open>ML_system_pp (fn _ => fn _ => Pretty.to_polyml o raw_ppatyp)\<close>*)
 ML_val \<open>@{term_pat "f x y"}\<close>
 ML_val \<open>@{typ_pat "'a \<Rightarrow> 'b \<Rightarrow> 'c"}\<close>
 
@@ -34,12 +34,14 @@ fun match unif tree term = Path.match unif tree term |> map pterm
 \<close>
 
 ML_val \<open>
-Generator.term_det (fn (height,index,r) =>
-  let val (sym,r) = Generator.free 0 r in
-   if height < 3
-   then (sym,index,r)
-   else (sym, 0, r)
-   end) (Random.new ())
+@{term_pat "f (g x y) (h a b)"} |> ignore;
+val x = Generator.term_det (fn (height,index,state) =>
+  let val sym = Free (Char.chr (Char.ord #"0" + state) |> Char.toString, TVar (("a",1),[])) in
+   if height < 2
+   then (sym,2,state+1)
+   else (sym,0,state+1)
+   end) (0);
+x |> pterm
 \<close>
 ML_val \<open>
 val r = Random.new ()
