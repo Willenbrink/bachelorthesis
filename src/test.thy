@@ -35,7 +35,7 @@ fun match unif tree term = Path.match unif tree term |> map pterm
 
 ML_val \<open>
 @{term_pat "f (g x y) (h a b)"} |> ignore;
-val x = Generator.term_det (fn (height,index,state) =>
+val x = Gen_Term.term_det (fn (height,index,state) =>
   let val sym = Free (Char.chr (Char.ord #"0" + state) |> Char.toString, TVar (("a",1),[])) in
    if height < 2
    then (sym,2,state+1)
@@ -45,8 +45,8 @@ x |> pterm
 \<close>
 ML_val \<open>
 val r = Random.new ()
-fun f r = Generator.term_fol_structure 3 10 r
-|-> Generator.term_fol_map (0.0, 0.0, 0.0)
+fun f r = Gen_Term.term_fol_structure 3 10 r
+|-> Gen_Term.term_fol_map (0.0, 0.0, 0.0)
 |> fst;
 val x = f r |> pterm;
 val y = f r;

@@ -4,7 +4,7 @@ val eq = Term.aconv_untyped
 fun set_eq fst snd = eq_set eq (fst,snd)
 fun termgen n r =
   let val (num,r) = Random.range_int (0,n) r (* TODO find better solution for spread *)
-  in Generator.term_fol (0.0, 0.3, 0.3) 5 num r end
+  in Gen_Term.term_fol (0.0, 0.3, 0.3) 5 num r end
 fun netgen term_size num_term r =
   let fun aux term_size num_term r = case num_term of
             0 => (Net.empty,r)
@@ -21,12 +21,12 @@ fun check gen name prop = check_pred gen name (Property.pred prop)
 fun ins t n = Net.insert_term_safe eq (t,t) n
 
 val () = (
-check (Generator.unit) "Empty net is empty" (fn _ => Net.content Net.empty = []);
-check (Generator.zip (termgen 10, netgen 10 30)) "Insertion adds value to content"
+check (Gen_Datatypes.unit) "Empty net is empty" (fn _ => Net.content Net.empty = []);
+check (Gen_Base.zip (termgen 10, netgen 10 30)) "Insertion adds value to content"
       (fn (t,n) => set_eq (t :: Net.content n) (ins t n |> Net.content));
 check (netgen 10 30) "content = entries" (fn n => set_eq (Net.entries n) (Net.content n));
 let fun net_size n = Net.content n |> List.length in
-check_pred (Generator.zip (termgen 10, netgen 10 30)) "Deletion removes term"
+check_pred (Gen_Base.zip (termgen 10, netgen 10 30)) "Deletion removes term"
       (Property.==> (fn (t,n) => member eq (Net.content n) t,
                      fn (t,n) => ((Net.delete_term eq (t,t) n) |> net_size) = (net_size n - 1)))
 end;

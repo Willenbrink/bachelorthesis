@@ -8,6 +8,7 @@
   - Typkorrektheit erstmal vernachlässigen
   - Wie Application lösen? Also: Funktion hängt von Argumenten ab
 * Tests für Path Indexing (als Funktor über NET)
+  - Matching mit Termen testen bei denen man einen Teilbaum durch x ersetzt
 * Implementiere eine andere Indexing Methode (Substitution Trees?)
 * net.ML: content = entries?
 * Beispiele wo net.ML schlecht funktioniert (net.ML ist nicht HOL?)
