@@ -53,11 +53,6 @@ val y = f r;
 \<close>
 ML_val \<open>@{term_pat "ALL x. f x y"}\<close>
 
-ML_val \<open> (* Duplicate *)
-let val _ = ins @{term "f"} pathl in raise TEST end handle Path.INSERT => "Success"\<close>
-
-ML_val \<open>pathl |> del @{term "f x"} |> ins @{term "f x "}\<close>
-
 ML \<open>val ks = Path.key_of_term @{term "f (g x y)"}\<close>
 
 ML \<open>val t = @{term_pat "?f ?g y"}\<close>
