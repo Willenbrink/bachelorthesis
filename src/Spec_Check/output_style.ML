@@ -61,18 +61,13 @@ val perl_style =
           if show_stats then cat_lines (fst (fold_map (prtag count) tags true)) else ""
 
         fun err badobjs =
-          let
-            fun iter [] _ = ()
-              | iter (e :: es) k =
-                  (warning (StringCvt.padLeft #" " namew (if k > 0 then "" else "counter-examples") ^
-                    StringCvt.padRight #" " resultw (if k > 0 then "" else ":") ^ e);
-                  iter es (k + 1))
-          in
-            iter (maybe_sort (take limit (map_filter I badobjs))) 0
-          end
+          case maybe_sort (take limit (map_filter I badobjs)) of
+              [] => ()
+            | es => (warning "Counterexamples:"; fold (fn x => fn _ => warning x) es ())
 
         fun finish (stats, badobjs) =
-          if null badobjs then writeln (update (stats, badobjs) true ^ prtags stats)
+          if null badobjs
+          then writeln (update (stats, badobjs) true ^ prtags stats)
           else (warning (update (stats, badobjs) true); err badobjs)
       in
         {status = status, finish = finish}
