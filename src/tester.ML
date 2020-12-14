@@ -22,7 +22,7 @@ fun ins t n = Net.insert_term_safe eq (t,t) n
 fun con t n = member eq (Net.content n) t
 fun replace_subterm t r =
   let val (f,args) = Term.strip_comb t
-      val (index,r) =  Random.range_int (~1,length args) r
+      val (index,r) =  Random.range_int (~1,length args - 1) r
       (* Generate two random values, pass r1 to rec-call, ignore returned r and return r2 instead *)
       val (r1,r2) = Random.split r
   in
@@ -47,7 +47,8 @@ check_pred (Gen_Base.zip (termgen 10, netgen 10 30)) NONE
       (Property.==> (fn (t,n) => con t n,
                      fn (t,n) => ((Net.delete_term eq (t,t) n) |> net_size) = (net_size n - 1)))
 end;
-check_pred (Gen_Base.zip3 (termgen 10, netgen 10 30, Random.split)) (SOME @{make_string})
+check_pred (Gen_Base.zip3 (termgen 5, netgen 5 20, Random.split))
+      (SOME (fn (t,n,r) => @{make_string} (t, replace_subterm t r, n)))
       "Subterm -> Var still matches"
       (Property.==> (fn (t,n,_) => con t n,
         fn (t,n,r) =>
