@@ -5,15 +5,16 @@ fun set_eq fst snd = eq_set eq (fst,snd)
 fun termgen n r =
   let val (num,r) = Random.range_int (0,n) r (* TODO find better solution for spread *)
   in Gen_Term.term_fol (0.0, 0.3, 0.3) 5 num r end
-fun netgen term_size num_term r =
-  let fun aux term_size num_term r = case num_term of
-            0 => (Net.empty,r)
+fun netgen term_size num_term r1 =
+  let fun aux term_size num_term r1 = case num_term of
+            0 => (Net.empty,r1)
           | _ =>
-            let val (term,r) = termgen term_size r
-                val (base,r) = aux term_size (num_term - 1) r
-            in (Net.insert_term_safe eq (term,term) base,r) end
-      val (num_term,r) = Random.range_int (0,num_term) r (* TODO find better solution for spread *)
-  in aux term_size num_term r end
+            let val (r1,r2) = Random.split r1 (* Parallelize *)
+                val (term,_) = termgen term_size r1
+                val (base,r2) = aux term_size (num_term - 1) r2
+            in (Net.insert_term_safe eq (term,term) base,r2) end
+      val (num_term,r1) = Random.range_int (0,num_term) r1 (* TODO find better solution for spread *)
+  in aux term_size num_term r1 end
 
 fun check_pred gen printer name pred = Spec_Check.checkGen @{context} (gen, printer) (name, pred)
 fun check gen printer name prop = check_pred gen printer name (Property.pred prop)
@@ -42,7 +43,7 @@ check (netgen 10 30) NONE
       "content = entries"
       (fn n => set_eq (Net.entries n) (Net.content n));
 let fun net_size n = Net.content n |> List.length in
-check_pred (Gen_Base.zip (termgen 10, netgen 10 30)) NONE
+check_pred (Gen_Base.zip (termgen 10, netgen 10 50)) (SOME @{make_string})
       "Deletion removes term"
       (Property.==> (fn (t,n) => con t n,
                      fn (t,n) => ((Net.delete_term eq (t,t) n) |> net_size) = (net_size n - 1)))

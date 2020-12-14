@@ -89,4 +89,6 @@ ML \<open>val Net.Net{atoms,comb,var} = net\<close>
 ML_val \<open>let val Net.Net{atoms,...} = net in Net.look1 (atoms,"f") [] end\<close>
 
 ML \<open>structure PathTest = Tester(Net)\<close>
+(* Deletion does not work for Path Indexing! Can't reproduce test input since different namegen *)
+ML \<open>structure PathTest = Tester(Path)\<close>
 ML \<open>PathTest.print_spread ()\<close>

@@ -127,12 +127,22 @@ fun generic_type 0 = TVar (("'a", 0), [])
 
 (* Implement more sophisticated selection. Remember already used variables and their types.
   Choose different names for free etc. *)
-fun var 0 = map Var (zip (zip (var_string, index), lift (generic_type 0)))
-  | var n = map Var (zip (zip (func_string, index), lift (generic_type n)))
-fun const 0 = map Const (zip (const_string, lift (generic_type 0)))
-  | const n = map Const (zip (func_string, lift (generic_type n)))
-fun free 0 = map Free (zip (const_string, lift (generic_type 0)))
-  | free n = map Free (zip (func_string, lift (generic_type n)))
+fun name 0 r = string (lift 1, charRange (#"a", #"e")) r
+  | name n r = string (lift n, charRange (#"0",#"9")) r |>> (fn str => "f" ^ str)
+fun var n r1 =
+  let val (r1,r2) = Random.split r1
+      val (r1,r3) = Random.split r1
+  in
+  (Var (("v_" ^ (name n r1 |> fst), index r2 |> fst), generic_type 0), r3)
+  end
+fun const n r1 =
+  let val (r1,r2) = Random.split r1 in
+  (Const ("c_" ^ (name n r1 |> fst), generic_type n), r2)
+  end
+fun free n r1 =
+  let val (r1,r2) = Random.split r1 in
+  (Free ("f_" ^ (name n r1 |> fst), generic_type n), r2)
+  end
 
 fun term_fol_map (freq_bound, freq_free, freq_var) term r =
   let fun aux bounds types term r =
