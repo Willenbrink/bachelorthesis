@@ -23,6 +23,9 @@ val range_int : int * int -> rand -> int * rand
 val range_real : real * real -> rand -> real * rand
 (* real r returns a real in [0;1). Theoretically 2^31 equidistant discrete steps *)
 val real : rand -> real * rand
+(* Split and shortlived_seed TODO
+- split generates multiple seeds evenly spaced along the sequence (repetition happens after m / num)
+- shortlived_seed skips a number of values in the sequence => only usable for the next num values *)
 val split : rand -> rand * rand
 end
 

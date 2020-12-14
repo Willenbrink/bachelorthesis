@@ -43,5 +43,6 @@ in
     | raw_pp_typ (Type (a, tys)) =
         pp_constr "Type" (pp_pair (pp_qstr a, pp_list (map raw_pp_typ tys)))
 end
+(* TODO problematic because context is outdated *)
 fun pterm term = Syntax.pretty_term @{context} term
 end

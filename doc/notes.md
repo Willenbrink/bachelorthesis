@@ -1,6 +1,6 @@
 # Tasks
 ## TODO
-* Context genauer anschauen. Evtl RNG-Seed darin speichern?
+* Lehmer RNG überarbeiten: Shortlived seeds und split_seeds/sequence implementieren
 * Lambda Term Generation Idee: Ohne Probability
   - Höhe -> Index -> State -> (Symbol,Num_Args) (evtl. Path, bisheriger Term)
     Höhe + Index: Ebenenweise und global. D.h. bei Binärbaum in 2./3. Ebene: 1,2,3,4 statt 1,2,1,2
@@ -39,8 +39,10 @@
 * Interne Repräsentation von FOL, Quantifiers, Lambdas, Theorems etc. genauer anschauen, print_satement hernehmen?
 
 ## Bis 15.12
-* Isabelle/Isar Impl. Manual: 0.8 (0.8.2) überfliegen. Implizites Multithreading reicht
-
+* Isabelle/Isar Impl. Manual: 0.8 (0.8.2) überfliegen.
+  - Implizites Multithreading reicht
+* Context genauer anschauen. Evtl RNG-Seed darin speichern?
+  - Anscheinend nicht dafür geeignet. Theoretisch bräuchte man dann nach jedem Aufruf einen Merge und im Endeffekt muss man immer noch den Context/Zustand jeder Funktion übergeben.
 
 ## Bis 8.12
 * Inferenzregeln auf Papier (nicht Latex) aufschreiben (ala strukturelle Induktion)
