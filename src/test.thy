@@ -5,6 +5,7 @@ ML_file "net.ML"
 ML_file "path.ML"
 ML_file "pprinter.ML"
 ML_file "tester.ML"
+ML "open Pprinter"
 setup "term_pat_setup"
 setup "type_pat_setup"
 (*ML \<open>ML_system_pp (fn _ => fn _ => Pretty.to_polyml o raw_ppatyp)\<close>*)
@@ -29,7 +30,6 @@ val terms =
 []
 
 val pathl as Path.Node (con,rest) = fold ins terms Path.empty
-fun pterm term = Syntax.pretty_term @{context} term
 fun match unif tree term = Path.match unif tree term |> map pterm
 \<close>
 

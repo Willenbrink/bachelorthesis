@@ -1,3 +1,5 @@
+structure Pprinter =
+struct
 val term_pat_setup =
  let
    val parser = Args.context -- Scan.lift Args.embedded_inner_syntax
@@ -40,4 +42,6 @@ in
         pp_constr "TFree" (pp_pair (pp_qstr a, pp_sort S))
     | raw_pp_typ (Type (a, tys)) =
         pp_constr "Type" (pp_pair (pp_qstr a, pp_list (map raw_pp_typ tys)))
+end
+fun pterm term = Syntax.pretty_term @{context} term
 end
