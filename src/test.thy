@@ -13,7 +13,6 @@ ML_val \<open>@{term_pat "f x y"}\<close>
 ML_val \<open>@{typ_pat "'a \<Rightarrow> 'b \<Rightarrow> 'c"}\<close>
 
 ML \<open>
-exception TEST
 val eq = Term.aconv_untyped
 fun ins t tree = Path.insert_term eq (t,t) tree
 fun del t tree = Path.delete_term eq (t,t) tree
@@ -36,11 +35,12 @@ fun match unif tree term = Path.match unif tree term |> map pterm
 ML_val \<open>
 @{term_pat "f (g x y) (h a b)"} |> ignore;
 val x = Gen_Term.term_det (fn (height,index,state) =>
-  let val sym = Free (Char.chr (Char.ord #"0" + state) |> Char.toString, TVar (("a",1),[])) in
+  let (*val sym = Free (Char.chr (Char.ord #"0" + state) |> Char.toString, TVar (("a",1),[]))*)
+      val (sym,state) = Gen_Term.free 2 state in
    if height < 2
-   then (sym,2,state+1)
-   else (sym,0,state+1)
-   end) (0);
+   then (sym,2,state)
+   else (sym,0,state)
+   end) (Random.new ());
 x |> pterm
 \<close>
 ML_val \<open>

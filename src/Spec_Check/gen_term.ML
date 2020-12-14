@@ -175,9 +175,9 @@ fun term_det f init_acc =
       val index = nth indices height
       val (sym,num_args,acc) = f (height,index,acc)
       fun fold_aux (acc, indices, state) = aux indices (height + 1) state |> (fn (x,y,z) => (x :: acc,y,z))
-      val () = writeln (@{make_string} sym ^ @{make_string} num_args ^ @{make_string} indices)
+(*      val () = writeln (@{make_string} sym ^ @{make_string} num_args ^ @{make_string} indices)*)
       val (args,indices,acc) = fold (fn _ => fold_aux) (1 upto num_args) ([],indices,acc)
-      val () = writeln (@{make_string} args)
+(*      val () = writeln (@{make_string} args) *)
     in
     (fold (fn x => fn y => y $ x) (rev args) sym, indices, acc)
     end

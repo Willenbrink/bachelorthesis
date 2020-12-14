@@ -42,8 +42,7 @@ check (Gen_Base.zip (termgen 10, netgen 10 30)) NONE
 check (netgen 10 30) NONE
       "content = entries"
       (fn n => set_eq (Net.entries n) (Net.content n));
-check_pred (Gen_Base.zip (termgen 5, netgen 5 20))
-      (SOME @{make_string})
+check_pred (Gen_Base.zip (termgen 5, netgen 5 20)) (SOME @{make_string})
       "Duplicate detection on insert"
       (Property.==> (fn (t,n) => con t n,
         fn (t,n) => (Net.insert_term eq (t,t) n; false) handle Net.INSERT => true)
