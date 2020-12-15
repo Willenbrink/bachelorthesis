@@ -7,6 +7,7 @@ signature GEN_TERM = sig
   val term_fol_structure : int -> int -> term gen
   val term_fol_map : real * real * real -> term -> term gen
   val term_det : (int * int * 'a -> term * int * 'a) -> 'a -> term
+  val term_det_path : ((term * int) list -> 'a -> term * int * 'a) -> 'a -> term
   val free : int -> term gen
   val var : int -> term gen
   val const : int -> term gen
@@ -125,23 +126,22 @@ fun generic_type 0 = TVar (("'a", 0), [])
       let val name = "'" ^ Char.toString (Char.chr (Char.ord #"a" + n)) in
       Type ("fun", [TVar ((name,0), []), generic_type (n-1)]) end
 
-(* Implement more sophisticated selection. Remember already used variables and their types.
-  Choose different names for free etc. *)
+(* Implement more sophisticated selection. Remember already used variables and their types. *)
 fun name 0 r = string (lift 1, charRange (#"a", #"e")) r
-  | name n r = string (lift n, charRange (#"0",#"9")) r |>> (fn str => "f" ^ str)
+  | name n r = string (lift 1, charRange (#"f",#"j")) r |>> (fn str => str ^ @{make_string} n)
 fun var n r1 =
   let val (r1,r2) = Random.split r1
       val (r1,r3) = Random.split r1
   in
-  (Var (("v_" ^ (name n r1 |> fst), index r2 |> fst), generic_type 0), r3)
+  (Var ((name n r1 |> fst, index r2 |> fst), generic_type n), r3)
   end
 fun const n r1 =
   let val (r1,r2) = Random.split r1 in
-  (Const ("c_" ^ (name n r1 |> fst), generic_type n), r2)
+  (Const (name n r1 |> fst, generic_type n), r2)
   end
 fun free n r1 =
   let val (r1,r2) = Random.split r1 in
-  (Free ("f_" ^ (name n r1 |> fst), generic_type n), r2)
+  (Free (name n r1 |> fst, generic_type n), r2)
   end
 
 fun term_fol_map (freq_bound, freq_free, freq_var) term r =
@@ -170,7 +170,7 @@ fun incr_nth (x::xs) 0 = x+1 :: xs
 fun term_det f init_acc =
   let fun aux indices height acc =
     let
-      (* indices stores the amount of symbols so far at each height *)
+      (* indices stores the number of symbols so far at each height *)
       val indices = incr_nth indices height
       val index = nth indices height
       val (sym,num_args,acc) = f (height,index,acc)
@@ -182,7 +182,22 @@ fun term_det f init_acc =
     (fold (fn x => fn y => y $ x) (rev args) sym, indices, acc)
     end
   in
-  aux [] 0 init_acc |> (fn (x,y,z) => x)
+  aux [] 0 init_acc |> (fn (x,_,_) => x)
+  end
+
+fun term_det_path f init_acc =
+  let fun aux path acc =
+    let
+      val (sym,num_args,acc) = f (path,acc)
+      fun fold_aux i (acc, state) = aux ((sym,i)::path) state |> (fn (x,y) => (x :: acc,y))
+(*      val () = writeln (@{make_string} sym ^ @{make_string} num_args ^ @{make_string} indices)*)
+      val (args,acc) = fold (fn i => fold_aux i) (1 upto num_args) ([],acc)
+(*      val () = writeln (@{make_string} args) *)
+    in
+    (fold (fn x => fn y => y $ x) (rev args) sym, acc)
+    end
+  in
+  aux [] init_acc |> (fn (x,_) => x)
   end
 
 end
