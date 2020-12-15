@@ -1,14 +1,6 @@
 # Tasks
 ## TODO
 * Lehmer RNG überarbeiten: Shortlived seeds und split_seeds/sequence implementieren
-* Lambda Term Generation Idee: Ohne Probability
-  - Höhe -> Index -> State -> (Symbol,Num_Args) (evtl. Path, bisheriger Term)
-    Höhe + Index: Ebenenweise und global. D.h. bei Binärbaum in 2./3. Ebene: 1,2,3,4 statt 1,2,1,2
-  - Paper für Lambda Term Generators
-  - Typkorrektheit erstmal vernachlässigen
-  - Wie Application lösen? Also: Funktion hängt von Argumenten ab
-* Tests für Path Indexing (als Funktor über NET)
-  - Matching mit Termen testen bei denen man einen Teilbaum durch x ersetzt
 * Implementiere eine andere Indexing Methode (Substitution Trees?)
 * net.ML: content = entries?
 * Beispiele wo net.ML schlecht funktioniert (net.ML ist nicht HOL?)
@@ -43,6 +35,14 @@
   - Implizites Multithreading reicht
 * Context genauer anschauen. Evtl RNG-Seed darin speichern?
   - Anscheinend nicht dafür geeignet. Theoretisch bräuchte man dann nach jedem Aufruf einen Merge und im Endeffekt muss man immer noch den Context/Zustand jeder Funktion übergeben.
+* Lambda Term Generation Idee: Ohne Probability
+  - Höhe -> Index -> State -> (Symbol,Num_Args) (evtl. Path, bisheriger Term)
+    Höhe + Index: Ebenenweise und global. D.h. bei Binärbaum in 2./3. Ebene: 1,2,3,4 statt 1,2,1,2
+  - Paper für Lambda Term Generators
+  - Typkorrektheit erstmal vernachlässigen
+  - Wie Application lösen? Also: Funktion hängt von Argumenten ab
+* Tests für Path Indexing (als Funktor über NET)
+  - Matching mit Termen testen bei denen man einen Teilbaum durch x ersetzt
 
 ## Bis 8.12
 * Inferenzregeln auf Papier (nicht Latex) aufschreiben (ala strukturelle Induktion)
