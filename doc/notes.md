@@ -1,8 +1,24 @@
 # Tasks
 ## TODO
+* Testframework als eigenes Repo, Kevin schreiben
+* Curried f in term_det
+* Tests/Benchmarks als Fokus!
+* Später: Term generation verbessern
+  - Catalan number, Folien ca. 229-237: https://db.in.tum.de/teaching/ws2021/queryopt/slides/chapter3.pdf
+  - Prüfer sequenzen
+* Längere Namen bei Tests
+* Compilervariante klar vom Rest trennen bei SpecCheck
+* Später: term_structure (random) mit disjunkten Variablennamen und später unification / mapping mit Index
+* Context noch einmal anschauen. Sicher nicht geeignet?
 * Lehmer RNG überarbeiten: Shortlived seeds und split_seeds/sequence implementieren
+* `net.ML` umschreiben und Interface anpassen
+* Itemnet: Quasi zwei stufiges DN, erst Liste für letzten paar Terme, rest im Netz. Komplex, nicht im Detail anschauen
+* Vergleiche Nutzung von `net.ML`, `item_net.ml`, termtabs (`term_ord.ml`, `term_sharing.ml`) in Taktiken etc.
+    - Unterschied zwischen Instanzen von TT
+    - Zufällig?
+    - Präferenzen?
+    - Gründe für Präferenzen?
 * Implementiere eine andere Indexing Methode (Substitution Trees?)
-* net.ML: content = entries?
 * Beispiele wo net.ML schlecht funktioniert (net.ML ist nicht HOL?)
     - Überapproximationen bei Lambdas
     - Beta-eta-normal form = Eta-long beta-normal form?
@@ -15,14 +31,7 @@
         + TT braucht weniger Steps (da balanciert) aber immer wieder neuer Vergleich (kein prefix sharing)
         + Was zeichnet andere Worst-/Best-Cases aus?
     - DN vs PI in general
-* Vergleiche Nutzung von `net.ML`, `item_net.ml`, termtabs (`term_ord.ml`, `term_sharing.ml`) in Taktiken etc.
-    - Unterschied zwischen Instanzen von TT
-    - Zufällig?
-    - Präferenzen?
-    - Gründe für Präferenzen?
 * Termstruktur ändern für Indextree (Spine representation?)
-* `net.ML` umschreiben und Interface anpassen
-* Itemnet: Quasi zwei stufiges DN, erst Liste für letzten paar Terme, rest im Netz. Komplex, nicht im Detail anschauen
 
 ## Low Priority
 * Seven Virtues of STT lesen
@@ -43,6 +52,7 @@
   - Wie Application lösen? Also: Funktion hängt von Argumenten ab
 * Tests für Path Indexing (als Funktor über NET)
   - Matching mit Termen testen bei denen man einen Teilbaum durch x ersetzt
+* net.ML: content = entries?
 
 ## Bis 8.12
 * Inferenzregeln auf Papier (nicht Latex) aufschreiben (ala strukturelle Induktion)
