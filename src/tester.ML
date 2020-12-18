@@ -18,8 +18,8 @@ fun netgen term_size num_term r1 =
       val (num_term,r1) = Random.range_int (0,num_term) r1 (* TODO find better solution for spread *)
   in aux term_size num_term r1 end
 
-fun check_pred gen printer name pred = Spec_Check.checkGen @{context} (gen, printer) (name, pred)
-fun check gen printer name prop = check_pred gen printer name (Property.pred prop)
+fun check_prop gen printer name prop = Spec_Check.checkGen @{context} (gen, printer) (name, prop)
+fun check gen printer name pred = check_prop gen printer name (Property.pred pred)
 
 fun ins t n = Net.insert_term_safe eq (t,t) n
 fun con t n = member eq (Net.content n) t
@@ -44,18 +44,18 @@ check (Gen.zip (termgen 10, netgen 10 30)) NONE
 check (netgen 10 30) NONE
       "content = entries"
       (fn n => set_eq (Net.entries n) (Net.content n));
-check_pred (Gen.zip (termgen 5, netgen 5 20)) (SOME @{make_string})
+check_prop (Gen.zip (termgen 5, netgen 5 20)) (SOME @{make_string})
       "Duplicate detection on insert"
       (Property.==> (fn (t,n) => con t n,
         fn (t,n) => (Net.insert_term eq (t,t) n; false) handle Net.INSERT => true)
       );
 let fun net_size n = Net.content n |> List.length in
-check_pred (Gen.zip (termgen 10, netgen 10 50)) (SOME @{make_string})
+check_prop (Gen.zip (termgen 10, netgen 10 50)) (SOME @{make_string})
       "Deletion removes term"
       (Property.==> (fn (t,n) => con t n,
                      fn (t,n) => ((Net.delete_term eq (t,t) n) |> net_size) = (net_size n - 1)))
 end;
-check_pred (Gen.zip3 (termgen 5, netgen 5 20, Random.split))
+check_prop (Gen.zip3 (termgen 5, netgen 5 20, Random.split))
       (SOME (fn (t,n,r) => @{make_string} (t, replace_subterm t r, n)))
       "Subterm -> Var still matches"
       (Property.==> (fn (t,n,_) => con t n,
