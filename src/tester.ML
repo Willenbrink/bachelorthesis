@@ -16,7 +16,7 @@ fun net_gen num_term term_gen r =
           let val (term,r) = term_gen r
               val (base,r) = aux (num_term - 1) r
           in (Net.insert_term_safe eq (term,term) base,r) end
-      val (num_term,r1) = Random.range_int (0,num_term) r (* TODO find better solution for spread *)
+      val (num_term,r) = Random.range_int (0,num_term) r (* TODO find better solution for spread *)
   in aux num_term r end
 
 fun check_prop gen printer name prop = Spec_Check.checkGen @{context} (gen, printer) (name, prop)
@@ -72,14 +72,20 @@ check_prop (Gen.zip3 (def_term_gen, def_net_gen, Random.split))
 
 (* Benchmarking *)
 
-fun timer f =
-  let val start = Timing.start ()
-      val res = f ()
-      val total = Timing.result start
-  in res; writeln (Timing.message total) end
+fun timer f x = 
+  Timing.timing f x
+  |>> Timing.message
+  |>> writeln
+  |> snd
 
 fun benchmark () = (
-timer (fn () => net_gen 1000 (term_gen 100) (Random.new ()));
+timer (net_gen 1000 (term_gen 100)) (Random.new ());
+timer (fn (net,terms) => fold (fn x => fn net => Net.delete_term_safe eq (x,x) net) terms net)
+  (Random.new ()
+   |> net_gen 1000 (term_gen 100)
+   |> (fn (n,r) => (n, Gen.shuffle (Net.content n) r |> fst
+                       |> take (length (Net.content n) div 10)))
+   );
 
 ())
 

@@ -1,5 +1,5 @@
 theory "test"
-  imports Main "Spec_Check/Spec_Check"
+  imports Main "../spec_check/src/Spec_Check"
   begin
 ML_file "net.ML"
 ML_file "path.ML"
