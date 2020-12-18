@@ -168,15 +168,18 @@ fun incr_nth (x::xs) 0 = x+1 :: xs
   | incr_nth (x::xs) n = x :: incr_nth xs (n-1)
 
 fun term_det f init_acc =
-  let fun aux indices height acc =
+  let fun aux indices height state =
     let
       (* indices stores the number of symbols so far at each height *)
       val indices = incr_nth indices height
       val index = nth indices height
-      val (sym,num_args,acc) = f (height,index,acc)
-      fun fold_aux (acc, indices, state) = aux indices (height + 1) state |> (fn (x,y,z) => (x :: acc,y,z))
+      val (sym,num_args,state) = f height index state
+      fun fold_aux (acc, indices, state) =
+        aux indices (height + 1) state
+        |> (fn (x,y,z) => (x :: acc,y,z))
 (*      val () = writeln (@{make_string} sym ^ @{make_string} num_args ^ @{make_string} indices)*)
-      val (args,indices,acc) = fold (fn _ => fold_aux) (1 upto num_args) ([],indices,acc)
+      val (args,indices,acc) =
+        fold (K fold_aux) (1 upto num_args) ([],indices,state)
 (*      val () = writeln (@{make_string} args) *)
     in
     (fold (fn x => fn y => y $ x) (rev args) sym, indices, acc)
@@ -186,12 +189,15 @@ fun term_det f init_acc =
   end
 
 fun term_det_path f init_acc =
-  let fun aux path acc =
+  let fun aux path state =
     let
-      val (sym,num_args,acc) = f (path,acc)
-      fun fold_aux i (acc, state) = aux ((sym,i)::path) state |> (fn (x,y) => (x :: acc,y))
+      val (sym,num_args,state) = f path state
+      fun fold_aux i (acc, state) =
+        aux ((sym,i)::path) state
+        |> (fn (x,y) => (x :: acc,y))
 (*      val () = writeln (@{make_string} sym ^ @{make_string} num_args ^ @{make_string} indices)*)
-      val (args,acc) = fold (fn i => fold_aux i) (1 upto num_args) ([],acc)
+      val (args,acc) =
+        fold fold_aux (1 upto num_args) ([],state)
 (*      val () = writeln (@{make_string} args) *)
     in
     (fold (fn x => fn y => y $ x) (rev args) sym, acc)

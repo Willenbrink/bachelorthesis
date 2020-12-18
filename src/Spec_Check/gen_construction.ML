@@ -91,9 +91,9 @@ fun string_of_bool b = if b then "true" else "false"
 fun string_of_ref f r = f (!r) ^ " ref";
 
 val initial_content = Symtab.make
-  [("bool", ("Generator.flip", "Gen_Construction.string_of_bool")),
-  ("option", ("Generator.option (Generator.flip' (1, 3))", "ML_Syntax.print_option")),
-  ("list", ("Generator.list (Generator.flip' (1, 3))", "ML_Syntax.print_list")),
+  [("bool", ("Generator.flip 0.5", "Gen_Construction.string_of_bool")),
+  ("option", ("Generator.option (Generator.flip (1.0 / 3.0))", "ML_Syntax.print_option")),
+  ("list", ("Generator.list (Generator.flip (1.0 / 3.0))", "ML_Syntax.print_list")),
   ("unit", ("gen_unit", "fn () => \"()\"")),
   ("int", ("Generator.int", "string_of_int")),
   ("real", ("Generator.real", "string_of_real")),

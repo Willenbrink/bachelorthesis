@@ -1,7 +1,6 @@
 # Tasks
 ## TODO
 * Testframework als eigenes Repo, Kevin schreiben
-* Curried f in term_det
 * Tests/Benchmarks als Fokus!
 * Später: Term generation verbessern
   - Catalan number, Folien ca. 229-237: https://db.in.tum.de/teaching/ws2021/queryopt/slides/chapter3.pdf
@@ -38,6 +37,9 @@
 * Near-eta conversion in net.ML?
 * Isabelle besser herrichten
 * Interne Repräsentation von FOL, Quantifiers, Lambdas, Theorems etc. genauer anschauen, print_satement hernehmen?
+
+## Bis 22.12
+* Curried f in term_det
 
 ## Bis 15.12
 * Isabelle/Isar Impl. Manual: 0.8 (0.8.2) überfliegen.

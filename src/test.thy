@@ -33,40 +33,40 @@ fun match unif tree term = Path.match unif tree term |> map pterm
 \<close>
 
 ML_val \<open>
-fun f1 (height, index, state) =
-  let val num_args = if index = 1 andalso height < 5 orelse height = 0 then 5 else 0
+fun f1 height index state =
+  let val num_args = if index = 5 andalso height < 5 orelse height = 0 then 5 else 0
       val options = [(1,Gen_Term.const num_args), (3,Gen_Term.free num_args), (1,Gen_Term.var num_args)]
       val (sym,state) = Gen_Base.chooseL' options state
   in (sym, num_args, state) end
-val t1 = Gen_Term.term_det f1 (Random.new ());
+val t1 = Generator.term_det f1 (Random.new ());
 t1 |> pterm;
 \<close>
 
 ML_val \<open>
-fun f1 (path, state) =
+fun f1 path state =
   let val height = length path
       val (prev_sym, index) = if height >= 1 then nth path 0 |>> SOME ||> SOME else (NONE,NONE)
       val num_args = if height = 0 orelse index = SOME 5 andalso height < 5 then 5 else 0
       val (sym,state) = Gen_Term.free num_args state
   in (sym, num_args, state) end
-val t1 = Gen_Term.term_det_path f1 (Random.new ());
+val t1 = Generator.term_det_path f1 (Random.new ());
 t1 |> pterm;
 \<close>
 
 ML_val \<open>
 @{term_pat "f (g x y) (h a b)"} |> ignore;
-val x = Gen_Term.term_det (fn (height,index,state) =>
+val x = Generator.term_det (fn height => fn index => fn state =>
   let val num_args = if height < 2 then 2 else 0
 (*val sym = Free (Char.chr (Char.ord #"0" + state) |> Char.toString, TVar (("a",1),[]))*)
-      val (sym,state) = Gen_Term.free num_args state in
+      val (sym,state) = Generator.free num_args state in
    (sym,num_args,state)
    end) (Random.new ());
 x |> pterm
 \<close>
 ML_val \<open>
 val r = Random.new ()
-fun f r = Gen_Term.term_fol_structure 3 10 r
-|-> Gen_Term.term_fol_map (0.0, 0.0, 0.0)
+fun f r = Generator.term_fol_structure 3 10 r
+|-> Generator.term_fol_map (0.0, 0.0, 0.0)
 |> fst;
 val x = f r |> pterm;
 val y = f r;

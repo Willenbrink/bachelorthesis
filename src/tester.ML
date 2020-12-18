@@ -1,10 +1,12 @@
 functor Tester (Net : NET) = 
 struct
+structure Gen = Generator
+
 val eq = Term.aconv_untyped
 fun set_eq fst snd = eq_set eq (fst,snd)
 fun termgen n r =
   let val (num,r) = Random.range_int (0,n) r (* TODO find better solution for spread *)
-  in Gen_Term.term_fol (0.0, 0.3, 0.3) 5 num r end
+  in Gen.term_fol (0.0, 0.3, 0.3) 5 num r end
 fun netgen term_size num_term r1 =
   let fun aux term_size num_term r1 = case num_term of
             0 => (Net.empty,r1)
@@ -28,32 +30,32 @@ fun replace_subterm t r =
       val (r1,r2) = Random.split r
   in
   if index = ~1
-  then (Term.list_comb (Gen_Term.var 1 r1 |> fst, args), r2)
+  then (Term.list_comb (Gen.var 1 r1 |> fst, args), r2)
   else (Term.list_comb (f,nth_map index (fn t => replace_subterm t r1 |> fst) args), r2)
   end
 
 val () = (
-check (Gen_Datatypes.unit) NONE
+check (Gen.unit) NONE
       "Empty net is empty"
       (fn _ => Net.content Net.empty = []);
-check (Gen_Base.zip (termgen 10, netgen 10 30)) NONE
+check (Gen.zip (termgen 10, netgen 10 30)) NONE
       "Insertion adds value to content"
       (fn (t,n) => set_eq (t :: Net.content n) (ins t n |> Net.content));
 check (netgen 10 30) NONE
       "content = entries"
       (fn n => set_eq (Net.entries n) (Net.content n));
-check_pred (Gen_Base.zip (termgen 5, netgen 5 20)) (SOME @{make_string})
+check_pred (Gen.zip (termgen 5, netgen 5 20)) (SOME @{make_string})
       "Duplicate detection on insert"
       (Property.==> (fn (t,n) => con t n,
         fn (t,n) => (Net.insert_term eq (t,t) n; false) handle Net.INSERT => true)
       );
 let fun net_size n = Net.content n |> List.length in
-check_pred (Gen_Base.zip (termgen 10, netgen 10 50)) (SOME @{make_string})
+check_pred (Gen.zip (termgen 10, netgen 10 50)) (SOME @{make_string})
       "Deletion removes term"
       (Property.==> (fn (t,n) => con t n,
                      fn (t,n) => ((Net.delete_term eq (t,t) n) |> net_size) = (net_size n - 1)))
 end;
-check_pred (Gen_Base.zip3 (termgen 5, netgen 5 20, Random.split))
+check_pred (Gen.zip3 (termgen 5, netgen 5 20, Random.split))
       (SOME (fn (t,n,r) => @{make_string} (t, replace_subterm t r, n)))
       "Subterm -> Var still matches"
       (Property.==> (fn (t,n,_) => con t n,

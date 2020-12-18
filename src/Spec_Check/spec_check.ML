@@ -22,7 +22,7 @@ sig
   val register_style : string -> output_style -> theory -> theory
 
   val checkGen : Proof.context ->
-    'a Gen_Base.gen * ('a -> string) option -> string * 'a Property.prop -> unit
+    'a Generator.gen * ('a -> string) option -> string * 'a Property.prop -> unit
 
   val check_property : Proof.context -> string -> unit
 end;
@@ -48,7 +48,7 @@ type output_style = Proof.context -> string ->
   {status: string option * Property.result * (Property.stats * string option list) -> unit,
    finish: Property.stats * string option list -> unit}
 
-fun limit ctxt gen = Gen_Base.limit (Config.get ctxt gen_max) gen
+fun limit ctxt gen = Generator.limit (Config.get ctxt gen_max) gen
 
 structure Style = Theory_Data
 (
@@ -114,11 +114,11 @@ fun checks ctxt = cpsCheck ctxt Property.stats
 
 fun checkGen ctxt (gen, show) (tag, prop) =
   check' ctxt {count = 0, tags = [("__GEN", 0)]}
-    (limit ctxt gen, show) (tag, prop) Gen_Datatypes.stream
+    (limit ctxt gen, show) (tag, prop) Generator.stream
 
 fun checkGenShrink ctxt shrink (gen, show) (tag, prop) =
   cpsCheck ctxt {count=0, tags=[("__GEN", 0)]} shrink
-    (limit ctxt gen, show) (tag, prop) Gen_Datatypes.stream
+    (limit ctxt gen, show) (tag, prop) Generator.stream
 
 fun checkOne ctxt show (tag, prop) obj =
   check ctxt (List.getItem, show) (tag, prop) [obj]
