@@ -1,6 +1,5 @@
 # Tasks
 ## TODO
-* Testframework als eigenes Repo, Kevin schreiben
 * Tests/Benchmarks als Fokus!
 * Später: Term generation verbessern
   - Catalan number, Folien ca. 229-237: https://db.in.tum.de/teaching/ws2021/queryopt/slides/chapter3.pdf
@@ -40,6 +39,7 @@
 
 ## Bis 22.12
 * Curried f in term_det
+* Testframework als eigenes Repo, Kevin schreiben
 
 ## Bis 15.12
 * Isabelle/Isar Impl. Manual: 0.8 (0.8.2) überfliegen.

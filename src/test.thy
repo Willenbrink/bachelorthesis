@@ -86,7 +86,24 @@ ML \<open>val net = Net.empty
  |> ins @{term "f"}
 \<close>
 
-ML \<open>structure PathTest = Tester(Net)\<close>
+ML \<open>
+structure NetTest = Tester(Net);
+structure PathTest = Tester(Path);
+\<close>
+
+ML \<open>
+writeln "Path";
+PathTest.benchmark ();
+writeln "Net";
+NetTest.benchmark ();
+\<close>
+
+ML \<open>
+writeln "Path";
+PathTest.test ();
+writeln "Net";
+NetTest.test ();
+\<close>
 (* Deletion does not work for Path Indexing! Can't reproduce test input since different namegen *)
-ML \<open>structure PathTest = Tester(Path)\<close>
-ML \<open>PathTest.print_spread ()\<close>
+
+ML \<open>PathTest.print_distribution ()\<close>
