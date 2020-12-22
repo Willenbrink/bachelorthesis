@@ -72,21 +72,42 @@ check_prop (Gen.zip3 (def_term_gen, def_net_gen, Random.split))
 
 (* Benchmarking *)
 
-fun timer f x = 
-  Timing.timing f x
-  |>> Timing.message
-  |>> writeln
-  |> snd
+fun add_timings {elapsed = elapsed1, cpu = cpu1, gc = gc1} {elapsed = elapsed2, cpu = cpu2, gc = gc2} =
+  {elapsed = elapsed1 + elapsed2,
+   cpu = cpu1 + cpu2,
+   gc = gc1 + gc2}
+
+fun timer name repetitions f_test f_input =
+  (writeln name;
+  1 upto repetitions
+  |> map (fn _ => Random.new ()
+          |> Timing.timing (f_input)
+          |>> (fn {elapsed,...} => elapsed)
+          ||> Timing.timing f_test)
+  |> (fn list => fold (fn (prep_time,(test_time,result)) => fn (prep_total, test_total, results) =>
+                            (prep_time + prep_total, add_timings test_time test_total, result :: results))
+        list (Time.fromSeconds 0, {elapsed = Time.fromSeconds 0, cpu = Time.fromSeconds 0, gc = Time.fromSeconds 0},[]))
+  |> (fn (prep,test,result) => (writeln ("Prep: " ^ @{make_string} prep ^ "s - Test: " ^ Timing.message test); result)))
 
 fun benchmark () = (
-timer (net_gen 1000 (term_gen 100)) (Random.new ());
-timer (fn (net,terms) => fold (fn x => fn net => Net.delete_term_safe eq (x,x) net) terms net)
-  (Random.new ()
-   |> net_gen 1000 (term_gen 100)
-   |> (fn (n,r) => (n, Gen.shuffle (Net.content n) r |> fst
-                       |> take (length (Net.content n) div 10)))
-   );
-
+timer "Creation of net" 10
+      (net_gen 1000 (term_gen 100))
+      I;
+timer "Content of net" 10
+      (Net.content)
+      (net_gen 1000 (term_gen 100) #> fst);
+timer "Entries of net" 10
+      (Net.entries)
+      (net_gen 1000 (term_gen 100) #> fst);
+timer "Remove 10% of terms in net" 3
+      (fn (net,terms) => fold (fn x => fn net => Net.delete_term_safe eq (x,x) net) terms net)
+      (net_gen 1000 (term_gen 100)
+       #> (fn (n,r) => (n, Gen.shuffle (Net.content n) r |> fst
+           |> take (length (Net.content n) div 10)))
+      );
+timer "Replace Subterm with Var and retrieve matching terms" 100
+      (fn (t,n,r) => Net.unify_term n (replace_subterm t r |> fst))      
+      (fn r => Gen.zip3 (def_term_gen, def_net_gen, Random.split) r |> fst);
 ())
 
 fun print_distribution () = (
