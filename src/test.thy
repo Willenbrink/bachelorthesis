@@ -92,6 +92,14 @@ structure PathTest = Tester(Path);
 \<close>
 
 ML \<open>
+val x = Unsynchronized.ref (Generator.term_fol)
+val y = Unsynchronized.ref (!x)
+val z = x
+val a = (x = y)
+val b = (z = x)
+\<close>
+
+ML \<open>
 writeln "Path";
 PathTest.benchmark ();
 writeln "Net";

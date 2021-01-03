@@ -47,7 +47,8 @@ check (Gen.zip (def_term_gen, def_net_gen)) NONE
       (fn (t,n) => set_eq (t :: Net.content n) (ins t n |> Net.content));
 check (def_net_gen) NONE
       "content = entries"
-      (fn n => set_eq (Net.entries n) (Net.content n));
+      (fn n => set_eq (Net.entries n) (Net.content n)
+               andalso length (Net.entries n) = length (Net.content n));
 check_prop (Gen.zip (def_term_gen, def_net_gen)) (SOME @{make_string})
       "Duplicate detection on insert"
       (Property.==> (fn (t,n) => con t n,
