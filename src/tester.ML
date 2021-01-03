@@ -99,6 +99,12 @@ timer "Content of net" 10
 timer "Entries of net" 10
       (Net.entries)
       (net_gen 1000 (term_gen 100) #> fst);
+timer "Get 10% of terms in net" 3
+      (fn (n,r) => (n, Gen.shuffle (Net.content n) r
+                       |> tap (fn x => writeln (@{make_string} (length (fst x))))
+                       |> fst
+                       |> take (length (Net.content n) div 10)))
+      (net_gen 1000 (term_gen 100));
 timer "Remove 10% of terms in net" 3
       (fn (net,terms) => fold (fn x => fn net => Net.delete_term_safe eq (x,x) net) terms net)
       (net_gen 1000 (term_gen 100)
