@@ -43,7 +43,7 @@ sig
     val content: 'a net -> 'a list
 end;
 
-structure Net(*: NET*) =
+structure Net =
 struct
 
 datatype key = CombK | VarK | AtomK of string;
@@ -264,3 +264,6 @@ fun merge eq (net1, net2) =
 fun content net = map #2 (dest net);
 
 end;
+
+(* TODO checks interface while also exposing internal functions *)
+structure NetInterfaceCheck = Net : NET;

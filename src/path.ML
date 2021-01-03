@@ -13,37 +13,6 @@ match_term no longer treats abstractions as wildcards; instead they match
 only wildcards in patterns.  Requires operands to be beta-eta-normal.
 *)
 
-signature NET =
-sig
-  type key
-  val key_of_term: term -> key list
-  val encode_type: typ -> term
-
-  type 'a net
-  val empty: 'a net
-  val is_empty: 'a net -> bool
-
-  exception INSERT
-  val insert: ('a * 'a -> bool) -> key list * 'a -> 'a net -> 'a net
-  val insert_term: ('a * 'a -> bool) -> term * 'a -> 'a net -> 'a net
-  val insert_safe: ('a * 'a -> bool) -> key list * 'a -> 'a net -> 'a net
-  val insert_term_safe: ('a * 'a -> bool) -> term * 'a -> 'a net -> 'a net
-
-  exception DELETE
-  val delete: ('b * 'a -> bool) -> key list * 'b -> 'a net -> 'a net
-  val delete_term: ('b * 'a -> bool) -> term * 'b -> 'a net -> 'a net
-  val delete_safe: ('b * 'a -> bool) -> key list * 'b -> 'a net -> 'a net
-  val delete_term_safe: ('b * 'a -> bool) -> term * 'b -> 'a net -> 'a net
-
-  val lookup: term net -> key list -> term list
-  val match_term: term net -> term -> term list
-  val unify_term: term net -> term -> term list
-  val entries: 'a net -> 'a list
-  val subtract: ('a * 'a -> bool) -> 'a net -> 'a net -> 'a list
-  val merge: (term * term -> bool) -> term net * term net -> term net
-  val content: 'a net -> 'a list
-end;
-
 structure Path (*: NET*) =
 struct
 (* TODO should an empty key be valid?
@@ -65,7 +34,7 @@ fun sym_ord (VarS, VarS) = EQUAL
   | sym_ord ((AtomS n1), (AtomS n2)) = fast_string_ord (n1,n2)
 
 structure Stab = Table(type key = symbol val ord = sym_ord);
-type 'a content = 'a list Stab.table
+type 'a content = 'a Unsynchronized.ref list Stab.table
 datatype 'a net = Node of 'a content * 'a net list Stab.table
 
 fun symbol_of_term t = case t of
@@ -131,7 +100,7 @@ fun nth_map_default (index : int) (f : 'a -> 'a) (default : 'a) (xs : 'a list) :
   For e.g. f(g(h(x,y))) path from root to h is repeated thrice, for h,x,y
   TODO perhaps drop subkeys from keylist? For f(g(x)) only save <f,1,g,1> = x? Why doesn't that work?
 *)
-fun insert_one eq (key, v) (Node (con,tree)) : 'a net = case key of
+fun insert_one eq (key, v) (Node (con,tree)) = case key of
       End n => Node (append_sym eq (n,v) con, tree)
     | Fun (name,index,key) =>
         let fun ins tree = insert_one eq (key,v) tree
@@ -139,8 +108,18 @@ fun insert_one eq (key, v) (Node (con,tree)) : 'a net = case key of
             fun ins_symtab f tree = Stab.map_default (name,[]) f tree
         in Node (con, ins_symtab ins_list tree) end
 
+fun insert_ref_safe eq (keys,term_ref) net = (* Insert a reference directly. Only internal usage *)
+  let fun eq' (x,y) = (x = y) orelse eq (!x,!y) in
+  Library.foldl (fn (acc,k) => insert_one eq' (k, term_ref) acc) (net,keys)
+  handle INSERT => net
+  end
+
 fun insert eq (keys,term) net =
-  Library.foldl (fn (acc,k) => insert_one eq (k,term) acc) (net,keys)
+  let fun eq' (x,y) = (x = y) orelse eq (!x,!y)
+      val term = Unsynchronized.ref term
+  in
+  Library.foldl (fn (acc,k) => insert_one eq' (k, term) acc) (net,keys)
+  end
 
 fun insert_term eq (t, x) = insert eq (key_of_term t, x);
 
@@ -156,7 +135,8 @@ exception DELETE;       (*missing item in the net*)
   Raises DELETE if absent. TODO Collapses the net if possible?
   eq is the equality test for items. *)
 fun delete_one eq (key, v) (Node (con,tree)) =
-  let fun rem content = if member eq content v then remove eq v content
+  let fun eq' (x,y) = eq (!x,!y)
+      fun rem content = if member eq' content v then remove eq' v content
                         else raise DELETE in
   case key of
       End n => Node (Stab.map_default (n,[]) rem con, tree)
@@ -168,7 +148,7 @@ fun delete_one eq (key, v) (Node (con,tree)) =
    end
 
 fun delete eq (keys, x) net =
-  Library.foldl (fn (acc,k) => delete_one eq (k,x) acc) (net,keys)
+  Library.foldl (fn (acc,k) => delete_one eq (k, Unsynchronized.ref x) acc) (net,keys)
 
 fun delete_term eq (t, x) = delete eq (key_of_term t, x);
 
@@ -177,7 +157,7 @@ fun delete_term_safe eq entry net = delete_term eq entry net handle DELETE => ne
 
 
 (*** Retrieval functions for discrimination nets ***)
-fun content n =
+fun content_ref n =
   let fun aux (Node (con,tree)) =
     let val con_fst =
           con |> Stab.dest 
@@ -187,7 +167,14 @@ fun content n =
                |> maps snd
                |> maps aux
     in con_fst @ con_snd end
-  in aux n (*|> distinct Term.aconv_untyped this fixes the type to term. Rework interface first! *)end
+  in
+  aux n
+  (*|> tap (fn x => x |> length |> @{make_string} |> writeln)*)
+  |> distinct (op =)
+(*  |> tap (fn x => x |> length |> @{make_string} |> writeln)*)
+  end
+
+fun content n = content_ref n |> map (op !)
 
 (*Return the list of items at the given node, [] if no such node*)
 fun lookup_one (Node (con,tree)) key = case key of
@@ -199,21 +186,21 @@ fun lookup_one (Node (con,tree)) key = case key of
        |> Option.valOf
 
 fun lookup tree keys =
-    let val acc = content tree
-        fun intersect (acc,k) = inter Term.aconv_untyped acc (lookup_one tree k)
-    in Library.foldl intersect (acc,keys) end
+    let val acc = content_ref tree
+        fun intersect (acc,k) = inter (op =) acc (lookup_one tree k)
+    in Library.foldl intersect (acc,keys) |> map (op !) end (* TODO *)
 
 fun match unif (node as Node (con,tree)) term =
   let val var_terms = Stab.lookup_list con VarS
-      val handle_var = if unif then content node else var_terms
+      val handle_var = if unif then content_ref node else var_terms
       fun handle_sym sym = Stab.lookup_list con sym
       fun handle_func func args =
         let val list = Stab.lookup_list tree (symbol_of_term func)
             fun arg_to_terms index arg = match unif (nth list index) arg handle Subscript => []
             fun intersect fst snd = inter Term.aconv_untyped fst snd
         in
-        fold_index (fn (index,arg) => fn acc => intersect (arg_to_terms index arg) acc)
-          args (content node)
+        fold_index (fn (index,arg) => fn acc => inter (op =) (arg_to_terms index arg) acc)
+          args (content_ref node)
         end
   in
   case strip_comb term of
@@ -224,15 +211,29 @@ fun match unif (node as Node (con,tree)) term =
   | (func,args) => (if unif then var_terms else []) @ (handle_func func args)
   end
 
-fun match_term n t = match false n t |> distinct Term.aconv_untyped
-fun unify_term n t = match true n t |> distinct Term.aconv_untyped
+fun match_term n t = match false n t |> distinct (op =) |> map (op !)
+fun unify_term n t = match true n t |> distinct (op =) |> map (op !)
 
 val entries = content (* TODO are they really the same? *)
 
-fun merge eq (tree1, tree2) =
-  fold (fn t => insert_term_safe eq (t,t)) (content tree2) tree1  (* FIXME non-canonical merge order!?! *)
+fun dest (Node (con,tree)) =
+  let
+    val content =
+      Stab.dest con
+      |> map (fn (k,vs) => map (fn v => (End k,v)) vs)
+      |> flat
+    val rec_tree =
+      Stab.dest tree
+      |> map (fn (sym,vs) => map_index (fn (i,v) => (sym,i,v)) vs)
+      |> flat
+      |> map (fn (sym,ind,value) => dest value |> map (fn (k,v) => (Fun (sym,ind,k),v)))
+      |> flat
+  in content @ rec_tree end
 
-fun subtract eq tree1 tree2 = Library.subtract eq (content tree1) (content tree2)
+fun merge eq (tree1, tree2) =
+  fold (fn t => insert_ref_safe eq t) (dest tree2 |> map (fn (k,v) => ([k],v))) tree1  (* FIXME non-canonical merge order!?! *)
+
+fun subtract eq tree1 tree2 = Library.subtract (swap #> eq) (content tree1) (content tree2)
 
 (* Useful for what exactly?
 fun dot_of_node (node as Node(con,tree)) =
@@ -247,3 +248,6 @@ fun dot_of_node (node as Node(con,tree)) =
   end
 *)
 end;
+
+(* TODO checks interface while also exposing internal functions *)
+structure PathInterfaceCheck = Path : NET;
