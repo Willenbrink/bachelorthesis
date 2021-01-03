@@ -90,25 +90,27 @@ fun timer name repetitions f_test f_input =
         list (Time.fromSeconds 0, {elapsed = Time.fromSeconds 0, cpu = Time.fromSeconds 0, gc = Time.fromSeconds 0},[]))
   |> (fn (prep,test,result) => (writeln ("Prep: " ^ @{make_string} prep ^ "s - Test: " ^ Timing.message test); result)))
 
+(* Significantly larger for benchmarks than tests *)
+val def_term_gen = term_gen 100
+val def_net_gen = net_gen 1000 def_term_gen
 fun benchmark () = (
 timer "Creation of net" 10
-      (net_gen 1000 (term_gen 100))
+      def_net_gen
       I;
 timer "Content of net" 10
       (Net.content)
-      (net_gen 1000 (term_gen 100) #> fst);
+      (def_net_gen #> fst);
 timer "Entries of net" 10
       (Net.entries)
-      (net_gen 1000 (term_gen 100) #> fst);
+      (def_net_gen #> fst);
 timer "Get 10% of terms in net" 3
       (fn (n,r) => (n, Gen.shuffle (Net.content n) r
-                       |> tap (fn x => writeln (@{make_string} (length (fst x))))
                        |> fst
                        |> take (length (Net.content n) div 10)))
-      (net_gen 1000 (term_gen 100));
+      def_net_gen;
 timer "Remove 10% of terms in net" 3
       (fn (net,terms) => fold (fn x => fn net => Net.delete_term_safe eq (x,x) net) terms net)
-      (net_gen 1000 (term_gen 100)
+      (def_net_gen
        #> (fn (n,r) => (n, Gen.shuffle (Net.content n) r |> fst
            |> take (length (Net.content n) div 10)))
       );
