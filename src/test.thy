@@ -100,10 +100,13 @@ val b = (z = x)
 \<close>
 
 ML \<open>
-writeln "Path";
-PathTest.benchmark ();
-writeln "Net";
-NetTest.benchmark ();
+val pathb = (writeln "Path"; PathTest.benchmark ());
+val netb = (writeln "Net"; NetTest.benchmark ());
+fun diff {elapsed = _, cpu = c1, gc = _} {elapsed = _, cpu = c2, gc = _} =
+  (c1 - c2, (Time.toReal c1) / (Time.toReal c2))
+val res = map_index (fn (i,(name,_,x)) => (name,diff x (nth netb i |> (fn (_,_,x) => x)))) pathb;
+writeln ("\nAbsolute\tRelative\tName");
+map (fn (name,(abs,rel)) => (@{make_string} abs ^ "\t\t" ^ @{make_string} rel ^ "\t" ^ name) |> writeln) res
 \<close>
 
 ML \<open>
