@@ -23,10 +23,12 @@ struct
 fun >>= (x,f) = Option.map f x
 infix 1 >>=
 
-(* Fun(name,index,key_remainder) where key_remainder describes the path to the leaf *)
-datatype symbol = VarS
-                | AtomS of string
-datatype key = End of symbol | Fun of symbol * int * key
+datatype symbol =
+  VarS
+| AtomS of string
+datatype key =
+  End of symbol
+| Fun of symbol * int * key (* function,number of child, key from that child onwards *)
 
 fun sym_ord (VarS, VarS) = EQUAL
   | sym_ord (VarS, _) = LESS
@@ -46,17 +48,18 @@ fun symbol_of_term t = case t of
         | _$_ => raise Fail "Invalid use of symbol_of_term"
 
 fun key_of_term t : key list =
-      let val (func, args) = Term.strip_comb t
-          val sym = symbol_of_term func in
-      case args of
-        [] => [End sym]
-      | args => args
-             |> map key_of_term
-             |> map_index (fn (i,keys) => map (fn k => Fun(sym,i,k)) keys)
-             |> flat
-             |> (fn x => key_of_term func @ x)
- end
-
+  let val (func, args) = Term.strip_comb t
+      val sym = symbol_of_term func
+  in
+  case args of
+    [] => [End sym]
+  | args =>
+      args
+      |> map key_of_term
+      |> map_index (fn (i,keys) => map (fn k => Fun(sym,i,k)) keys)
+      |> flat
+      |> (fn x => key_of_term func @ x)
+  end
 
 (*encode_type -- for indexing purposes*)
 fun encode_type (Type (c, Ts)) = Term.list_comb (Const (c, dummyT), map encode_type Ts)
@@ -75,7 +78,7 @@ fun is_empty (Node (c,t)) = Stab.is_empty c andalso case Stab.dest t of
     [] => true
   | xs => fold (fn (_,[]) => I | (_,_) => K false) xs true
 
-(*** Insertion into a path index tree ***)
+(*** Insertion ***)
 
 exception INSERT;       (*duplicate item in the net*)
 
@@ -127,7 +130,7 @@ fun insert_safe eq entry net = insert eq entry net handle INSERT => net;
 fun insert_term_safe eq entry net = insert_term eq entry net handle INSERT => net;
 
 
-(*** Deletion from a discrimination net ***)
+(*** Deletion ***)
 
 exception DELETE;       (*missing item in the net*)
 
@@ -156,7 +159,7 @@ fun delete_safe eq entry net = delete eq entry net handle DELETE => net;
 fun delete_term_safe eq entry net = delete_term eq entry net handle DELETE => net;
 
 
-(*** Retrieval functions for discrimination nets ***)
+(*** Retrieval functions ***)
 fun content_ref n =
   let fun aux (Node (con,tree)) =
     let val con_fst =
@@ -191,24 +194,27 @@ fun lookup tree keys =
     in Library.foldl intersect (acc,keys) |> map (op !) end (* TODO *)
 
 fun match unif (node as Node (con,tree)) term =
-  let val var_terms = Stab.lookup_list con VarS
-      val handle_var = if unif then content_ref node else var_terms
-      fun handle_sym sym = Stab.lookup_list con sym
-      fun handle_func func args =
-        let val list = Stab.lookup_list tree (symbol_of_term func)
-            fun arg_to_terms index arg = match unif (nth list index) arg handle Subscript => []
-            fun intersect fst snd = inter Term.aconv_untyped fst snd
-        in
-        fold_index (fn (index,arg) => fn acc => inter (op =) (arg_to_terms index arg) acc)
-          args (content_ref node)
-        end
+  let
+    val var_terms = Stab.lookup_list con VarS
+    val handle_var = if unif then content_ref node else var_terms
+    fun handle_sym sym = Stab.lookup_list con sym
+    fun handle_func func args =
+      let val list = Stab.lookup_list tree func
+          fun arg_to_terms index arg = match unif (nth list index) arg handle Subscript => []
+      in
+      fold_index (fn (index,arg) => fn acc => inter (op =) (arg_to_terms index arg) acc)
+        args (content_ref node)
+      end
   in
   case strip_comb term of
+  (* Ignore arguments and return
+  Unif: every term at that path
+  ~Unif: terms with Var/Abs at that path *)
     (Var _,_) => handle_var
   | (Abs _,_) => handle_var
   | (_$_,_) => raise Fail "Impossible"
   | (sym,[]) => (if unif then var_terms else []) @ (handle_sym (symbol_of_term sym))
-  | (func,args) => (if unif then var_terms else []) @ (handle_func func args)
+  | (func,args) => (if unif then var_terms else []) @ (handle_func (symbol_of_term func) args)
   end
 
 fun match_term n t = match false n t |> distinct (op =) |> map (op !)
@@ -218,17 +224,14 @@ val entries = content (* TODO are they really the same? *)
 
 fun dest (Node (con,tree)) =
   let
-    val content =
+    val content_alist =
       Stab.dest con
-      |> map (fn (k,vs) => map (fn v => (End k,v)) vs)
-      |> flat
-    val rec_tree =
+      |> maps (fn (k,vs) => map (fn v => (End k,v)) vs)
+    val tree_alist =
       Stab.dest tree
-      |> map (fn (sym,vs) => map_index (fn (i,v) => (sym,i,v)) vs)
-      |> flat
-      |> map (fn (sym,ind,value) => dest value |> map (fn (k,v) => (Fun (sym,ind,k),v)))
-      |> flat
-  in content @ rec_tree end
+      |> maps (fn (sym,vs) => map_index (fn (i,v) => (sym,i,v)) vs)
+      |> maps (fn (sym,ind,value) => dest value |> map (fn (k,v) => (Fun (sym,ind,k),v)))
+  in content_alist @ tree_alist end
 
 fun merge eq (tree1, tree2) =
   fold (fn t => insert_ref_safe eq t) (dest tree2 |> map (fn (k,v) => ([k],v))) tree1  (* FIXME non-canonical merge order!?! *)
