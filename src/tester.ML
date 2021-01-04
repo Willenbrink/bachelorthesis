@@ -16,8 +16,10 @@ fun net_gen num_term term_gen r =
           let val (term,r) = term_gen r
               val (base,r) = aux (num_term - 1) r
           in (Net.insert_term_safe eq (term,term) base,r) end
-      val (num_term,r) = Random.range_int (0,num_term) r (* TODO find better solution for spread *)
-  in aux num_term r end
+  in 
+  Random.range_int (0,num_term) r
+  |-> aux
+  end
 
 fun check_prop gen printer name prop = Spec_Check.checkGen @{context} (gen, printer) (name, prop)
 fun check gen printer name pred = check_prop gen printer name (Property.pred pred)
@@ -81,7 +83,8 @@ fun add_timings {elapsed = elapsed1, cpu = cpu1, gc = gc1} {elapsed = elapsed2, 
 fun timer name repetitions f_test f_input =
   (writeln name;
   1 upto repetitions
-  |> map (fn _ => Random.new ()
+  |> map (fn i => Random.new ()
+          |> funpow i Random.next
           |> Timing.timing (f_input)
           |>> (fn {elapsed,...} => elapsed)
           ||> Timing.timing f_test)

@@ -37,6 +37,9 @@
 * Isabelle besser herrichten
 * Interne Repräsentation von FOL, Quantifiers, Lambdas, Theorems etc. genauer anschauen, print_satement hernehmen?
 
+## Bis 12.01
+* Pathindexing nutzt jetzt 'a ref statt 'a. Bessere performance
+
 ## Bis 22.12
 * Curried f in term_det
 * Testframework als eigenes Repo, Kevin schreiben
