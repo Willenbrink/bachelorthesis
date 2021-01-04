@@ -13,7 +13,7 @@ match_term no longer treats abstractions as wildcards; instead they match
 only wildcards in patterns.  Requires operands to be beta-eta-normal.
 *)
 
-structure Path (*: NET*) =
+structure Path =
 struct
 (* TODO should an empty key be valid?
    TODO should a key list address one node or multiple?
@@ -249,5 +249,5 @@ fun dot_of_node (node as Node(con,tree)) =
 *)
 end;
 
-(* TODO checks interface while also exposing internal functions *)
+(* Checks if module is compatible with interface while still exposing internal functions *)
 structure PathInterfaceCheck = Path : NET;

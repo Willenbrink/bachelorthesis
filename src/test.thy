@@ -1,6 +1,7 @@
 theory "test"
   imports Main "../spec_check/src/Spec_Check"
-  begin
+begin
+ML_file "net_interface.ML"
 ML_file "net.ML"
 ML_file "path.ML"
 ML_file "pprinter.ML"
@@ -29,7 +30,7 @@ val terms =
 []
 
 val pathl as Path.Node (con,rest) = fold ins terms Path.empty
-fun match unif tree term = Path.match unif tree term |> map pterm
+fun match unif tree term = Path.match unif tree term |> map (pterm o op !)
 \<close>
 
 ML_val \<open>
