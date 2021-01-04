@@ -98,6 +98,9 @@ val y = Unsynchronized.ref (!x)
 val z = x
 val a = (x = y)
 val b = (z = x)
+val c = Unsynchronized.ref 0
+val d = Unsynchronized.ref (!c)
+val e = (c = d)
 \<close>
 
 ML_command \<open>

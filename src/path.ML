@@ -37,7 +37,8 @@ fun sym_ord (VarS, VarS) = EQUAL
 
 structure Stab = Table(type key = symbol val ord = sym_ord);
 type 'a content = 'a Unsynchronized.ref list Stab.table
-datatype 'a net = Node of 'a content * 'a net list Stab.table
+datatype 'a tree = Node of 'a content * 'a tree list Stab.table
+type 'a net = 'a Unsynchronized.ref list * 'a tree
 
 fun symbol_of_term t = case t of
           Const (n,_) => AtomS n
@@ -73,10 +74,10 @@ fun encode_type (Type (c, Ts)) = Term.list_comb (Const (c, dummyT), map encode_t
    TODO Lookup functions preserve order in items stored at same level?
 *)
 
-val empty = Node (Stab.empty, Stab.empty);
-fun is_empty (Node (c,t)) = Stab.is_empty c andalso case Stab.dest t of
-    [] => true
-  | xs => fold (fn (_,[]) => I | (_,_) => K false) xs true
+val empty_node = Node (Stab.empty, Stab.empty)
+val empty = ([],empty_node);
+fun is_empty ([],_) = true
+  | is_empty _ = false
 
 (*** Insertion ***)
 
@@ -107,7 +108,7 @@ fun insert_one eq (key, v) (Node (con,tree)) = case key of
       End n => Node (append_sym eq (n,v) con, tree)
     | Fun (name,index,key) =>
         let fun ins tree = insert_one eq (key,v) tree
-            fun ins_list xs = nth_map_default index ins empty xs
+            fun ins_list xs = nth_map_default index ins empty_node xs
             fun ins_symtab f tree = Stab.map_default (name,[]) f tree
         in Node (con, ins_symtab ins_list tree) end
 
@@ -117,11 +118,13 @@ fun insert_ref_safe eq (keys,term_ref) net = (* Insert a reference directly. Onl
   handle INSERT => net
   end
 
-fun insert eq (keys,term) net =
+fun insert eq (keys,term) (values,tree) =
   let fun eq' (x,y) = (x = y) orelse eq (!x,!y)
-      val term = Unsynchronized.ref term
+      val term_ref = Unsynchronized.ref term
+      val values = term_ref :: values
+      val tree = Library.foldl (fn (acc,k) => insert_one eq' (k, term_ref) acc) (tree,keys)
   in
-  Library.foldl (fn (acc,k) => insert_one eq' (k, term) acc) (net,keys)
+  (values,tree)
   end
 
 fun insert_term eq (t, x) = insert eq (key_of_term t, x);
@@ -150,8 +153,16 @@ fun delete_one eq (key, v) (Node (con,tree)) =
         |> (fn x => Node (con, x))
    end
 
-fun delete eq (keys, x) net =
-  Library.foldl (fn (acc,k) => delete_one eq (k, Unsynchronized.ref x) acc) (net,keys)
+fun delete eq (keys, x) (values, tree) =
+  let
+    (* TODO The value is saved at multiple locations. If some keys are removed from the list
+      those will not be deleted from the tree but will be from the values *)
+    fun eq' (x,y) = eq (x,!y)
+    val values = if member eq' values x then remove eq' x values else raise DELETE
+    val tree = Library.foldl (fn (acc,k) => delete_one eq (k, Unsynchronized.ref x) acc) (tree,keys)
+  in
+  (values,tree)
+  end
 
 fun delete_term eq (t, x) = delete eq (key_of_term t, x);
 
@@ -160,7 +171,7 @@ fun delete_term_safe eq entry net = delete_term eq entry net handle DELETE => ne
 
 
 (*** Retrieval functions ***)
-fun content_ref n =
+fun content_ref_node tree =
   let fun aux (Node (con,tree)) =
     let val con_fst =
           con |> Stab.dest 
@@ -171,13 +182,13 @@ fun content_ref n =
                |> maps aux
     in con_fst @ con_snd end
   in
-  aux n
+  aux tree
   (*|> tap (fn x => x |> length |> @{make_string} |> writeln)*)
   |> distinct (op =)
 (*  |> tap (fn x => x |> length |> @{make_string} |> writeln)*)
   end
 
-fun content n = content_ref n |> map (op !)
+fun content (values,_) = values |> map (op !)
 
 (*Return the list of items at the given node, [] if no such node*)
 fun lookup_one (Node (con,tree)) key = case key of
@@ -188,22 +199,20 @@ fun lookup_one (Node (con,tree)) key = case key of
        >>= (fn x => lookup_one x key)
        |> Option.valOf
 
-fun lookup tree keys =
-    let val acc = content_ref tree
-        fun intersect (acc,k) = inter (op =) acc (lookup_one tree k)
-    in Library.foldl intersect (acc,keys) |> map (op !) end (* TODO *)
+fun lookup (values,tree) keys =
+    let fun intersect (acc,k) = inter (op =) acc (lookup_one tree k)
+    in Library.foldl intersect (values,keys) |> map (op !) end (* TODO *)
 
-fun match unif (node as Node (con,tree)) term =
+fun match unif values (Node (con,tree)) term =
   let
     val var_terms = Stab.lookup_list con VarS
-    val handle_var = if unif then content_ref node else var_terms
+    val handle_var = if unif then values else var_terms
     fun handle_sym sym = Stab.lookup_list con sym
     fun handle_func func args =
       let val list = Stab.lookup_list tree func
-          fun arg_to_terms index arg = match unif (nth list index) arg handle Subscript => []
+          fun arg_to_terms index arg = match unif values (nth list index) arg handle Subscript => []
       in
-      fold_index (fn (index,arg) => fn acc => inter (op =) (arg_to_terms index arg) acc)
-        args (content_ref node)
+      fold_index (fn (i,arg) => fn acc => inter (op =) (arg_to_terms i arg) acc) args values
       end
   in
   case strip_comb term of
@@ -217,8 +226,8 @@ fun match unif (node as Node (con,tree)) term =
   | (func,args) => (if unif then var_terms else []) @ (handle_func (symbol_of_term func) args)
   end
 
-fun match_term n t = match false n t |> distinct (op =) |> map (op !)
-fun unify_term n t = match true n t |> distinct (op =) |> map (op !)
+fun match_term (values,tree) t = match false values tree t |> distinct (op =) |> map (op !)
+fun unify_term (values,tree) t = match true values tree t |> distinct (op =) |> map (op !)
 
 val entries = content (* TODO are they really the same? *)
 
@@ -233,8 +242,8 @@ fun dest (Node (con,tree)) =
       |> maps (fn (sym,ind,value) => dest value |> map (fn (k,v) => (Fun (sym,ind,k),v)))
   in content_alist @ tree_alist end
 
-fun merge eq (tree1, tree2) =
-  fold (fn t => insert_ref_safe eq t) (dest tree2 |> map (fn (k,v) => ([k],v))) tree1  (* FIXME non-canonical merge order!?! *)
+fun merge eq ((values1,tree1), (values2,tree2)) =
+  (union (op =) values1 values2, fold (fn t => insert_ref_safe eq t) (dest tree2 |> map (fn (k,v) => ([k],v))) tree1)  (* FIXME non-canonical merge order!?! *)
 
 fun subtract eq tree1 tree2 = Library.subtract (swap #> eq) (content tree1) (content tree2)
 
