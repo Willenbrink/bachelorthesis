@@ -99,7 +99,7 @@ val a = (x = y)
 val b = (z = x)
 \<close>
 
-ML \<open>
+ML_command \<open>
 val pathb = (writeln "Path"; PathTest.benchmark ());
 val netb = (writeln "Net"; NetTest.benchmark ());
 fun diff {elapsed = _, cpu = c1, gc = _} {elapsed = _, cpu = c2, gc = _} =
