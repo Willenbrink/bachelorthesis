@@ -1,10 +1,10 @@
 # Tasks
 ## TODO
+* basic symbol generator and adding an additional one which represents a recurring symbol whenever a new symbol is generated. That is, the probability for a symbol being reused changes during generation: 0.0  (no symbol generated yet) -> 0.5 -> 0.67 -> 0.75 etc.
 * Tests/Benchmarks als Fokus!
 * Später: Term generation verbessern
   - Catalan number, Folien ca. 229-237: https://db.in.tum.de/teaching/ws2021/queryopt/slides/chapter3.pdf
   - Prüfer sequenzen
-* Längere Namen bei Tests
 * Compilervariante klar vom Rest trennen bei SpecCheck
 * Später: term_structure (random) mit disjunkten Variablennamen und später unification / mapping mit Index
 * Context noch einmal anschauen. Sicher nicht geeignet?
@@ -38,6 +38,7 @@
 * Interne Repräsentation von FOL, Quantifiers, Lambdas, Theorems etc. genauer anschauen, print_satement hernehmen?
 
 ## Bis 12.01
+* Längere Namen bei Tests
 * Pathindexing nutzt jetzt 'a ref statt 'a. Bessere performance
 
 ## Bis 22.12

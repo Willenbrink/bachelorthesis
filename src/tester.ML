@@ -4,18 +4,23 @@ structure Gen = Generator
 
 val eq = Term.aconv_untyped
 fun set_eq fst snd = eq_set eq (fst,snd)
+fun def_sym_gen n = Gen.def_sym_gen (1.0,2.0,1.0,5.0) n
 fun term_gen n r =
-  let val (num,r) = Random.range_int (0,n) r (* TODO find better solution for spread *)
-  in Gen.term_fol (0.0, 0.3, 0.3) 5 num r end
+  let
+    val (num,r) = Random.range_int (0,n) r (* TODO find better solution for spread *)
+  in
+  Gen.term_fol def_sym_gen 5 num r
+  end
 
 fun net_gen num_term term_gen r =
-  let fun aux num_term r =
-        case num_term of
-          0 => (Net.empty,r)
-        | _ =>
-          let val (term,r) = term_gen r
-              val (base,r) = aux (num_term - 1) r
-          in (Net.insert_term_safe eq (term,term) base,r) end
+  let
+    fun aux num_term r =
+      case num_term of
+        0 => (Net.empty,r)
+      | _ =>
+        let val (term,r) = term_gen r
+            val (base,r) = aux (num_term - 1) r
+        in (Net.insert_term_safe eq (term,term) base,r) end
   in 
   Random.range_int (0,num_term) r
   |-> aux
@@ -134,8 +139,8 @@ timer "Delete 10% of terms in net" 3
        #> (fn (n,r) => (n, Gen.shuffle (Net.content n) r |> fst
            |> take (length (Net.content n) div 10)))
       ),
-timer "Replace Subterm with Var and retrieve matching terms" 20
-      (fn (t,n,r) => Net.unify_term n (replace_subterm t r |> fst))      
+timer "Replace part of term with Var and retrieve matching terms from net" 30
+      (fn (t,n,r) => Net.unify_term n (replace_subterm t r |> fst))
       (fn r => Gen.zip3 (def_term_gen, def_net_gen, Random.split) r |> fst)
 ]
 

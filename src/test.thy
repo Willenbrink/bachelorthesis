@@ -29,8 +29,8 @@ val terms =
 @{term "f (g (h a) y z)"} ::
 []
 
-val pathl as Path.Node (con,rest) = fold ins terms Path.empty
-fun match unif tree term = Path.match unif tree term |> map (pterm o op !)
+val pathl = fold (fn t => fn net => Path.insert_term eq (t,t) net) terms Path.empty
+fun match unif (values,tree) term = Path.match unif values tree term |> map (pterm o op !)
 \<close>
 
 ML_val \<open>
@@ -67,7 +67,7 @@ x |> pterm
 ML_val \<open>
 val r = Random.new ()
 fun f r = Generator.term_fol_structure 3 10 r
-|-> Generator.term_fol_map (0.0, 0.0, 0.0)
+|-> Generator.term_fol_map (Generator.def_sym_gen (1.0,1.0,1.0,1.0))
 |> fst;
 val x = f r |> pterm;
 val y = f r;
@@ -75,17 +75,28 @@ val y = f r;
 
 ML_val \<open>@{term_pat "ALL x. f x y"}\<close>
 
-ML "fun ins t n = Net.insert_term eq (t,t) n"
-ML \<open>val net = Net.empty
- |> ins @{term "f x"}
- |> ins @{term "f (x y)"}
- |> ins @{term "f x y"}
- |> ins @{term "f (g x y)"}
- |> ins @{term "f (g x y z)"}
- |> ins @{term "f (g y y z)"}
- |> ins @{term "f (g (h a) y z)"}
- |> ins @{term "f"}
+(*
+  val variant_frees: Proof.context -> term list -> (string * 'a) list -> (string * 'a) list
+  val variant_fixes: string list -> Proof.context -> string list * Proof.context
+*)
+ML \<open>
+val ctxt = @{context};
+val ctxt = Variable.declare_const ("x","nat") ctxt;
+
+let
+val ctxt0 = ctxt
+val (_, ctxt1) = Variable.add_fixes ["x"] ctxt0
+val frees = replicate 2 ("x", @{typ nat})
+in
+(Variable.variant_frees ctxt0 [] frees,
+Variable.variant_frees ctxt1 [] frees)
+end
+
 \<close>
+
+
+
+(* Testing and Benchmarking *)
 
 ML \<open>
 structure NetTest = Tester(Net);
