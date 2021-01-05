@@ -112,7 +112,8 @@ fun insert_one eq (key, v) (Node (con,tree)) = case key of
             fun ins_symtab f tree = Stab.map_default (name,[]) f tree
         in Node (con, ins_symtab ins_list tree) end
 
-fun insert_ref_safe eq (keys,term_ref) net = (* Insert a reference directly. Only internal usage *)
+(* Insert a reference directly. Only internal usage *)
+fun insert_ref_safe eq (keys,term_ref) net =
   let fun eq' (x,y) = (x = y) orelse eq (!x,!y) in
   Library.foldl (fn (acc,k) => insert_one eq' (k, term_ref) acc) (net,keys)
   handle INSERT => net

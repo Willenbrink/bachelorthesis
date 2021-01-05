@@ -87,7 +87,7 @@ fun timer name repetitions f_test f_input =
       (prep + prep_total,
        add_timings test test_total)
   in
-  writeln name;
+  writeln (name ^ ":");
   1 upto repetitions
   |> map (fn i => r
           |> funpow i Random.next
@@ -97,13 +97,13 @@ fun timer name repetitions f_test f_input =
           |> (fn (prep,(test,result)) => (ignore result; (prep,test)) ))
   |> (fn list => fold add_results list
       (Time.fromSeconds 0, {elapsed = Time.fromSeconds 0, cpu = Time.fromSeconds 0, gc = Time.fromSeconds 0}))
-  |> tap (fn (prep,test) => writeln ("Prep: " ^ @{make_string} prep ^ "s - Test: " ^ Timing.message test))
-  |> (fn (prep,test) => (name,prep,test))
+  |> tap (fn (prep,test) => writeln ("  Prep: " ^ @{make_string} prep ^ "s - Test: " ^ Timing.message test))
+  |> (fn (prep,test) => (name,repetitions,prep,test))
   end
 
 (* Significantly larger for benchmarks than tests *)
 val def_term_gen = term_gen 100
-val def_net_gen = net_gen 1000 def_term_gen
+val def_net_gen = net_gen 100 def_term_gen
 fun benchmark () = [
 timer "Creation of net" 10
       def_net_gen
@@ -114,18 +114,27 @@ timer "Content of net" 10
 timer "Entries of net" 10
       (Net.entries)
       (def_net_gen #> fst),
+timer "Insert one term" 30
+      (fn (net,term) => Net.insert_term_safe eq (term,term) net)
+      (fn r => Gen.zip (def_net_gen, def_term_gen) r
+               |> fst),
+timer "Delete one term" 30
+      (fn (net,term) => Net.delete_term eq (term,term) net)
+      (fn r => Gen.zip (def_net_gen, def_term_gen) r
+               |> fst
+               |> (fn (n,t) => (Net.insert_term_safe eq (t,t) n,t))),
 timer "Get 10% of terms in net" 3
       (fn (n,r) => (n, Gen.shuffle (Net.content n) r
                        |> fst
                        |> take (length (Net.content n) div 10)))
       def_net_gen,
-timer "Remove 10% of terms in net" 3
+timer "Delete 10% of terms in net" 3
       (fn (net,terms) => fold (fn x => fn net => Net.delete_term_safe eq (x,x) net) terms net)
       (def_net_gen
        #> (fn (n,r) => (n, Gen.shuffle (Net.content n) r |> fst
            |> take (length (Net.content n) div 10)))
       ),
-timer "Replace Subterm with Var and retrieve matching terms" 100
+timer "Replace Subterm with Var and retrieve matching terms" 20
       (fn (t,n,r) => Net.unify_term n (replace_subterm t r |> fst))      
       (fn r => Gen.zip3 (def_term_gen, def_net_gen, Random.split) r |> fst)
 ]
