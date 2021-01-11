@@ -131,7 +131,7 @@ val netb = (writeln "Net"; NetTest.benchmark ());
 val res = map_index (fn (i,(name,reps,_,x)) => (name,reps,diff x (nth netb i |> (fn (_,_,_,x) => x)))) pathb;
 writeln ("Path indexing (PI) vs discrimination net (DN)\nAbs. (PI - DN)\tRel. (PI/DN)\tRepetitions\tName");
 map (fn (name,reps,(abs,rel)) => (print_real abs ^ "s\t\t"
-                                  ^ print_real rel ^ "s\t\t"
+                                  ^ print_real rel ^ "\t\t"
                                   ^ @{make_string} reps ^ "\t\t"
                                   ^ name)
                                   |> writeln) res
