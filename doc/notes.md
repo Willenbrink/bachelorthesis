@@ -1,5 +1,6 @@
 # Tasks
 ## TODO
+* Anderer Fehler in Tests wenn Exception geworfen wurde! Ansonsten sehr verwirrend
 * basic symbol generator and adding an additional one which represents a recurring symbol whenever a new symbol is generated. That is, the probability for a symbol being reused changes during generation: 0.0  (no symbol generated yet) -> 0.5 -> 0.67 -> 0.75 etc.
 * Tests/Benchmarks als Fokus!
 * Später: Term generation verbessern
@@ -22,7 +23,7 @@
     - Beta-eta-normal form = Eta-long beta-normal form?
     - Ähnliche Beispiele zu: plus(x,y,150) aus einem Paper
 * Beispiele wo pathindexing schlecht funktioniert
-    - Kurze Terme: Alle längeren 
+    - Kurze Terme: Alle Nodes enthalten lange Listen => Intersect wird aufwändiger
     - Konsistente Typen bei Indexing!
 * Benchmarks (FOL)
     - DN vs PI vs TT on ground terms (ohne Variablen)
@@ -40,6 +41,8 @@
 ## Bis 12.01
 * Längere Namen bei Tests
 * Pathindexing nutzt jetzt 'a ref statt 'a. Bessere performance
+* Test für Delete von einem Term der an zwei Stellen gespeichert ist.
+* 2 kleine Tests für HOL. PI und DN failen beide. HOL-Terme nicht in Beta-Eta normalform!
 
 ## Bis 22.12
 * Curried f in term_det

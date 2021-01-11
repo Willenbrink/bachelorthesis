@@ -9,9 +9,13 @@ ML_file "tester.ML"
 ML "open Pprinter"
 setup "term_pat_setup"
 setup "type_pat_setup"
-(*ML \<open>ML_system_pp (fn _ => fn _ => Pretty.to_polyml o raw_ppatyp)\<close>*)
-ML_val \<open>@{term_pat "f x y"}\<close>
-ML_val \<open>@{typ_pat "'a \<Rightarrow> 'b \<Rightarrow> 'c"}\<close>
+(*ML \<open>ML_system_pp (fn _ => fn _ => Pretty.to_polyml o raw_pp_typ)\<close>*)
+ML_val \<open>
+@{term_pat "f x y"};
+@{typ_pat "'a \<Rightarrow> 'a"};
+TFree ("'a",["'a", "'b"]);
+@{term "(\<lambda> x. x)"};
+\<close>
 
 ML \<open>
 val eq = Term.aconv_untyped

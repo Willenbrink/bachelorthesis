@@ -218,7 +218,7 @@ fun match unif values (Node (con,tree)) term =
   in
   case strip_comb term of
   (* Ignore arguments and return
-  Unif: every term at that path
+   Unif: every term at that path
   ~Unif: terms with Var/Abs at that path *)
     (Var _,_) => handle_var
   | (Abs _,_) => handle_var
