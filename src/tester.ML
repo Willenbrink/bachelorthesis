@@ -44,6 +44,16 @@ fun replace_subterm t r =
 
 val def_term_gen = term_gen 10
 val def_net_gen = net_gen 30 def_term_gen
+fun term_in_net_gen r = (* Returns (term,net) where term is guaranteed to be in the net *)
+  let
+    val (net,r) = Gen.gen_prop (fn n => Net.content n <> []) def_net_gen r
+    val (term,r) = Gen.selectL (Net.content net ) r
+  in
+  ((term,net),r)
+  end
+fun id_term term =
+  let val id_type = Type ("fun", [TFree ("'a", ["HOL.type"]), TFree ("'a", ["HOL.type"])])
+  in (Abs ("x", id_type,(Bound 0))) $ term end
 
 fun test () = (
 check (Gen.unit) NONE
@@ -75,6 +85,30 @@ check_prop (Gen.zip3 (def_term_gen, def_net_gen, Random.split))
           let val unifs = Net.unify_term n (replace_subterm t r |> fst)
           in member eq unifs t end)
       );
+check (term_in_net_gen) (SOME @{make_string})
+      "match net t \<subseteq> unify net t"
+      (fn (t,n) => subset eq ((Net.match_term n t),(Net.unify_term n t)));
+check (term_in_net_gen) (SOME @{make_string})
+      "1. delete works correctly when values are saved under multiple keys"
+      (fn (t,n) =>
+        Net.content (Net.insert_term_safe eq (Const ("x",TFree ("'a",[])), t) n
+                       |> Net.delete_term eq (Const ("x",TFree ("'a",[])), t))
+        = Net.content n);
+check (term_in_net_gen) (SOME @{make_string})
+      "2. delete works correctly when values are saved under multiple keys"
+      (fn (t,n) =>
+        Net.content (Net.insert_term_safe eq (Const ("x",TFree ("'a",[])), t) n
+                       |> Net.delete_term_safe eq (t, t))
+        = Net.content n);
+(*
+Does not work! beta-eta normal form is a requirement
+check (term_in_net_gen) (SOME @{make_string})
+      "HOL: unify net (id t) == unify net t"
+      (fn (t,n) => Net.unify_term n (id_term t) = Net.unify_term n t);
+check (term_in_net_gen) (SOME @{make_string})
+      "HOL: match net (id t) == match net t"
+      (fn (t,n) => Net.match_term n (id_term t) = Net.match_term n t);
+*)
 ())
 
 

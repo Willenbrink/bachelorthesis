@@ -119,14 +119,19 @@ val e = (c = d)
 \<close>
 
 ML_command \<open>
+fun print_real real = 
+  real
+  |> Real.fmt (StringCvt.FIX (SOME 3))
+  |> StringCvt.padLeft #" " 6
+fun diff {elapsed = _, cpu = c1, gc = _} {elapsed = _, cpu = c2, gc = _} =
+  (Time.toReal c1 - Time.toReal c2, (Time.toReal c1) / (Time.toReal c2))
+
 val pathb = (writeln "Path"; PathTest.benchmark ());
 val netb = (writeln "Net"; NetTest.benchmark ());
-fun diff {elapsed = _, cpu = c1, gc = _} {elapsed = _, cpu = c2, gc = _} =
-  (c1 - c2, (Time.toReal c1) / (Time.toReal c2))
 val res = map_index (fn (i,(name,reps,_,x)) => (name,reps,diff x (nth netb i |> (fn (_,_,_,x) => x)))) pathb;
-writeln ("\nAbsolute\tRelative\tRepetitions\tName");
-map (fn (name,reps,(abs,rel)) => (@{make_string} abs ^ "s\t\t"
-                                  ^ @{make_string} rel ^ "\t"
+writeln ("Path indexing (PI) vs discrimination net (DN)\nAbs. (PI - DN)\tRel. (PI/DN)\tRepetitions\tName");
+map (fn (name,reps,(abs,rel)) => (print_real abs ^ "s\t\t"
+                                  ^ print_real rel ^ "s\t\t"
                                   ^ @{make_string} reps ^ "\t\t"
                                   ^ name)
                                   |> writeln) res
