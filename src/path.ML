@@ -223,8 +223,8 @@ fun match unif values (Node (con,tree)) term =
     (Var _,_) => handle_var
   | (Abs _,_) => handle_var
   | (_$_,_) => raise Fail "Impossible"
-  | (sym,[]) => (if unif then var_terms else []) @ (handle_sym (symbol_of_term sym))
-  | (func,args) => (if unif then var_terms else []) @ (handle_func (symbol_of_term func) args)
+  | (sym,[]) => var_terms @ (handle_sym (symbol_of_term sym))
+  | (func,args) => var_terms @ (handle_func (symbol_of_term func) args)
   end
 
 fun match_term (values,tree) t = match false values tree t |> distinct (op =) |> map (op !)

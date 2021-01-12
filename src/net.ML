@@ -22,6 +22,10 @@ datatype key = CombK | VarK | AtomK of string;
     Any term whose head is a Var is regarded entirely as a Var.
     Abstractions are also regarded as Vars;  this covers eta-conversion
     and "near" eta-conversions such as %x.?P(?f(x)).
+  As the terms must be eta-long beta-normal form every function f is wrapped into (\x. f x)
+  Additionally no beta reduction is possible \<Rightarrow> Every function is missing its arguments
+    (e.g. (\x. f x) (\x. g x) is not possible)
+  \<Rightarrow> Every Abs occurence has no arguments. No HOL-symbols/terms can occur outside of an Abs
 *)
 fun add_key_of_terms (term, keys) : key list =
    let fun aux (term, keys) = case term of
@@ -144,8 +148,9 @@ fun lookup (Leaf xs) [] = xs
 
 (*Skipping a term in a net.  Recursively skip 2 levels if a combination*)
 fun net_skip (Leaf _) nets = nets
-    | net_skip (Net{comb,var,atoms}) nets =
-        fold_rev net_skip (net_skip comb []) (Symtab.fold (cons o #2) atoms (var::nets));
+  | net_skip (Net{comb,var,atoms}) nets =
+      Symtab.fold (cons o #2) atoms (var::nets)
+      |> fold_rev net_skip (net_skip comb []);
 
 
 (** Matching and Unification **)
@@ -163,29 +168,31 @@ fun look1 (atoms, a) nets =
                                     else matches only a variable in net.
 *)
 fun matching unif t net nets : 'a net list =
-    let fun rands _ (Leaf _, nets) : 'a net list = nets
-        | rands t (Net{comb,atoms,...}, nets) =
-            case t of
-                f$t => fold_rev (check_var t) (rands f (comb,[])) nets
-                | Const(c,_) => look1 (atoms, c) nets
-                | Free(c,_)  => look1 (atoms, c) nets
-                | Bound i    => look1 (atoms, Name.bound i) nets
-                | _          => nets (* When does this occur? *)
-        and check_var t net nets =
-              case net of
-                Leaf _ => nets
-              | Net{var,...} =>
-                  case head_of t of
-                      Var _ => if unif then net_skip net nets
-                              else var::nets           (*only matches Var in net*)
-      (*If "unif" then a var instantiation in the abstraction could allow
-      an eta-reduction, so regard the abstraction as a wildcard.*)
-                  | Abs _ => if unif then net_skip net nets
-                              else var::nets           (*only a Var can match*)
-                  | _ => rands t (net, var::nets)  (*var could match also*)
-    in
-    check_var t net nets
-    end;
+  let
+    fun rands _ (Leaf _, nets) : 'a net list = nets
+      | rands t (Net{comb,atoms,...}, nets) =
+          case t of
+            f$t => fold_rev (check_var t) (rands f (comb,[])) nets
+          | Const(c,_) => look1 (atoms, c) nets
+          | Free(c,_)  => look1 (atoms, c) nets
+          | Bound i    => look1 (atoms, Name.bound i) nets
+          | _          => nets (* When does this occur? *)
+    and
+    check_var t net nets =
+      case net of
+        Leaf _ => nets
+      | Net{var,...} =>
+          case head_of t of
+            Var _ => if unif then net_skip net nets
+                     else var::nets           (*only matches Var in net*)
+    (*If "unif" then a var instantiation in the abstraction could allow
+    an eta-reduction, so regard the abstraction as a wildcard.*)
+          | Abs _ => if unif then net_skip net nets
+                     else var::nets           (*only a Var can match*)
+          | _ => rands t (net, var::nets)  (*var could match also*)
+  in
+  check_var t net nets
+  end;
 
 fun extract_leaves l = maps (fn Leaf xs => xs) l;
 

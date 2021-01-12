@@ -95,8 +95,16 @@ check (term_in_net_gen) (SOME @{make_string})
         set_eq (Net.content n)
           (Net.content (n |> Net.insert_term_safe eq (Const ("x",TFree ("'a",[])), t)
                           |> Net.delete_term_safe eq (t, t))));
+
+(* HOL *)
+check (Gen.unit) (NONE)
+      "HOL: Distinction between Var x and \\x. f x"
+      (fn () =>
+        let val t = @{term "x"}
+            val net = Net.empty |> ins t |> ins @{term "\<lambda>x. f x"} in
+        Net.match_term net t = [t]
+        end);
 (*
-Does not work! beta-eta normal form is a requirement
 check (term_in_net_gen) (SOME @{make_string})
       "HOL: unify net (id t) == unify net t"
       (fn (t,n) => Net.unify_term n (id_term t) = Net.unify_term n t);

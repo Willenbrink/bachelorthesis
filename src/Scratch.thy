@@ -9,7 +9,7 @@ ML_file "tester.ML"
 ML "open Pprinter"
 setup "term_pat_setup"
 setup "type_pat_setup"
-ML \<open>ML_system_pp (fn _ => fn _ => Pretty.to_polyml o raw_pp_typ)\<close>
+(*ML \<open>ML_system_pp (fn _ => fn _ => Pretty.to_polyml o raw_pp_typ)\<close>*)
 
 ML_val \<open>
 @{term_pat "f x y"};
@@ -118,3 +118,42 @@ val net' = net |> ins' (x,z) |> Net.delete_term eq (x,z) |> Net.content
 (*Net {atoms = {("a", Leaf [Free ("a", TVar (("'a", 0), []))])}, comb = Leaf [], var =
       Leaf [Var (("b", 3), TVar (("'a", 0), []))]})*)
 \<close>
+
+ML \<open>
+local
+val a = Var (("x",0),Type("'a",[])) (* @{term "?x"} *)
+val b = @{term "\<lambda>x. g (f x)"}
+val c = @{term "c"}
+val net  = Net.empty  |> Net.insert_term eq (a,a)  |> Net.insert_term eq (b,b) |> Net.insert_term eq (c,c)
+val path = Path.empty |> Path.insert_term eq (a,a) |> Path.insert_term eq (b,b) |> Path.insert_term eq (c,c)
+in
+val net = Net.match_term net a |> map pterm
+val path = Path.match_term path a |> map pterm
+end
+\<close>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
