@@ -42,8 +42,8 @@ fun replace_subterm t r =
   else (Term.list_comb (f,nth_map index (fn t => replace_subterm t r1 |> fst) args), r2)
   end
 
-val def_term_gen = term_gen 10
-val def_net_gen = net_gen 30 def_term_gen
+val def_term_gen = term_gen 3
+val def_net_gen = net_gen 5 def_term_gen
 fun term_in_net_gen r = (* Returns (term,net) where term is guaranteed to be in the net *)
   let
     val (net,r) = Gen.gen_prop (fn n => Net.content n <> []) def_net_gen r
@@ -66,24 +66,19 @@ check (def_net_gen) NONE
       "content = entries"
       (fn n => set_eq (Net.entries n) (Net.content n)
                andalso length (Net.entries n) = length (Net.content n));
-check_prop (Gen.zip (def_term_gen, def_net_gen)) (SOME @{make_string})
+check (term_in_net_gen) (SOME @{make_string})
       "Duplicate detection on insert"
-      (Property.==> (fn (t,n) => con t n,
-        fn (t,n) => (Net.insert_term eq (t,t) n; false) handle Net.INSERT => true)
-      );
-let fun net_size n = Net.content n |> List.length in
-check_prop (Gen.zip (def_term_gen, def_net_gen)) (SOME @{make_string})
+      (fn (t,n) => (Net.insert_term eq (t,t) n; false) handle Net.INSERT => true);
+check (term_in_net_gen) (SOME @{make_string})
       "Deletion removes term"
-      (Property.==> (fn (t,n) => con t n,
-                     fn (t,n) => ((Net.delete_term eq (t,t) n) |> net_size) = (net_size n - 1)))
-end;
-check_prop (Gen.zip3 (def_term_gen, def_net_gen, Random.split))
-      (SOME (fn (t,n,r) => @{make_string} (t, replace_subterm t r, n)))
+      (fn (t,n) => ((Net.delete_term eq (t,t) n) |> Net.content |> List.length)
+                   = (List.length (Net.content n) - 1));
+check (Gen.zip (term_in_net_gen, Random.split))
+      (SOME (fn ((t,n),r) => @{make_string} (t, replace_subterm t r, n)))
       "Replacing Subterm with Var still matches"
-      (Property.==> (fn (t,n,_) => con t n,
-        fn (t,n,r) =>
+      (fn ((t,n),r) =>
           let val unifs = Net.unify_term n (replace_subterm t r |> fst)
-          in member eq unifs t end)
+          in member eq unifs t end
       );
 check (term_in_net_gen) (SOME @{make_string})
       "match net t \<subseteq> unify net t"
@@ -91,15 +86,15 @@ check (term_in_net_gen) (SOME @{make_string})
 check (term_in_net_gen) (SOME @{make_string})
       "1. delete works correctly when values are saved under multiple keys"
       (fn (t,n) =>
-        Net.content (Net.insert_term_safe eq (Const ("x",TFree ("'a",[])), t) n
-                       |> Net.delete_term eq (Const ("x",TFree ("'a",[])), t))
-        = Net.content n);
+        set_eq (Net.content n)
+               (Net.content (n |> Net.insert_term_safe eq (Const ("x",TFree ("'a",[])), t)
+                               |> Net.delete_term_safe eq (Const ("x",TFree ("'a",[])), t))));
 check (term_in_net_gen) (SOME @{make_string})
       "2. delete works correctly when values are saved under multiple keys"
       (fn (t,n) =>
-        Net.content (Net.insert_term_safe eq (Const ("x",TFree ("'a",[])), t) n
-                       |> Net.delete_term_safe eq (t, t))
-        = Net.content n);
+        set_eq (Net.content n)
+          (Net.content (n |> Net.insert_term_safe eq (Const ("x",TFree ("'a",[])), t)
+                          |> Net.delete_term_safe eq (t, t))));
 (*
 Does not work! beta-eta normal form is a requirement
 check (term_in_net_gen) (SOME @{make_string})
@@ -141,8 +136,8 @@ fun timer name repetitions f_test f_input =
   end
 
 (* Significantly larger for benchmarks than tests *)
-val def_term_gen = term_gen 100
-val def_net_gen = net_gen 100 def_term_gen
+val def_term_gen = term_gen 10
+val def_net_gen = net_gen 30 def_term_gen
 fun benchmark () = [
 timer "Creation of net" 10
       def_net_gen

@@ -1,5 +1,5 @@
-theory "test"
-  imports Main "../spec_check/src/Spec_Check"
+theory "Scratch"
+imports Main "../spec_check/src/Spec_Check"
 begin
 ML_file "net_interface.ML"
 ML_file "net.ML"
@@ -9,13 +9,15 @@ ML_file "tester.ML"
 ML "open Pprinter"
 setup "term_pat_setup"
 setup "type_pat_setup"
-(*ML \<open>ML_system_pp (fn _ => fn _ => Pretty.to_polyml o raw_pp_typ)\<close>*)
+ML \<open>ML_system_pp (fn _ => fn _ => Pretty.to_polyml o raw_pp_typ)\<close>
+
 ML_val \<open>
 @{term_pat "f x y"};
 @{typ_pat "'a \<Rightarrow> 'a"};
 TFree ("'a",["'a", "'b"]);
 @{term "(\<lambda> x. x)"};
 \<close>
+
 
 ML \<open>
 val eq = Term.aconv_untyped
@@ -77,8 +79,6 @@ val x = f r |> pterm;
 val y = f r;
 \<close>
 
-ML_val \<open>@{term_pat "ALL x. f x y"}\<close>
-
 (*
   val variant_frees: Proof.context -> term list -> (string * 'a) list -> (string * 'a) list
   val variant_fixes: string list -> Proof.context -> string list * Proof.context
@@ -95,54 +95,26 @@ in
 (Variable.variant_frees ctxt0 [] frees,
 Variable.variant_frees ctxt1 [] frees)
 end
-
-\<close>
-
-
-
-(* Testing and Benchmarking *)
-
-ML \<open>
-structure NetTest = Tester(Net);
-structure PathTest = Tester(Path);
 \<close>
 
 ML \<open>
-val x = Unsynchronized.ref (Generator.term_fol)
-val y = Unsynchronized.ref (!x)
-val z = x
-val a = (x = y)
-val b = (z = x)
-val c = Unsynchronized.ref 0
-val d = Unsynchronized.ref (!c)
-val e = (c = d)
-\<close>
-
-ML_command \<open>
-fun print_real real = 
-  real
-  |> Real.fmt (StringCvt.FIX (SOME 3))
-  |> StringCvt.padLeft #" " 6
-fun diff {elapsed = _, cpu = c1, gc = _} {elapsed = _, cpu = c2, gc = _} =
-  (Time.toReal c1 - Time.toReal c2, (Time.toReal c1) / (Time.toReal c2))
-
-val pathb = (writeln "Path"; PathTest.benchmark ());
-val netb = (writeln "Net"; NetTest.benchmark ());
-val res = map_index (fn (i,(name,reps,_,x)) => (name,reps,diff x (nth netb i |> (fn (_,_,_,x) => x)))) pathb;
-writeln ("Path indexing (PI) vs discrimination net (DN)\nAbs. (PI - DN)\tRel. (PI/DN)\tRepetitions\tName");
-map (fn (name,reps,(abs,rel)) => (print_real abs ^ "s\t\t"
-                                  ^ print_real rel ^ "\t\t"
-                                  ^ @{make_string} reps ^ "\t\t"
-                                  ^ name)
-                                  |> writeln) res
+Net.empty
+|> Net.insert (op =) (Net.key_of_term @{term "f x"}, 1)
+|> Net.insert (op =) (Net.key_of_term @{term "f x"}, 2)
+|> Net.insert (op =) (Net.key_of_term @{term "g y"}, 1)
+|> Net.delete (op =) (Net.key_of_term @{term "f x"}, 1)
+|> Net.content
 \<close>
 
 ML \<open>
-writeln "Path";
-PathTest.test ();
-writeln "Net";
-NetTest.test ();
+fun ins' (k,v) n = Net.insert_term_safe eq (k,v) n
+fun ins t n = Net.insert_term eq (t,t) n
+val x = Const ("x",TFree ("'a",[]))
+val y = Free ("a", TVar (("'a", 0), []))
+val z = Var (("b", 3), TVar (("'a", 0), []))
+val net = Net.empty |> ins y |> ins z
+val net_con = Net.content net
+val net' = net |> ins' (x,z) |> Net.delete_term eq (x,z) |> Net.content
+(*Net {atoms = {("a", Leaf [Free ("a", TVar (("'a", 0), []))])}, comb = Leaf [], var =
+      Leaf [Var (("b", 3), TVar (("'a", 0), []))]})*)
 \<close>
-(* Deletion does not work for Path Indexing! Can't reproduce test input since different namegen *)
-
-ML \<open>PathTest.print_distribution ()\<close>
