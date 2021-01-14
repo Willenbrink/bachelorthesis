@@ -1,6 +1,11 @@
 # Tasks
 ## TODO
-* Anderer Fehler in Tests wenn Exception geworfen wurde! Ansonsten sehr verwirrend
+* Read-only ref?
+* Repository version
+* Lazy values returnen?
+* Gleich auf Alphaeq, Instanziierung, Generalisations, Unification
+* Artemis JUnit XML für Quickcheck
+* Quickcheck Mehr Tests bei Precondition
 * basic symbol generator and adding an additional one which represents a recurring symbol whenever a new symbol is generated. That is, the probability for a symbol being reused changes during generation: 0.0  (no symbol generated yet) -> 0.5 -> 0.67 -> 0.75 etc.
 * Tests/Benchmarks als Fokus!
 * Später: Term generation verbessern
@@ -37,6 +42,11 @@
 * Near-eta conversion in net.ML?
 * Isabelle besser herrichten
 * Interne Repräsentation von FOL, Quantifiers, Lambdas, Theorems etc. genauer anschauen, print_satement hernehmen?
+
+## Bis 19.01
+* Exception Trace statt reines failen beim Test
+* Zeit bei quickCheck reinmachen
+* Compiler Type generation klar vom rest trennen
 
 ## Bis 12.01
 * Längere Namen bei Tests

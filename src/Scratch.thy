@@ -121,7 +121,7 @@ val net' = net |> ins' (x,z) |> Net.delete_term eq (x,z) |> Net.content
 
 ML \<open>
 local
-val a = Var (("x",0),Type("'a",[])) (* @{term "?x"} *)
+val a = Var (("x",0),@{typ "'a"}) (* @{term "?x"} *)
 val b = @{term "\<lambda>x. g (f x)"}
 val c = @{term "c"}
 val net  = Net.empty  |> Net.insert_term eq (a,a)  |> Net.insert_term eq (b,b) |> Net.insert_term eq (c,c)
@@ -130,6 +130,17 @@ in
 val net = Net.match_term net a |> map pterm
 val path = Path.match_term path a |> map pterm
 end
+\<close>
+
+ML \<open>
+Spec_Check.check_gen @{context} "Name" (Random.range_int (0,100)) (SOME @{make_string})
+  (Property.==> ((fn x => x < 2), (fn x => raise Fail "ERROR IN TEST\n\n\n"))) (Random.deterministic_seed 0);
+
+Spec_Check.check_gen @{context} "Name" (Random.range_int (0,100)) (SOME @{make_string})
+  (Property.==> ((fn x => x < 2), (fn x => x < 1))) (Random.deterministic_seed 0);
+
+Spec_Check.check_gen @{context} "Name" (Generator.unit) (SOME @{make_string})
+  (Property.==> ((fn x => true), (fn x => false)))
 \<close>
 
 

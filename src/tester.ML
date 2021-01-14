@@ -26,7 +26,9 @@ fun net_gen num_term term_gen r =
   |-> aux
   end
 
-fun check_prop gen printer name prop = Spec_Check.checkGen @{context} (gen, printer) (name, prop)
+val ctxt = Config.put Spec_Check.examples 1 @{context};
+val ctxt = Config.put Spec_Check.gen_target 100 ctxt;
+fun check_prop gen printer name prop = Spec_Check.check_gen ctxt name gen printer prop (Random.deterministic_seed 1)
 fun check gen printer name pred = check_prop gen printer name (Property.pred pred)
 
 fun ins t n = Net.insert_term_safe eq (t,t) n
@@ -42,8 +44,8 @@ fun replace_subterm t r =
   else (Term.list_comb (f,nth_map index (fn t => replace_subterm t r1 |> fst) args), r2)
   end
 
-val def_term_gen = term_gen 3
-val def_net_gen = net_gen 5 def_term_gen
+val def_term_gen = term_gen 30
+val def_net_gen = net_gen 1 def_term_gen
 fun term_in_net_gen r = (* Returns (term,net) where term is guaranteed to be in the net *)
   let
     val (net,r) = Gen.gen_prop (fn n => Net.content n <> []) def_net_gen r
@@ -144,8 +146,8 @@ fun timer name repetitions f_test f_input =
   end
 
 (* Significantly larger for benchmarks than tests *)
-val def_term_gen = term_gen 10
-val def_net_gen = net_gen 30 def_term_gen
+val def_term_gen = term_gen 1
+val def_net_gen = net_gen 10 def_term_gen
 fun benchmark () = [
 timer "Creation of net" 10
       def_net_gen

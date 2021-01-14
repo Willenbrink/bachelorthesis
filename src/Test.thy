@@ -39,6 +39,7 @@ map (fn (name,reps,(abs,rel)) => (print_real abs ^ "s\t\t"
 ML \<open>
 writeln "Path";
 PathTest.test ();
+
 writeln "Net";
 NetTest.test ();
 \<close>
