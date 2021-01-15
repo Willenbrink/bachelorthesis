@@ -33,11 +33,9 @@ fun sym_ord (VarS, VarS) = EQUAL
   | sym_ord ((AtomS n1), (AtomS n2)) = fast_string_ord (n1,n2)
 
 structure Stab = Table(type key = symbol val ord = sym_ord);
-type 'a content = 'a Unsynchronized.ref list Stab.table
+type 'a content = 'a list Stab.table
 datatype 'a tree = Node of 'a content * 'a tree list Stab.table
-type 'a T = 'a Unsynchronized.ref list * 'a tree
-
-fun eqr eq = (fn (x,y) => eq (!x,!y))
+type 'a T = 'a list * 'a tree
 
 fun symbol_of_term t = case t of
           Const (n,_) => AtomS n
@@ -113,16 +111,13 @@ fun insert_one eq (key, v) (Node (con,tree)) = case key of
 
 (* Insert a reference directly. Only internal usage *)
 fun insert_ref_safe eq (keys,term_ref) net =
-  let fun eq' (x,y) = (x = y) orelse eq (!x,!y) in
-  Library.foldl (fn (acc,k) => insert_one eq' (k, term_ref) acc) (net,keys)
+  Library.foldl (fn (acc,k) => insert_one eq (k, term_ref) acc) (net,keys)
   handle INSERT => net
-  end
 
 fun insert eq (t,v) (values,tree) =
-  let val eq = eqr eq
-      val val_ref = Unsynchronized.ref v
-      val values = val_ref :: values
-      val tree = Library.foldl (fn (acc,k) => insert_one eq (k, val_ref) acc) (tree, key_of_term t)
+  let 
+    val values = v :: values
+    val tree = Library.foldl (fn (acc,k) => insert_one eq (k, v) acc) (tree, key_of_term t)
   in
   (values,tree)
   end
@@ -153,8 +148,6 @@ fun delete eq (t, v) (values, tree) =
   let
     (* TODO The value is saved at multiple locations. If some keys are removed from the list
       those will not be deleted from the tree but will be from the values *)
-    val eq = eqr eq
-    val v = Unsynchronized.ref v
     val values = if member eq values v then remove eq v values else raise DELETE
     val tree = Library.foldl (fn (acc,k) => delete_one eq (k, v) acc) (tree, key_of_term t)
   in
@@ -165,7 +158,7 @@ fun delete_safe eq entry net = delete eq entry net handle DELETE => net;
 
 
 (*** Retrieval functions ***)
-fun content_ref_node tree =
+fun content_node eq tree =
   let fun aux (Node (con,tree)) =
     let val con_fst =
           con |> Stab.dest 
@@ -177,12 +170,10 @@ fun content_ref_node tree =
     in con_fst @ con_snd end
   in
   aux tree
-  (*|> tap (fn x => x |> length |> @{make_string} |> writeln)*)
-  |> distinct (op =)
-(*  |> tap (fn x => x |> length |> @{make_string} |> writeln)*)
+  |> distinct (op eq)
   end
 
-fun content eq (values,_) = values |> map (op !)
+fun content eq (values,_) = values
 
 (*Return the list of items at the given node, [] if no such node*)
 fun lookup_one (Node (con,tree)) key = case key of
@@ -194,8 +185,8 @@ fun lookup_one (Node (con,tree)) key = case key of
        |> Option.valOf
 
 fun lookup eq t (values,tree) =
-    let fun intersect k acc = inter (fn (x,y) => eq (!x,!y)) acc (lookup_one tree k)
-    in fold intersect (key_of_term t) values |> map (op !) end (* TODO *)
+    let fun intersect k acc = inter eq acc (lookup_one tree k)
+    in fold intersect (key_of_term t) values end
 
 datatype query_type = Variants | Generalisations | Instances | Unifiables
 
@@ -235,9 +226,8 @@ fun query query_type eq term (values,(Node (con,tree))) =
   end
 
 fun query_wrapper query_type eq t tree =
-  query query_type (eqr eq) t tree
-  |> distinct (op =)
-  |> map (op !)
+  query query_type eq t tree
+  |> distinct (op eq)
 
 fun variants eq t tree = query_wrapper Variants eq t tree
 fun instances eq t tree = query_wrapper Instances eq t tree
@@ -256,7 +246,7 @@ fun dest (Node (con,tree)) =
   in content_alist @ tree_alist end
 
 fun merge eq ((values1,tree1), (values2,tree2)) =
-  (union (op =) values1 values2, fold (fn t => insert_ref_safe eq t) (dest tree2 |> map (fn (k,v) => ([k],v))) tree1)  (* FIXME non-canonical merge order!?! *)
+  (union (op eq) values1 values2, fold (fn t => insert_ref_safe eq t) (dest tree2 |> map (fn (k,v) => ([k],v))) tree1)  (* FIXME non-canonical merge order!?! *)
 
 fun subtract eq tree1 tree2 = Library.subtract (swap #> eq) (content eq tree1) (content eq tree2)
 
