@@ -13,11 +13,11 @@ sig
     val delete: ('a * 'a -> bool) -> term * 'a -> 'a T -> 'a T
     val delete_safe: ('a * 'a -> bool) -> term * 'a -> 'a T -> 'a T
     
-    val lookup: ('a * 'a -> bool) -> 'a T -> term -> 'a list
-    val variants: ('a * 'a -> bool) -> 'a T -> term -> 'a list
-    val match: ('a * 'a -> bool) -> 'a T -> term -> 'a list
-    val instances: ('a * 'a -> bool) -> 'a T -> term -> 'a list
-    val unify: ('a * 'a -> bool) -> 'a T -> term -> 'a list
+    val lookup: ('a * 'a -> bool) -> term -> 'a T -> 'a list
+    val variants: ('a * 'a -> bool) -> term -> 'a T -> 'a list
+    val match: ('a * 'a -> bool) -> term -> 'a T -> 'a list
+    val instances: ('a * 'a -> bool) -> term -> 'a T -> 'a list
+    val unify: ('a * 'a -> bool) -> term -> 'a T -> 'a list
 
     val content: ('a * 'a -> bool) -> 'a T -> 'a list
     val subtract: ('a * 'a -> bool) -> 'a T -> 'a T -> 'a list
