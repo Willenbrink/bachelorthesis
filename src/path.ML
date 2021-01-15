@@ -15,20 +15,17 @@ only wildcards in patterns.  Requires operands to be beta-eta-normal.
 
 structure Path =
 struct
-(* TODO should an empty key be valid?
-   TODO should a key list address one node or multiple?
-   TODO is_first_order function in term!
- *)
+(* TODO is_first_order function in term! *)
 
 fun >>= (x,f) = Option.map f x
 infix 1 >>=
 
 datatype symbol =
-  VarS
-| AtomS of string
+    VarS
+  | AtomS of string
 datatype key =
-  End of symbol
-| Fun of symbol * int * key (* function,number of child, key from that child onwards *)
+    End of symbol
+  | Fun of symbol * int * key (* function,number of children, key from that child onwards *)
 
 fun sym_ord (VarS, VarS) = EQUAL
   | sym_ord (VarS, _) = LESS
@@ -38,7 +35,9 @@ fun sym_ord (VarS, VarS) = EQUAL
 structure Stab = Table(type key = symbol val ord = sym_ord);
 type 'a content = 'a Unsynchronized.ref list Stab.table
 datatype 'a tree = Node of 'a content * 'a tree list Stab.table
-type 'a net = 'a Unsynchronized.ref list * 'a tree
+type 'a T = 'a Unsynchronized.ref list * 'a tree
+
+fun eqr eq = (fn (x,y) => eq (!x,!y))
 
 fun symbol_of_term t = case t of
           Const (n,_) => AtomS n
@@ -119,19 +118,16 @@ fun insert_ref_safe eq (keys,term_ref) net =
   handle INSERT => net
   end
 
-fun insert eq (keys,term) (values,tree) =
-  let fun eq' (x,y) = (x = y) orelse eq (!x,!y)
-      val term_ref = Unsynchronized.ref term
-      val values = term_ref :: values
-      val tree = Library.foldl (fn (acc,k) => insert_one eq' (k, term_ref) acc) (tree,keys)
+fun insert eq (t,v) (values,tree) =
+  let val eq = eqr eq
+      val val_ref = Unsynchronized.ref v
+      val values = val_ref :: values
+      val tree = Library.foldl (fn (acc,k) => insert_one eq (k, val_ref) acc) (tree, key_of_term t)
   in
   (values,tree)
   end
 
-fun insert_term eq (t, x) = insert eq (key_of_term t, x);
-
 fun insert_safe eq entry net = insert eq entry net handle INSERT => net;
-fun insert_term_safe eq entry net = insert_term eq entry net handle INSERT => net;
 
 
 (*** Deletion ***)
@@ -142,8 +138,7 @@ exception DELETE;       (*missing item in the net*)
   Raises DELETE if absent. TODO Collapses the net if possible?
   eq is the equality test for items. *)
 fun delete_one eq (key, v) (Node (con,tree)) =
-  let fun eq' (x,y) = eq (!x,!y)
-      fun rem content = if member eq' content v then remove eq' v content
+  let fun rem content = if member eq content v then remove eq v content
                         else raise DELETE in
   case key of
       End n => Node (Stab.map_default (n,[]) rem con, tree)
@@ -154,21 +149,19 @@ fun delete_one eq (key, v) (Node (con,tree)) =
         |> (fn x => Node (con, x))
    end
 
-fun delete eq (keys, x) (values, tree) =
+fun delete eq (t, v) (values, tree) =
   let
     (* TODO The value is saved at multiple locations. If some keys are removed from the list
       those will not be deleted from the tree but will be from the values *)
-    fun eq' (x,y) = eq (x,!y)
-    val values = if member eq' values x then remove eq' x values else raise DELETE
-    val tree = Library.foldl (fn (acc,k) => delete_one eq (k, Unsynchronized.ref x) acc) (tree,keys)
+    val eq = eqr eq
+    val v = Unsynchronized.ref v
+    val values = if member eq values v then remove eq v values else raise DELETE
+    val tree = Library.foldl (fn (acc,k) => delete_one eq (k, v) acc) (tree, key_of_term t)
   in
   (values,tree)
   end
 
-fun delete_term eq (t, x) = delete eq (key_of_term t, x);
-
 fun delete_safe eq entry net = delete eq entry net handle DELETE => net;
-fun delete_term_safe eq entry net = delete_term eq entry net handle DELETE => net;
 
 
 (*** Retrieval functions ***)
@@ -189,7 +182,7 @@ fun content_ref_node tree =
 (*  |> tap (fn x => x |> length |> @{make_string} |> writeln)*)
   end
 
-fun content (values,_) = values |> map (op !)
+fun content eq (values,_) = values |> map (op !)
 
 (*Return the list of items at the given node, [] if no such node*)
 fun lookup_one (Node (con,tree)) key = case key of
@@ -200,37 +193,56 @@ fun lookup_one (Node (con,tree)) key = case key of
        >>= (fn x => lookup_one x key)
        |> Option.valOf
 
-fun lookup (values,tree) keys =
-    let fun intersect (acc,k) = inter (op =) acc (lookup_one tree k)
-    in Library.foldl intersect (values,keys) |> map (op !) end (* TODO *)
+fun lookup eq t (values,tree) =
+    let fun intersect k acc = inter (fn (x,y) => eq (!x,!y)) acc (lookup_one tree k)
+    in fold intersect (key_of_term t) values |> map (op !) end (* TODO *)
 
-fun match unif values (Node (con,tree)) term =
+datatype query_type = Variants | Generalisations | Instances | Unifiables
+
+fun query query_type eq term (values,(Node (con,tree))) =
   let
-    val var_terms = Stab.lookup_list con VarS
-    val handle_var = if unif then values else var_terms
-    fun handle_sym sym = Stab.lookup_list con sym
-    fun handle_func func args =
-      let val list = Stab.lookup_list tree func
-          fun arg_to_terms index arg = match unif values (nth list index) arg handle Subscript => []
+    fun symbols sym = Stab.lookup_list con sym
+    val handle_var = case query_type of
+        Variants => symbols VarS
+      | Instances => values
+      | Generalisations => symbols VarS
+      | Unifiables => values
+    fun handle_sym sym = case query_type of
+        Variants => symbols sym
+      | Instances => symbols sym
+      | Generalisations => symbols VarS @ symbols sym
+      | Unifiables => symbols VarS @ symbols sym
+    fun query_args func args =
+      let
+        val list = Stab.lookup_list tree func
+        fun arg_to_terms index arg =
+          query query_type eq arg (values,(nth list index))
+          handle Subscript => []
       in
-      fold_index (fn (i,arg) => fn acc => inter (op =) (arg_to_terms i arg) acc) args values
+      fold_index (fn (i,arg) => fn acc => inter eq (arg_to_terms i arg) acc) args values
       end
+    fun handle_func func args = case query_type of
+        Variants => query_args func args
+      | Instances => query_args func args
+      | Generalisations => symbols VarS @ query_args func args
+      | Unifiables => symbols VarS @ query_args func args
   in
   case strip_comb term of
-  (* Ignore arguments and return
-   Unif: every term at that path
-  ~Unif: terms with Var/Abs at that path *)
     (Var _,_) => handle_var
   | (Abs _,_) => handle_var
-  | (_$_,_) => raise Fail "Impossible"
-  | (sym,[]) => var_terms @ (handle_sym (symbol_of_term sym))
-  | (func,args) => var_terms @ (handle_func (symbol_of_term func) args)
+  | (sym,[]) => handle_sym (symbol_of_term sym)
+  | (func,args) => handle_func (symbol_of_term func) args
   end
 
-fun match_term (values,tree) t = match false values tree t |> distinct (op =) |> map (op !)
-fun unify_term (values,tree) t = match true values tree t |> distinct (op =) |> map (op !)
+fun query_wrapper query_type eq t tree =
+  query query_type (eqr eq) t tree
+  |> distinct (op =)
+  |> map (op !)
 
-val entries = content (* TODO are they really the same? *)
+val variants = query_wrapper Variants
+val instances = query_wrapper Instances
+val match = query_wrapper Generalisations
+val unify = query_wrapper Unifiables
 
 fun dest (Node (con,tree)) =
   let
@@ -246,7 +258,7 @@ fun dest (Node (con,tree)) =
 fun merge eq ((values1,tree1), (values2,tree2)) =
   (union (op =) values1 values2, fold (fn t => insert_ref_safe eq t) (dest tree2 |> map (fn (k,v) => ([k],v))) tree1)  (* FIXME non-canonical merge order!?! *)
 
-fun subtract eq tree1 tree2 = Library.subtract (swap #> eq) (content tree1) (content tree2)
+fun subtract eq tree1 tree2 = Library.subtract (swap #> eq) (content eq tree1) (content eq tree2)
 
 (* Useful for what exactly?
 fun dot_of_node (node as Node(con,tree)) =
