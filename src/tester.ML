@@ -142,8 +142,8 @@ fun timer name repetitions f_test f_input =
   end
 
 (* Significantly larger for benchmarks than tests *)
-val def_term_gen = term_gen 1
-val def_net_gen = net_gen 10 def_term_gen
+val def_term_gen = term_gen 30
+val def_net_gen = net_gen 1000 def_term_gen
 fun benchmark () = [
 timer "Creation of net" 10
       def_net_gen
