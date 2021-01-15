@@ -56,10 +56,10 @@ fun encode_type (Type (c, Ts)) = Term.list_comb (Const (c, dummyT), map encode_t
     The empty key addresses the entire net.
     Lookup functions preserve order in items stored at same level.
 *)
-datatype 'a net = Leaf of 'a list
-                | Net of {comb: 'a net,
-                            var: 'a net,
-                            atoms: 'a net Symtab.table};
+datatype 'a T = Leaf of 'a list
+                | Net of {comb: 'a T,
+                            var: 'a T,
+                            atoms: 'a T Symtab.table};
 
 val empty = Leaf[];
 fun is_empty (Leaf []) = true | is_empty _ = false;
@@ -76,23 +76,21 @@ exception INSERT;       (*duplicate item in the net*)
     eq is the equality test for items.
     The empty list of keys generates a Leaf node, others a Net node.
 *)
-fun insert eq (keys,x) net =
-    let fun ins1 ([], Leaf xs) =
-            if member eq xs x then  raise INSERT  else Leaf(x::xs)
-        | ins1 (keys, Leaf[]) = ins1 (keys, emptynet)   (*expand empty...*)
-        | ins1 (CombK :: keys, Net{comb,var,atoms}) =
-            Net{comb=ins1(keys,comb), var=var, atoms=atoms}
-        | ins1 (VarK :: keys, Net{comb,var,atoms}) =
-            Net{comb=comb, var=ins1(keys,var), atoms=atoms}
-        | ins1 (AtomK a :: keys, Net{comb,var,atoms}) =
-            let val atoms' = Symtab.map_default (a, empty) (fn net' => ins1 (keys, net')) atoms;
-            in  Net{comb=comb, var=var, atoms=atoms'}  end
-    in  ins1 (keys,net)  end;
+fun insert_key eq x (keys, net) = case (keys, net) of
+    ([], Leaf xs) => if member eq xs x then  raise INSERT  else Leaf(x::xs)
+  | (keys, Leaf[]) => insert_key eq x (keys, emptynet)   (*expand empty...*)
+  | (CombK :: keys, Net{comb,var,atoms}) =>
+      Net{comb=insert_key eq x (keys,comb), var=var, atoms=atoms}
+  | (VarK :: keys, Net{comb,var,atoms}) =>
+      Net{comb=comb, var=insert_key eq x (keys,var), atoms=atoms}
+  | (AtomK a :: keys, Net{comb,var,atoms}) =>
+      let val atoms' = Symtab.map_default (a, empty) (fn net' => insert_key eq x (keys, net')) atoms in
+        Net{comb=comb, var=var, atoms=atoms'}
+      end
 
-fun insert_term eq (t, x) = insert eq (key_of_term t, x);
+fun insert eq (t,x) net = insert_key eq x (key_of_term t,net)
 
 fun insert_safe eq entry net = insert eq entry net handle INSERT => net;
-fun insert_term_safe eq entry net = insert_term eq entry net handle INSERT => net;
 
 
 (*** Deletion from a discrimination net ***)
@@ -107,7 +105,7 @@ fun newnet (args as {comb,var,atoms}) =
 (*Deletes item x from the list at the node addressed by the keys.
     Raises DELETE if absent.  Collapses the net if possible.
     eq is the equality test for items. *)
-fun delete eq (keys, x) net =
+fun delete eq (t, x) net =
     let fun del1 ([], Leaf xs) =
             if member eq xs x then Leaf (remove eq x xs)
             else raise DELETE
@@ -125,25 +123,23 @@ fun delete eq (keys, x) net =
                     Leaf [] => Symtab.delete a atoms
                     | net'' => Symtab.update (a, net'') atoms))
             in  newnet{comb=comb, var=var, atoms=atoms'}  end
-    in  del1 (keys,net)  end;
-
-fun delete_term eq (t, x) = delete eq (key_of_term t, x);
+    in  del1 (key_of_term t,net)  end;
 
 fun delete_safe eq entry net = delete eq entry net handle DELETE => net;
-fun delete_term_safe eq entry net = delete_term eq entry net handle DELETE => net;
 
 
 (*** Retrieval functions for discrimination nets ***)
 
+fun lookup_aux net keys = case (net,keys) of
+    (Leaf xs, []) => xs
+  | (Leaf _, (_ :: _)) => [] (*non-empty keys and empty net*)
+  | (Net {comb, ...}, (CombK :: keys)) => lookup_aux comb keys
+  | (Net {var, ...}, (VarK :: keys)) => lookup_aux var keys
+  | (Net {atoms, ...}, (AtomK a :: keys)) => (case Symtab.lookup atoms a of
+        SOME net => lookup_aux net keys
+        | NONE => [])
 (*Return the list of items at the given node, [] if no such node*)
-fun lookup (Leaf xs) [] = xs
-    | lookup (Leaf _) (_ :: _) = []  (*non-empty keys and empty net*)
-    | lookup (Net {comb, ...}) (CombK :: keys) = lookup comb keys
-    | lookup (Net {var, ...}) (VarK :: keys) = lookup var keys
-    | lookup (Net {atoms, ...}) (AtomK a :: keys) =
-        (case Symtab.lookup atoms a of
-        SOME net => lookup net keys
-        | NONE => []);
+fun lookup eq t net = lookup_aux net (key_of_term t)
 
 
 (*Skipping a term in a net.  Recursively skip 2 levels if a combination*)
@@ -167,9 +163,9 @@ fun look1 (atoms, a) nets =
     Abs or Var in object: if "unif", regarded as wildcard,
                                     else matches only a variable in net.
 *)
-fun matching unif t net nets : 'a net list =
+fun matching unif t net nets : 'a T list =
   let
-    fun rands _ (Leaf _, nets) : 'a net list = nets
+    fun rands _ (Leaf _, nets) : 'a T list = nets
       | rands t (Net{comb,atoms,...}, nets) =
           case t of
             f$t => fold_rev (check_var t) (rands f (comb,[])) nets
@@ -235,10 +231,11 @@ fun dest (Leaf xs) = map (pair []) xs
         map (cons_fst VarK) (dest var) @
         maps (fn (a, net) => map (cons_fst (AtomK a)) (dest net)) (Symtab.dest atoms);
 
-fun merge eq (net1, net2) =
-    fold (insert_safe eq) (dest net2) net1;  (* FIXME non-canonical merge order!?! *)
+fun content eq net = map #2 (dest net);
 
-fun content net = map #2 (dest net);
+fun merge eq (net1, net2) =
+  (* FIXME non-canonical merge order!?! *)
+  fold (fn (k,v) => fn acc => insert_key eq v (k,acc)) (dest net2 : (key list * 'a) list) (net1 : 'a T)
 
 end;
 
