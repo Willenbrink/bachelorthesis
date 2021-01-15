@@ -239,10 +239,10 @@ fun query_wrapper query_type eq t tree =
   |> distinct (op =)
   |> map (op !)
 
-val variants = query_wrapper Variants
-val instances = query_wrapper Instances
-val match = query_wrapper Generalisations
-val unify = query_wrapper Unifiables
+fun variants eq t tree = query_wrapper Variants eq t tree
+fun instances eq t tree = query_wrapper Instances eq t tree
+fun match eq t tree = query_wrapper Generalisations eq t tree
+fun unify eq t tree = query_wrapper Unifiables eq t tree
 
 fun dest (Node (con,tree)) =
   let
