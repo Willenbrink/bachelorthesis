@@ -16,6 +16,9 @@ only wildcards in patterns.  Requires operands to be beta-eta-normal.
 structure Net =
 struct
 
+fun >>= (x,f) = Option.map f x
+infix 1 >>=
+
 datatype key = CombK | VarK | AtomK of string;
 
 (*Keys are preorder lists of symbols -- Combinations, Vars, Atoms.
@@ -57,9 +60,9 @@ fun encode_type (Type (c, Ts)) = Term.list_comb (Const (c, dummyT), map encode_t
     Lookup functions preserve order in items stored at same level.
 *)
 datatype 'a T = Leaf of 'a list
-                | Net of {comb: 'a T,
-                            var: 'a T,
-                            atoms: 'a T Symtab.table};
+              | Net of {comb: 'a T,
+                        var: 'a T,
+                        atoms: 'a T Symtab.table};
 
 val empty = Leaf[];
 fun is_empty (Leaf []) = true | is_empty _ = false;
@@ -145,8 +148,11 @@ fun lookup eq t net = lookup_aux net (key_of_term t)
 (*Skipping a term in a net.  Recursively skip 2 levels if a combination*)
 fun net_skip (Leaf _) nets = nets
   | net_skip (Net{comb,var,atoms}) nets =
-      Symtab.fold (cons o #2) atoms (var::nets)
-      |> fold_rev net_skip (net_skip comb []);
+      var :: nets
+      |> Symtab.fold (fn (k,v) => fn acc => v :: acc) atoms
+(* net_skip comb [] only skipped combs so far so another skip is required *)
+(* TODO why fold_rev? fold should be faster and we only concatenate nets *)
+      |> fold_rev net_skip (net_skip comb [])
 
 
 (** Matching and Unification **)
@@ -199,6 +205,60 @@ fun match_term net t =
 (*return items whose key could unify with t*)
 fun unify_term net t =
     extract_leaves (matching true t net []);
+
+datatype query_type = Variants | Generalisations | Instances | Unifiables
+
+fun string_of_term t = case t of
+        Const (n,_) => n
+      | Free (n,_) => n
+      | Bound i => Name.bound i
+      | _ => raise Fail "Invalid use of string_of_term"
+
+fun strip_comb_key i ks = case (i,ks) of
+    (0,_) => ks
+  | (i,[]) => raise Fail "Invalid strip_comb_key, too many combs"
+  | (i, (CombK::ks)) => strip_comb_key (i+1) ks
+  | (i, (_::ks)) => strip_comb_key (i-1) ks
+
+fun query query_type eq keys net =
+  case net of
+    (Leaf xs) => xs
+  | (Net {comb, var, atoms}) =>
+    let
+      fun query_rec keys net = query query_type eq keys net
+      fun con net = case net of Leaf xs => xs | _ => []
+      fun symbols sym = case Symtab.lookup atoms sym of NONE => emptynet | SOME net => net
+      fun handle_var ks = case query_type of
+          Variants => query_rec ks var
+        | Instances => net_skip net [] |> maps (query_rec ks)
+        | Generalisations => query_rec ks var
+        | Unifiables => net_skip net [] |> maps (query_rec ks)
+      fun handle_sym ks sym = case query_type of
+          Variants => query_rec ks (symbols sym)
+        | Instances => query_rec ks (symbols sym)
+        | Generalisations => query_rec ks var @ query_rec ks (symbols sym)
+        | Unifiables => query_rec ks var @ query_rec ks (symbols sym)
+      fun handle_func ks = case query_type of
+          Variants => query_rec ks comb
+        | Instances => query_rec ks comb
+        | Generalisations => query_rec (strip_comb_key 1 ks) var @ query_rec ks comb
+        | Unifiables => query_rec (strip_comb_key 1 ks) var @ query_rec ks comb
+    in
+      case keys of
+        [] => con net
+      | (VarK :: ks) => handle_var ks
+      | (AtomK c :: ks) => handle_sym ks c
+      | (CombK :: ks) => handle_func ks
+    end
+
+fun query_wrapper query_type eq t net =
+  query query_type eq (key_of_term t) net
+  |> distinct (op eq)
+
+fun variants eq t net = query_wrapper Variants eq t net
+fun instances eq t net = query_wrapper Instances eq t net
+fun match eq t net = query_wrapper Generalisations eq t net
+fun unify eq t net = query_wrapper Unifiables eq t net
 
 
 (** operations on nets **)
