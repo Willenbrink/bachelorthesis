@@ -20,7 +20,7 @@ fun net_gen num_term term_gen r =
       | _ =>
         let val (term,r) = term_gen r
             val (base,r) = aux (num_term - 1) r
-        in (Net.insert_term_safe eq (term,term) base,r) end
+        in (Net.insert_safe eq (term,term) base,r) end
   in 
   Random.range_int (0,num_term) r
   |-> aux
@@ -31,8 +31,8 @@ val ctxt = Config.put Spec_Check.gen_target 100 ctxt;
 fun check_prop gen printer name prop = Spec_Check.check_gen ctxt name gen printer prop (Random.deterministic_seed 1)
 fun check gen printer name pred = check_prop gen printer name (Property.pred pred)
 
-fun ins t n = Net.insert_term_safe eq (t,t) n
-fun con t n = member eq (Net.content n) t
+fun ins t n = Net.insert_safe eq (t,t) n
+fun con t n = member eq (Net.content eq n) t
 fun replace_subterm t r =
   let val (f,args) = Term.strip_comb t
       val (index,r) =  Random.range_int (~1,length args - 1) r
@@ -48,8 +48,8 @@ val def_term_gen = term_gen 30
 val def_net_gen = net_gen 1 def_term_gen
 fun term_in_net_gen r = (* Returns (term,net) where term is guaranteed to be in the net *)
   let
-    val (net,r) = Gen.gen_prop (fn n => Net.content n <> []) def_net_gen r
-    val (term,r) = Gen.selectL (Net.content net ) r
+    val (net,r) = Gen.gen_prop (fn n => Net.content eq n <> []) def_net_gen r
+    val (term,r) = Gen.selectL (Net.content eq net ) r
   in
   ((term,net),r)
   end
@@ -60,43 +60,39 @@ fun id_term term =
 fun test () = (
 check (Gen.unit) NONE
       "Empty net is empty"
-      (fn _ => Net.content Net.empty = []);
+      (fn _ => Net.content eq Net.empty = []);
 check (Gen.zip (def_term_gen, def_net_gen)) NONE
       "Insertion adds value to content"
-      (fn (t,n) => set_eq (t :: Net.content n) (ins t n |> Net.content));
-check (def_net_gen) NONE
-      "content = entries"
-      (fn n => set_eq (Net.entries n) (Net.content n)
-               andalso length (Net.entries n) = length (Net.content n));
+      (fn (t,n) => set_eq (t :: Net.content eq n) (ins t n |> Net.content eq));
 check (term_in_net_gen) (SOME @{make_string})
       "Duplicate detection on insert"
-      (fn (t,n) => (Net.insert_term eq (t,t) n; false) handle Net.INSERT => true);
+      (fn (t,n) => (Net.insert eq (t,t) n; false) handle Net.INSERT => true);
 check (term_in_net_gen) (SOME @{make_string})
       "Deletion removes term"
-      (fn (t,n) => ((Net.delete_term eq (t,t) n) |> Net.content |> List.length)
-                   = (List.length (Net.content n) - 1));
+      (fn (t,n) => ((Net.delete eq (t,t) n) |> Net.content eq |> List.length)
+                   = (List.length (Net.content eq n) - 1));
 check (Gen.zip (term_in_net_gen, Random.split))
       (SOME (fn ((t,n),r) => @{make_string} (t, replace_subterm t r, n)))
       "Replacing Subterm with Var still matches"
       (fn ((t,n),r) =>
-          let val unifs = Net.unify_term n (replace_subterm t r |> fst)
+          let val unifs = Net.unify eq (replace_subterm t r |> fst) n
           in member eq unifs t end
       );
 check (term_in_net_gen) (SOME @{make_string})
       "match net t \<subseteq> unify net t"
-      (fn (t,n) => subset eq ((Net.match_term n t),(Net.unify_term n t)));
+      (fn (t,n) => subset eq ((Net.match eq t n),(Net.unify eq t n)));
 check (term_in_net_gen) (SOME @{make_string})
       "1. delete works correctly when values are saved under multiple keys"
       (fn (t,n) =>
-        set_eq (Net.content n)
-               (Net.content (n |> Net.insert_term_safe eq (Const ("x",TFree ("'a",[])), t)
-                               |> Net.delete_term_safe eq (Const ("x",TFree ("'a",[])), t))));
+        set_eq (Net.content eq n)
+               (Net.content eq (n |> Net.insert_safe eq (Const ("x",TFree ("'a",[])), t)
+                               |> Net.delete eq (Const ("x",TFree ("'a",[])), t))));
 check (term_in_net_gen) (SOME @{make_string})
       "2. delete works correctly when values are saved under multiple keys"
       (fn (t,n) =>
-        set_eq (Net.content n)
-          (Net.content (n |> Net.insert_term_safe eq (Const ("x",TFree ("'a",[])), t)
-                          |> Net.delete_term_safe eq (t, t))));
+        set_eq (Net.content eq n)
+          (Net.content eq (n |> Net.insert_safe eq (Const ("x",TFree ("'a",[])), t)
+                          |> Net.delete eq (t, t))));
 
 (* HOL *)
 check (Gen.unit) (NONE)
@@ -104,7 +100,7 @@ check (Gen.unit) (NONE)
       (fn () =>
         let val t = @{term "x"}
             val net = Net.empty |> ins t |> ins @{term "\<lambda>x. f x"} in
-        Net.match_term net t = [t]
+        Net.match eq t net = [t]
         end);
 (*
 check (term_in_net_gen) (SOME @{make_string})
@@ -153,33 +149,30 @@ timer "Creation of net" 10
       def_net_gen
       I,
 timer "Content of net" 10
-      (Net.content)
-      (def_net_gen #> fst),
-timer "Entries of net" 10
-      (Net.entries)
+      (Net.content eq)
       (def_net_gen #> fst),
 timer "Insert one term" 30
-      (fn (net,term) => Net.insert_term_safe eq (term,term) net)
+      (fn (net,term) => Net.insert_safe eq (term,term) net)
       (fn r => Gen.zip (def_net_gen, def_term_gen) r
                |> fst),
 timer "Delete one term" 30
-      (fn (net,term) => Net.delete_term eq (term,term) net)
+      (fn (net,term) => Net.delete eq (term,term) net)
       (fn r => Gen.zip (def_net_gen, def_term_gen) r
                |> fst
-               |> (fn (n,t) => (Net.insert_term_safe eq (t,t) n,t))),
+               |> (fn (n,t) => (Net.insert_safe eq (t,t) n,t))),
 timer "Get 10% of terms in net" 3
-      (fn (n,r) => (n, Gen.shuffle (Net.content n) r
+      (fn (n,r) => (n, Gen.shuffle (Net.content eq n) r
                        |> fst
-                       |> take (length (Net.content n) div 10)))
+                       |> take (length (Net.content eq n) div 10)))
       def_net_gen,
 timer "Delete 10% of terms in net" 3
-      (fn (net,terms) => fold (fn x => fn net => Net.delete_term_safe eq (x,x) net) terms net)
+      (fn (net,terms) => fold (fn x => fn net => Net.delete_safe eq (x,x) net) terms net)
       (def_net_gen
-       #> (fn (n,r) => (n, Gen.shuffle (Net.content n) r |> fst
-           |> take (length (Net.content n) div 10)))
+       #> (fn (n,r) => (n, Gen.shuffle (Net.content eq n) r |> fst
+           |> take (length (Net.content eq n) div 10)))
       ),
 timer "Replace part of term with Var and retrieve matching terms from net" 30
-      (fn (t,n,r) => Net.unify_term n (replace_subterm t r |> fst))
+      (fn (t,n,r) => Net.unify eq (replace_subterm t r |> fst) n)
       (fn r => Gen.zip3 (def_term_gen, def_net_gen, Random.split) r |> fst)
 ]
 
@@ -189,6 +182,6 @@ check (def_term_gen) NONE
       (fn t => (writeln (@{make_string} (Term.size_of_term t)); true));
 check (def_net_gen) NONE
       "Netsize distribution"
-      (fn n => (writeln (@{make_string} (Net.content n |> List.length)); true)))
+      (fn n => (writeln (@{make_string} (Net.content eq n |> List.length)); true)))
 
 end;
