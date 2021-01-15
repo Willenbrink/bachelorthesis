@@ -1,30 +1,27 @@
 
 signature NET =
 sig
-    type key
-    val key_of_term: term -> key list
-    val encode_type: typ -> term
-    type 'a net
-    val empty: 'a net
-    val is_empty: 'a net -> bool
+    type 'a T
+    val empty: 'a T
+    val is_empty: 'a T -> bool
 
     exception INSERT
-    val insert: ('a * 'a -> bool) -> key list * 'a -> 'a net -> 'a net
-    val insert_term: ('a * 'a -> bool) -> term * 'a -> 'a net -> 'a net
-    val insert_safe: ('a * 'a -> bool) -> key list * 'a -> 'a net -> 'a net
-    val insert_term_safe: ('a * 'a -> bool) -> term * 'a -> 'a net -> 'a net
+    val insert: ('a * 'a -> bool) -> term * 'a -> 'a T -> 'a T
+    val insert_safe: ('a * 'a -> bool) -> term * 'a -> 'a T -> 'a T
 
     exception DELETE
-    val delete: ('b * 'a -> bool) -> key list * 'b -> 'a net -> 'a net
-    val delete_term: ('b * 'a -> bool) -> term * 'b -> 'a net -> 'a net
-    val delete_safe: ('b * 'a -> bool) -> key list * 'b -> 'a net -> 'a net
-    val delete_term_safe: ('b * 'a -> bool) -> term * 'b -> 'a net -> 'a net
+    val delete: ('a * 'a -> bool) -> term * 'a -> 'a T -> 'a T
+    val delete_safe: ('a * 'a -> bool) -> term * 'a -> 'a T -> 'a T
+    
+    val lookup: ('a * 'a -> bool) -> 'a T -> term -> 'a list
+    val variants: ('a * 'a -> bool) -> 'a T -> term -> 'a list
+    val match: ('a * 'a -> bool) -> 'a T -> term -> 'a list
+    val instances: ('a * 'a -> bool) -> 'a T -> term -> 'a list
+    val unify: ('a * 'a -> bool) -> 'a T -> term -> 'a list
 
-    val lookup: 'a net -> key list -> 'a list
-    val match_term: 'a net -> term -> 'a list
-    val unify_term: 'a net -> term -> 'a list
-    val entries: 'a net -> 'a list
-    val subtract: ('b * 'a -> bool) -> 'a net -> 'b net -> 'b list
-    val merge: ('a * 'a -> bool) -> 'a net * 'a net -> 'a net
-    val content: 'a net -> 'a list
+    val content: ('a * 'a -> bool) -> 'a T -> 'a list
+    val subtract: ('a * 'a -> bool) -> 'a T -> 'a T -> 'a list
+    val merge: ('a * 'a -> bool) -> 'a T * 'a T -> 'a T
+
+    val encode_type: typ -> term
 end;
