@@ -54,7 +54,7 @@ fun replace_subterm sym t r =
   end
 
 val def_term_gen = term_gen 30
-val def_net_gen = net_gen 1 def_term_gen
+val def_net_gen = net_gen 30 def_term_gen
 fun term_in_net_gen r = (* Returns (term,net) where term is guaranteed to be in the net *)
   let
     val (net,r) = Gen.gen_prop (fn n => Net.content eq n <> []) def_net_gen r
@@ -90,9 +90,9 @@ check (def_net_gen) NONE
 
 val test_modifying = [ (* Tests functions that modify the net: insert and delete *)
 (* Insert *)
-check (Gen.zip (def_term_gen, def_net_gen)) NONE
+check_prop (Gen.zip (def_term_gen, def_net_gen)) NONE
       "Insertion adds value to content"
-      ((fn (t,n) => set_eq (t :: Net.content eq n) (ins t n |> Net.content eq))),
+      ((fn (t,n) => not (mem t n)) ==> (fn (t,n) => set_eq (t :: Net.content eq n) (ins t n |> Net.content eq))),
 check_prop (Gen.zip (def_term_gen, def_net_gen)) NONE
       "Insertion of new term increases size"
       ((fn (t,n) => not (mem t n)) ==> (fn (t,n) => length (ins t n |> con) = length (con n) + 1)),

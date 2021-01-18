@@ -1,21 +1,18 @@
 # Tasks
 ## TODO
-* Read-only ref?
 * Repository version
-* Lazy values returnen?
-* Gleich auf Alphaeq, Instanziierung, Generalisations, Unification
+* Interface-Ideen:
+  - Lazy values returnen?
+  - Gleich auf Alphaeq, Instanziierung, Generalisations, Unification
+  - Operation: Insert only if no generalisation exists
 * Artemis JUnit XML für Quickcheck
-* Quickcheck Mehr Tests bei Precondition
 * basic symbol generator and adding an additional one which represents a recurring symbol whenever a new symbol is generated. That is, the probability for a symbol being reused changes during generation: 0.0  (no symbol generated yet) -> 0.5 -> 0.67 -> 0.75 etc.
 * Tests/Benchmarks als Fokus!
 * Später: Term generation verbessern
   - Catalan number, Folien ca. 229-237: https://db.in.tum.de/teaching/ws2021/queryopt/slides/chapter3.pdf
   - Prüfer sequenzen
-* Compilervariante klar vom Rest trennen bei SpecCheck
 * Später: term_structure (random) mit disjunkten Variablennamen und später unification / mapping mit Index
-* Context noch einmal anschauen. Sicher nicht geeignet?
 * Lehmer RNG überarbeiten: Shortlived seeds und split_seeds/sequence implementieren
-* `net.ML` umschreiben und Interface anpassen
 * Itemnet: Quasi zwei stufiges DN, erst Liste für letzten paar Terme, rest im Netz. Komplex, nicht im Detail anschauen
 * Vergleiche Nutzung von `net.ML`, `item_net.ml`, termtabs (`term_ord.ml`, `term_sharing.ml`) in Taktiken etc.
     - Unterschied zwischen Instanzen von TT
@@ -47,6 +44,9 @@
 * Exception Trace statt reines failen beim Test
 * Zeit bei quickCheck reinmachen
 * Compiler Type generation klar vom rest trennen
+* Quickcheck Mehr Tests bei Precondition
+* Read-only ref? Memory-sharing wird von PolyML gehandelt. Einfach normale Terme nutzen
+* `net.ML` umschreiben und Interface anpassen
 
 ## Bis 12.01
 * Längere Namen bei Tests
