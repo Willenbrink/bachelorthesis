@@ -2,8 +2,10 @@ functor Tester (Net : NET) =
 struct
 structure Gen = Generator
 
+val ==> = Property.==>
+infix 1 ==>
+
 val eq = Term.aconv_untyped
-fun set_eq fst snd = eq_set eq (fst,snd)
 fun def_sym_gen n = Gen.def_sym_gen (1.0,2.0,1.0,5.0) n
 fun term_gen n r =
   let
@@ -28,20 +30,27 @@ fun net_gen num_term term_gen r =
 
 val ctxt = Config.put Spec_Check.examples 1 @{context};
 val ctxt = Config.put Spec_Check.gen_target 100 ctxt;
-fun check_prop gen printer name prop = Spec_Check.check_gen ctxt name gen printer prop (Random.deterministic_seed 1)
-fun check gen printer name pred = check_prop gen printer name (Property.pred pred)
+fun check_prop gen printer name prop () = Spec_Check.check_gen ctxt name gen printer prop (Random.deterministic_seed 1)
+fun check gen printer name pred () = check_prop gen printer name (Property.pred pred) ()
 
-fun ins t n = Net.insert_safe eq (t,t) n
-fun con t n = member eq (Net.content eq n) t
-fun replace_subterm t r =
+fun ins t n = Net.insert eq (t,t) n
+fun ins' t n = Net.insert_safe eq (t,t) n
+fun del t n = Net.delete eq (t,t) n
+fun del' t n = Net.delete_safe eq (t,t) n
+fun con n = Net.content eq n
+fun mem t n = member eq (con n) t
+fun set_eq fst snd = eq_set eq (fst,snd)
+fun con_eq fst snd = set_eq (Net.content eq fst) (Net.content eq snd)
+fun replace_subterm sym t r =
   let val (f,args) = Term.strip_comb t
       val (index,r) =  Random.range_int (~1,length args - 1) r
-      (* Generate two random values, pass r1 to rec-call, ignore returned r and return r2 instead *)
+      (* Generate two random values, pass r1 to rec-call, ignore returned r and return r2 instead.
+         This simply avoids some annoyance with passing values around. *)
       val (r1,r2) = Random.split r
   in
   if index = ~1
-  then (Term.list_comb (Gen.var 1 r1 |> fst, args), r2)
-  else (Term.list_comb (f,nth_map index (fn t => replace_subterm t r1 |> fst) args), r2)
+  then (Term.list_comb (sym r1 |> fst, args), r2)
+  else (Term.list_comb (f,nth_map index (fn t => replace_subterm sym t r1 |> fst) args), r2)
   end
 
 val def_term_gen = term_gen 30
@@ -53,64 +62,124 @@ fun term_in_net_gen r = (* Returns (term,net) where term is guaranteed to be in 
   in
   ((term,net),r)
   end
-fun id_term term =
-  let val id_type = Type ("fun", [TFree ("'a", ["HOL.type"]), TFree ("'a", ["HOL.type"])])
-  in (Abs ("x", id_type,(Bound 0))) $ term end
+fun term_instance_gen r =
+  let val (base_term,r) = def_term_gen r
+      val (general_term,r) = replace_subterm (Gen.var 1) base_term r
+  in
+  ((base_term,general_term),r)
+  end
+fun term_unif_gen r =
+  let val (base_term,r) = def_term_gen r
+      val (term1,r) = replace_subterm (Gen.var 1) base_term r
+      val (term2,r) = replace_subterm (Gen.var 1) base_term r
+  in
+  ((term1,term2),r)
+  end
 
-fun test () = (
+val test_util = [ (* Tests utilities like empty, is_empty and content *)
+check (Gen.unit) NONE
+      "Content of empty net is empty list"
+      (fn () => Net.content eq Net.empty = []),
 check (Gen.unit) NONE
       "Empty net is empty"
-      (fn _ => Net.content eq Net.empty = []);
+      (fn () => Net.is_empty Net.empty),
+check (def_net_gen) NONE
+      "Removing all terms returns empty net"
+      (fn n => fold (fn t => fn n => Net.delete eq (t,t) n) (Net.content eq n) n |> Net.is_empty)
+]
+
+val test_modifying = [ (* Tests functions that modify the net: insert and delete *)
+(* Insert *)
 check (Gen.zip (def_term_gen, def_net_gen)) NONE
       "Insertion adds value to content"
-      (fn (t,n) => set_eq (t :: Net.content eq n) (ins t n |> Net.content eq));
-check (term_in_net_gen) (SOME @{make_string})
-      "Duplicate detection on insert"
-      (fn (t,n) => (Net.insert eq (t,t) n; false) handle Net.INSERT => true);
-check (term_in_net_gen) (SOME @{make_string})
-      "Deletion removes term"
-      (fn (t,n) => ((Net.delete eq (t,t) n) |> Net.content eq |> List.length)
-                   = (List.length (Net.content eq n) - 1));
-check (Gen.zip (term_in_net_gen, Random.split))
-      (SOME (fn ((t,n),r) => @{make_string} (t, replace_subterm t r, n)))
-      "Replacing Subterm with Var still matches"
-      (fn ((t,n),r) =>
-          let val unifs = Net.unify eq (replace_subterm t r |> fst) n
-          in member eq unifs t end
-      );
-check (term_in_net_gen) (SOME @{make_string})
-      "match net t \<subseteq> unify net t"
-      (fn (t,n) => subset eq ((Net.match eq t n),(Net.unify eq t n)));
-check (term_in_net_gen) (SOME @{make_string})
-      "1. delete works correctly when values are saved under multiple keys"
-      (fn (t,n) =>
-        set_eq (Net.content eq n)
-               (Net.content eq (n |> Net.insert_safe eq (Const ("x",TFree ("'a",[])), t)
-                               |> Net.delete eq (Const ("x",TFree ("'a",[])), t))));
-check (term_in_net_gen) (SOME @{make_string})
-      "2. delete works correctly when values are saved under multiple keys"
-      (fn (t,n) =>
-        set_eq (Net.content eq n)
-          (Net.content eq (n |> Net.insert_safe eq (Const ("x",TFree ("'a",[])), t)
-                          |> Net.delete eq (t, t))));
+      ((fn (t,n) => set_eq (t :: Net.content eq n) (ins t n |> Net.content eq))),
+check_prop (Gen.zip (def_term_gen, def_net_gen)) NONE
+      "Insertion of new term increases size"
+      ((fn (t,n) => not (mem t n)) ==> (fn (t,n) => length (ins t n |> con) = length (con n) + 1)),
+check (term_in_net_gen) NONE
+      "Duplicate exception on insert"
+      (fn (t,n) => (ins t n; false) handle Net.INSERT => true),
+check (term_in_net_gen) NONE
+      "Safe insert raises no exception"
+      (fn (t,n) => (ins' t n; true) handle Net.INSERT => false),
 
-(* HOL *)
+(* Delete *)
+check (term_in_net_gen) NONE
+      "Deletion removes value from content"
+      ((fn (t,n) => set_eq (Net.content eq n |> remove eq t) (Net.content eq (del t n)))),
+check (term_in_net_gen) NONE
+      "Deletion of contained term decreases size"
+      ((fn (t,n) => length (del t n |> con) = length (con n) - 1)),
+check (term_in_net_gen) NONE
+      "Duplicate exception on delete"
+      (fn (t,n) => (del t n |> del t; false) handle Net.DELETE => true),
+check (term_in_net_gen) NONE
+      "Safe delete raises no exception"
+      (fn (t,n) => (del t n |> del' t; true) handle Net.DELETE => false),
+check (term_in_net_gen) (SOME @{make_string})
+      "Value saved under multiple keys gets deleted correctly"
+      (fn (t,n) =>
+        let val snd_term = Const ("x", dummyT)
+        in
+        con_eq n (n |> Net.insert_safe eq (snd_term, t)
+                    |> Net.delete eq (snd_term, t))
+        andalso
+        con_eq n (n |> Net.insert_safe eq (snd_term, t)
+                    |> Net.delete eq (t, t))
+        end),
+
+(* Combination *)
+check_prop (Gen.zip (def_term_gen, def_net_gen)) NONE
+      "Insertion and deletion of new term returns identical net"
+      ((fn (t,n) => not (mem t n)) ==> (fn (t,n) => con n = con (ins t n |> del t))),
+check_prop (term_in_net_gen) NONE
+      "Deletion and insertion of contained term returns identical net"
+      ((fn (t,n) => not (mem t n)) ==> (fn (t,n) => con n = con (ins t n |> del t)))
+]
+
+val test_queries = [
+check (term_in_net_gen) (SOME @{make_string})
+      "variants includes itself"
+      (fn (t,n) => member eq (Net.variants eq t n) t),
+(* variants argument-term being included together with the subset condition implies
+ that the other queries include the passed term too *)
+check (term_in_net_gen) (SOME @{make_string})
+      "variants \<subseteq> match, instances and unify"
+      (fn (t,n) => subset eq (Net.variants eq t n, Net.match eq t n)
+           andalso subset eq (Net.variants eq t n, Net.instances eq t n)
+           andalso subset eq (Net.variants eq t n, Net.unify eq t n)),
+check (term_in_net_gen) (SOME @{make_string})
+      "match \<subseteq> unify"
+      (fn (t,n) => subset eq (Net.match eq t n, Net.unify eq t n)),
+check (term_in_net_gen) (SOME @{make_string})
+      "instances \<subseteq> unify"
+      (fn (t,n) => subset eq (Net.instances eq t n, Net.unify eq t n)),
+check (Gen.zip (term_instance_gen, def_net_gen))
+      (SOME (fn ((t,u),n) => @{make_string} (t, u, n)))
+      "match returns itself and generalisation"
+      (fn ((t,u),n) => subset eq ([t,u],Net.match eq t (ins' u n |> ins' t))),
+check (Gen.zip (term_instance_gen, def_net_gen))
+      (SOME (fn ((t,u),n) => @{make_string} (t, u, n)))
+      "instances returns itself and instance"
+      (fn ((t,u),n) => subset eq ([t,u],Net.instances eq u (ins' t n |> ins' u))),
+check (Gen.zip (term_unif_gen, def_net_gen))
+      (SOME (fn ((t,u),n) => @{make_string} (t, u, n)))
+      "unif returns itself and unifiable"
+      (fn ((t,u),n) => subset eq ([t,u],Net.unify eq t (ins' u n |> ins' t)))
+]
+
+val test_hol = [
 check (Gen.unit) (NONE)
       "HOL: Distinction between Var x and \\x. f x"
       (fn () =>
         let val t = @{term "x"}
             val net = Net.empty |> ins t |> ins @{term "\<lambda>x. f x"} in
         Net.match eq t net = [t]
-        end);
-(*
-check (term_in_net_gen) (SOME @{make_string})
-      "HOL: unify net (id t) == unify net t"
-      (fn (t,n) => Net.unify_term n (id_term t) = Net.unify_term n t);
-check (term_in_net_gen) (SOME @{make_string})
-      "HOL: match net (id t) == match net t"
-      (fn (t,n) => Net.match_term n (id_term t) = Net.match_term n t);
-*)
-())
+        end)
+]
+  
+val tests = test_util @ test_modifying @ test_queries @ test_hol
+fun test () = fold I tests ()
 
 
 (* Benchmarking *)
@@ -172,7 +241,7 @@ timer "Delete 10% of terms in net" 3
            |> take (length (Net.content eq n) div 10)))
       ),
 timer "Replace part of term with Var and retrieve matching terms from net" 30
-      (fn (t,n,r) => Net.unify eq (replace_subterm t r |> fst) n)
+      (fn (t,n,r) => Net.unify eq (replace_subterm (Gen.var 1) t r |> fst) n)
       (fn r => Gen.zip3 (def_term_gen, def_net_gen, Random.split) r |> fst)
 ]
 
