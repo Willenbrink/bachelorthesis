@@ -3,18 +3,14 @@
 
 -3. Memory consumption?
   - spaeter dann in QuickCheck?
--2. Interface definieren angelehnt an die Literatur
-  - wie oft und wo wird merge, subtract und encode_type verwendet
-3. Discuss: should we provide interfaces that return boolean flags 
 2. Validierung ob Testergebnisse mit Literaturergebnissen zusammenpassen
 * Später: Pathindexing mit Variablennamen
-* Pathindexing parametrisieren
 * Memory consumption anschauen
-* Repository version
 * Interface-Ideen:
   - Lazy values returnen?
   - Gleich auf Alphaeq, Instanziierung, Generalisations, Unification
   - Operation: Insert only if no generalisation exists
+  - Interface mit boolean flags, e.g. generalisation_exists to avoid overhead when immediately discarding result list
 * Artemis JUnit XML für Quickcheck
 * basic symbol generator and adding an additional one which represents a recurring symbol whenever a new symbol is generated. That is, the probability for a symbol being reused changes during generation: 0.0  (no symbol generated yet) -> 0.5 -> 0.67 -> 0.75 etc.
 * Tests/Benchmarks als Fokus!
@@ -49,6 +45,16 @@
 * Near-eta conversion in net.ML?
 * Isabelle besser herrichten
 * Interne Repräsentation von FOL, Quantifiers, Lambdas, Theorems etc. genauer anschauen, print_satement hernehmen?
+
+## 26.01
+* Pathindexing parametrisieren
+* Repository version
+* Interface:
+  - Merge: sehr oft
+  - encode_type:
+    + Tools/induct.ML
+    + HOL/Tools/Lifting/lifting_def_code_dt.ML
+  - subtract: gar nicht?
 
 ## Bis 19.01
 * Exception Trace statt reines failen beim Test
