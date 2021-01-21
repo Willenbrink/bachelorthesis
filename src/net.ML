@@ -142,7 +142,7 @@ fun lookup_aux net keys = case (net,keys) of
         SOME net => lookup_aux net keys
         | NONE => [])
 (*Return the list of items at the given node, [] if no such node*)
-fun lookup eq t net = lookup_aux net (key_of_term t)
+fun lookup eq net t = lookup_aux net (key_of_term t)
 
 
 (*Skipping a term in a net.  Recursively skip 2 levels if a combination*)
@@ -255,10 +255,10 @@ fun query_wrapper query_type eq t net =
   query query_type eq (key_of_term t) net
   |> distinct (op eq)
 
-fun variants eq t net = query_wrapper Variants eq t net
-fun instances eq t net = query_wrapper Instances eq t net
-fun match eq t net = query_wrapper Generalisations eq t net
-fun unify eq t net = query_wrapper Unifiables eq t net
+fun lookup eq net t = query_wrapper Variants eq t net
+fun instances eq net t = query_wrapper Instances eq t net
+fun generalisations eq net t = query_wrapper Generalisations eq t net
+fun unifiables eq net t = query_wrapper Unifiables eq t net
 
 
 (** operations on nets **)
@@ -300,4 +300,4 @@ fun merge eq (net1, net2) =
 end;
 
 (* Checks if module is compatible with interface while still exposing internal functions *)
-structure NetInterfaceCheck = Net : NET;
+structure NetInterfaceCheck = Net : TERM_INDEX;

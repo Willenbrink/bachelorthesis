@@ -35,7 +35,7 @@ fun sym_ord (VarS, VarS) = EQUAL
 structure Stab = Table(type key = symbol val ord = sym_ord);
 type 'a content = 'a list Stab.table
 datatype 'a tree = Node of 'a content * 'a tree list Stab.table
-type 'a T = 'a list * 'a tree
+type T = Eq.value list * Eq.value tree
 
 fun symbol_of_term t = case t of
           Const (n,_) => AtomS n
@@ -184,13 +184,13 @@ fun lookup_one (Node (con,tree)) key = case key of
        >>= (fn x => lookup_one x key)
        |> Option.valOf
 
-fun lookup eq t (values,tree) =
+fun lookup eq (values,tree) t =
     let fun intersect k acc = inter eq acc (lookup_one tree k)
     in fold intersect (key_of_term t) values end
 
 datatype query_type = Variants | Generalisations | Instances | Unifiables
 
-fun query query_type eq term (values,(Node (con,tree))) =
+fun query query_type term (values,(Node (con,tree))) =
   let
     fun symbols sym = Stab.lookup_list con sym
     val handle_var = case query_type of
@@ -207,10 +207,10 @@ fun query query_type eq term (values,(Node (con,tree))) =
       let
         val list = Stab.lookup_list tree func
         fun arg_to_terms index arg =
-          query query_type eq arg (values,(nth list index))
+          query query_type arg (values,(nth list index))
           handle Subscript => []
       in
-      fold_index (fn (i,arg) => fn acc => inter eq (arg_to_terms i arg) acc) args values
+      fold_index (fn (i,arg) => fn acc => inter Eq.eq (arg_to_terms i arg) acc) args values
       end
     fun handle_func func args = case query_type of
         Variants => query_args func args
@@ -225,14 +225,14 @@ fun query query_type eq term (values,(Node (con,tree))) =
   | (func,args) => handle_func (symbol_of_term func) args
   end
 
-fun query_wrapper query_type eq t tree =
-  query query_type eq t tree
-  |> distinct (op eq)
+fun query_wrapper query_type t tree =
+  query query_type t tree
+  |> distinct (op Eq.eq)
 
-fun variants eq t tree = query_wrapper Variants eq t tree
-fun instances eq t tree = query_wrapper Instances eq t tree
-fun match eq t tree = query_wrapper Generalisations eq t tree
-fun unify eq t tree = query_wrapper Unifiables eq t tree
+fun variants tree t = query_wrapper Variants t tree
+fun instances tree t = query_wrapper Instances t tree
+fun generalisations tree t = query_wrapper Generalisations t tree
+fun unifiables tree t = query_wrapper Unifiables t tree
 
 fun dest (Node (con,tree)) =
   let
@@ -265,4 +265,8 @@ fun dot_of_node (node as Node(con,tree)) =
 end;
 
 (* Checks if module is compatible with interface while still exposing internal functions *)
-structure PathInterfaceCheck = Path : NET;
+structure Eq = struct
+  type value = term
+  fun eq (t,u) = Term.aconv_untyped (t,u)
+end
+structure PathInterfaceCheck = Path (Eq) : TERM_INDEX;
