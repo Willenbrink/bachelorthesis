@@ -1,5 +1,15 @@
 # Tasks
 ## TODO
+
+-3. Memory consumption?
+  - spaeter dann in QuickCheck?
+-2. Interface definieren angelehnt an die Literatur
+  - wie oft und wo wird merge, subtract und encode_type verwendet
+3. Discuss: should we provide interfaces that return boolean flags 
+2. Validierung ob Testergebnisse mit Literaturergebnissen zusammenpassen
+* Später: Pathindexing mit Variablennamen
+* Pathindexing parametrisieren
+* Memory consumption anschauen
 * Repository version
 * Interface-Ideen:
   - Lazy values returnen?

@@ -139,7 +139,7 @@ check_prop (term_in_net_gen) NONE
 
 val test_queries = [
 check (term_in_net_gen) (SOME @{make_string})
-      "variants includes itself"
+      "variants includes the queried term"
       (fn (t,n) => member eq (Net.variants eq t n) t),
 (* variants argument-term being included together with the subset condition implies
  that the other queries include the passed term too *)

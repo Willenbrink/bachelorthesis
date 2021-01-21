@@ -133,6 +133,10 @@ end
 \<close>
 
 ML \<open>
+((Property.pred (fn _ => raise Fail "ERROR"))) (0, Property.stats)
+\<close>
+
+ML \<open>
 Spec_Check.check_gen @{context} "Name" (Random.range_int (0,100)) (SOME @{make_string})
   (Property.==> ((fn x => x < 2), (fn x => raise Fail "ERROR IN TEST\n\n\n"))) (Random.deterministic_seed 0);
 
