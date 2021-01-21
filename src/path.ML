@@ -13,7 +13,12 @@ match_term no longer treats abstractions as wildcards; instead they match
 only wildcards in patterns.  Requires operands to be beta-eta-normal.
 *)
 
-structure Path =
+signature EQ = sig
+  type value
+  val eq : (value * value) -> bool
+end
+
+functor Path (V : EQ) =
 struct
 (* TODO is_first_order function in term! *)
 
@@ -33,9 +38,10 @@ fun sym_ord (VarS, VarS) = EQUAL
   | sym_ord ((AtomS n1), (AtomS n2)) = fast_string_ord (n1,n2)
 
 structure Stab = Table(type key = symbol val ord = sym_ord);
+type value = V.value
 type 'a content = 'a list Stab.table
 datatype 'a tree = Node of 'a content * 'a tree list Stab.table
-type T = Eq.value list * Eq.value tree
+type T = V.value list * V.value tree
 
 fun symbol_of_term t = case t of
           Const (n,_) => AtomS n
@@ -173,7 +179,7 @@ fun content_node eq tree =
   |> distinct (op eq)
   end
 
-fun content eq (values,_) = values
+fun content (values,_) = values
 
 (*Return the list of items at the given node, [] if no such node*)
 fun lookup_one (Node (con,tree)) key = case key of
@@ -184,8 +190,8 @@ fun lookup_one (Node (con,tree)) key = case key of
        >>= (fn x => lookup_one x key)
        |> Option.valOf
 
-fun lookup eq (values,tree) t =
-    let fun intersect k acc = inter eq acc (lookup_one tree k)
+fun lookup (values,tree) t =
+    let fun intersect k acc = inter (V.eq) acc (lookup_one tree k)
     in fold intersect (key_of_term t) values end
 
 datatype query_type = Variants | Generalisations | Instances | Unifiables
@@ -210,7 +216,7 @@ fun query query_type term (values,(Node (con,tree))) =
           query query_type arg (values,(nth list index))
           handle Subscript => []
       in
-      fold_index (fn (i,arg) => fn acc => inter Eq.eq (arg_to_terms i arg) acc) args values
+      fold_index (fn (i,arg) => fn acc => inter V.eq (arg_to_terms i arg) acc) args values
       end
     fun handle_func func args = case query_type of
         Variants => query_args func args
@@ -227,7 +233,7 @@ fun query query_type term (values,(Node (con,tree))) =
 
 fun query_wrapper query_type t tree =
   query query_type t tree
-  |> distinct (op Eq.eq)
+  |> distinct (op V.eq)
 
 fun variants tree t = query_wrapper Variants t tree
 fun instances tree t = query_wrapper Instances t tree
@@ -248,7 +254,7 @@ fun dest (Node (con,tree)) =
 fun merge eq ((values1,tree1), (values2,tree2)) =
   (union (op eq) values1 values2, fold (fn t => insert_ref_safe eq t) (dest tree2 |> map (fn (k,v) => ([k],v))) tree1)  (* FIXME non-canonical merge order!?! *)
 
-fun subtract eq tree1 tree2 = Library.subtract (swap #> eq) (content eq tree1) (content eq tree2)
+fun subtract eq tree1 tree2 = Library.subtract (swap #> eq) (content tree1) (content tree2)
 
 (* Useful for what exactly?
 fun dot_of_node (node as Node(con,tree)) =
@@ -267,6 +273,6 @@ end;
 (* Checks if module is compatible with interface while still exposing internal functions *)
 structure Eq = struct
   type value = term
-  fun eq (t,u) = Term.aconv_untyped (t,u)
+  val eq = Term.aconv_untyped
 end
 structure PathInterfaceCheck = Path (Eq) : TERM_INDEX;

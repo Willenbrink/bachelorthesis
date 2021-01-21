@@ -1,7 +1,7 @@
 theory "Test"
   imports Main "../spec_check/src/Spec_Check"
 begin
-ML_file "net_interface.ML"
+ML_file "term_index.ML"
 ML_file "net.ML"
 ML_file "path.ML"
 ML_file "pprinter.ML"
@@ -13,8 +13,9 @@ setup "type_pat_setup"
 (* Testing and Benchmarking *)
 
 ML \<open>
-structure NetTest = Tester(Net);
-structure PathTest = Tester(Path);
+structure V = struct type value = term val eq = Term.aconv_untyped end
+structure NetTest = Tester(Net(V));
+structure PathTest = Tester(Path(V));
 \<close>
 
 ML_command \<open>

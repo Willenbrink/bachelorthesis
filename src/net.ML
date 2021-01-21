@@ -13,7 +13,7 @@ match_term no longer treats abstractions as wildcards; instead they match
 only wildcards in patterns.  Requires operands to be beta-eta-normal.
 *)
 
-structure Net =
+functor Net (V : sig type value end) =
 struct
 
 fun >>= (x,f) = Option.map f x
@@ -59,10 +59,11 @@ fun encode_type (Type (c, Ts)) = Term.list_comb (Const (c, dummyT), map encode_t
     The empty key addresses the entire net.
     Lookup functions preserve order in items stored at same level.
 *)
-datatype 'a T = Leaf of 'a list
-              | Net of {comb: 'a T,
-                        var: 'a T,
-                        atoms: 'a T Symtab.table};
+type value = V.value
+datatype T = Leaf of value list
+            | Net of {comb: T,
+                      var: T,
+                      atoms: T Symtab.table};
 
 val empty = Leaf[];
 fun is_empty (Leaf []) = true | is_empty _ = false;
@@ -142,7 +143,7 @@ fun lookup_aux net keys = case (net,keys) of
         SOME net => lookup_aux net keys
         | NONE => [])
 (*Return the list of items at the given node, [] if no such node*)
-fun lookup eq net t = lookup_aux net (key_of_term t)
+fun lookup net t = lookup_aux net (key_of_term t)
 
 
 (*Skipping a term in a net.  Recursively skip 2 levels if a combination*)
@@ -169,9 +170,9 @@ fun look1 (atoms, a) nets =
     Abs or Var in object: if "unif", regarded as wildcard,
                                     else matches only a variable in net.
 *)
-fun matching unif t net nets : 'a T list =
+fun matching unif t net nets =
   let
-    fun rands _ (Leaf _, nets) : 'a T list = nets
+    fun rands _ (Leaf _, nets) = nets
       | rands t (Net{comb,atoms,...}, nets) =
           case t of
             f$t => fold_rev (check_var t) (rands f (comb,[])) nets
@@ -220,12 +221,12 @@ fun strip_comb_key i ks = case (i,ks) of
   | (i, (CombK::ks)) => strip_comb_key (i+1) ks
   | (i, (_::ks)) => strip_comb_key (i-1) ks
 
-fun query query_type eq keys net =
+fun query query_type keys net =
   case net of
     (Leaf xs) => xs
   | (Net {comb, var, atoms}) =>
     let
-      fun query_rec keys net = query query_type eq keys net
+      fun query_rec keys net = query query_type keys net
       fun con net = case net of Leaf xs => xs | _ => []
       fun symbols sym = case Symtab.lookup atoms sym of NONE => emptynet | SOME net => net
       fun handle_var ks = case query_type of
@@ -251,14 +252,13 @@ fun query query_type eq keys net =
       | (CombK :: ks) => handle_func ks
     end
 
-fun query_wrapper query_type eq t net =
-  query query_type eq (key_of_term t) net
-  |> distinct (op eq)
+fun query_wrapper query_type t net =
+  query query_type (key_of_term t) net
 
-fun lookup eq net t = query_wrapper Variants eq t net
-fun instances eq net t = query_wrapper Instances eq t net
-fun generalisations eq net t = query_wrapper Generalisations eq t net
-fun unifiables eq net t = query_wrapper Unifiables eq t net
+fun lookup net t = query_wrapper Variants t net
+fun instances net t = query_wrapper Instances t net
+fun generalisations net t = query_wrapper Generalisations t net
+fun unifiables net t = query_wrapper Unifiables t net
 
 
 (** operations on nets **)
@@ -291,13 +291,13 @@ fun dest (Leaf xs) = map (pair []) xs
         map (cons_fst VarK) (dest var) @
         maps (fn (a, net) => map (cons_fst (AtomK a)) (dest net)) (Symtab.dest atoms);
 
-fun content eq net = map #2 (dest net);
+fun content net = map #2 (dest net);
 
 fun merge eq (net1, net2) =
   (* FIXME non-canonical merge order!?! *)
-  fold (fn (k,v) => fn acc => insert_key eq v (k,acc)) (dest net2 : (key list * 'a) list) (net1 : 'a T)
+  fold (fn (k,v) => fn acc => insert_key eq v (k,acc)) (dest net2) (net1)
 
 end;
 
 (* Checks if module is compatible with interface while still exposing internal functions *)
-structure NetInterfaceCheck = Net : TERM_INDEX;
+structure NetInterfaceCheck = Net (struct type value = term end) : TERM_INDEX;

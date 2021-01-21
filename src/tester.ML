@@ -1,4 +1,4 @@
-functor Tester (Index : TERM_INDEX) = 
+functor Tester (Index : TERM_INDEX where type value = term) = 
 struct
 structure Gen = Generator
 
@@ -37,10 +37,10 @@ fun ins t n = Index.insert eq (t,t) n
 fun ins' t n = Index.insert_safe eq (t,t) n
 fun del t n = Index.delete eq (t,t) n
 fun del' t n = Index.delete_safe eq (t,t) n
-fun con n = Index.content eq n
+fun con n = Index.content n
 fun mem t n = member eq (con n) t
 fun set_eq fst snd = eq_set eq (fst,snd)
-fun con_eq fst snd = set_eq (Index.content eq fst) (Index.content eq snd)
+fun con_eq fst snd = set_eq (Index.content fst) (Index.content snd)
 fun replace_subterm sym t r =
   let val (f,args) = Term.strip_comb t
       val (index,r) =  Random.range_int (~1,length args - 1) r
@@ -57,8 +57,8 @@ val def_term_gen = term_gen 30
 val def_net_gen = net_gen 30 def_term_gen
 fun term_in_net_gen r = (* Returns (term,net) where term is guaranteed to be in the net *)
   let
-    val (net,r) = Gen.gen_prop (fn n => Index.content eq n <> []) def_net_gen r
-    val (term,r) = Gen.selectL (Index.content eq net ) r
+    val (net,r) = Gen.gen_prop (fn n => Index.content n <> []) def_net_gen r
+    val (term,r) = Gen.selectL (Index.content net ) r
   in
   ((term,net),r)
   end
@@ -79,20 +79,20 @@ fun term_unif_gen r =
 val test_util = [ (* Tests utilities like empty, is_empty and content *)
 check (Gen.unit) NONE
       "Content of empty net is empty list"
-      (fn () => Index.content eq Index.empty = []),
+      (fn () => Index.content Index.empty = []),
 check (Gen.unit) NONE
       "Empty net is empty"
       (fn () => Index.is_empty Index.empty),
 check (def_net_gen) NONE
       "Removing all terms returns empty net"
-      (fn n => fold (fn t => fn n => Index.delete eq (t,t) n) (Index.content eq n) n |> Index.is_empty)
+      (fn n => fold (fn t => fn n => Index.delete eq (t,t) n) (Index.content n) n |> Index.is_empty)
 ]
 
 val test_modifying = [ (* Tests functions that modify the net: insert and delete *)
 (* Insert *)
 check_prop (Gen.zip (def_term_gen, def_net_gen)) NONE
       "Insertion adds value to content"
-      ((fn (t,n) => not (mem t n)) ==> (fn (t,n) => set_eq (t :: Index.content eq n) (ins t n |> Index.content eq))),
+      ((fn (t,n) => not (mem t n)) ==> (fn (t,n) => set_eq (t :: Index.content n) (ins t n |> Index.content))),
 check_prop (Gen.zip (def_term_gen, def_net_gen)) NONE
       "Insertion of new term increases size"
       ((fn (t,n) => not (mem t n)) ==> (fn (t,n) => length (ins t n |> con) = length (con n) + 1)),
@@ -106,7 +106,7 @@ check (term_in_net_gen) NONE
 (* Delete *)
 check (term_in_net_gen) NONE
       "Deletion removes value from content"
-      ((fn (t,n) => set_eq (Index.content eq n |> remove eq t) (Index.content eq (del t n)))),
+      ((fn (t,n) => set_eq (Index.content n |> remove eq t) (Index.content (del t n)))),
 check (term_in_net_gen) NONE
       "Deletion of contained term decreases size"
       ((fn (t,n) => length (del t n |> con) = length (con n) - 1)),
@@ -140,32 +140,32 @@ check_prop (term_in_net_gen) NONE
 val test_queries = [
 check (term_in_net_gen) (SOME @{make_string})
       "variants includes the queried term"
-      (fn (t,n) => member eq (Index.lookup eq n t) t),
+      (fn (t,n) => member eq (Index.lookup n t) t),
 (* variants argument-term being included together with the subset condition implies
  that the other queries include the passed term too *)
 check (term_in_net_gen) (SOME @{make_string})
       "lookup \<subseteq> generalisations, instances and unifiables"
-      (fn (t,n) => subset eq (Index.lookup eq n t, Index.generalisations eq n t)
-           andalso subset eq (Index.lookup eq n t, Index.instances eq n t)
-           andalso subset eq (Index.lookup eq n t, Index.unifiables eq n t)),
+      (fn (t,n) => subset eq (Index.lookup n t, Index.generalisations n t)
+           andalso subset eq (Index.lookup n t, Index.instances n t)
+           andalso subset eq (Index.lookup n t, Index.unifiables n t)),
 check (term_in_net_gen) (SOME @{make_string})
       "match \<subseteq> unify"
-      (fn (t,n) => subset eq (Index.generalisations eq n t, Index.unifiables eq n t)),
+      (fn (t,n) => subset eq (Index.generalisations n t, Index.unifiables n t)),
 check (term_in_net_gen) (SOME @{make_string})
       "instances \<subseteq> unify"
-      (fn (t,n) => subset eq (Index.instances eq n t, Index.unifiables eq n t)),
+      (fn (t,n) => subset eq (Index.instances n t, Index.unifiables n t)),
 check (Gen.zip (term_instance_gen, def_net_gen))
       (SOME (fn ((t,u),n) => @{make_string} (t, u, n)))
       "match returns itself and generalisation"
-      (fn ((t,u),n) => subset eq ([t,u],Index.generalisations eq (ins' u n |> ins' t) t)),
+      (fn ((t,u),n) => subset eq ([t,u],Index.generalisations (ins' u n |> ins' t) t)),
 check (Gen.zip (term_instance_gen, def_net_gen))
       (SOME (fn ((t,u),n) => @{make_string} (t, u, n)))
       "instances returns itself and instance"
-      (fn ((t,u),n) => subset eq ([t,u],Index.instances eq (ins' t n |> ins' u) u)),
+      (fn ((t,u),n) => subset eq ([t,u],Index.instances (ins' t n |> ins' u) u)),
 check (Gen.zip (term_unif_gen, def_net_gen))
       (SOME (fn ((t,u),n) => @{make_string} (t, u, n)))
       "unif returns itself and unifiable"
-      (fn ((t,u),n) => subset eq ([t,u],Index.unifiables eq (ins' u n |> ins' t) t))
+      (fn ((t,u),n) => subset eq ([t,u],Index.unifiables (ins' u n |> ins' t) t))
 ]
 
 val test_hol = [
@@ -174,7 +174,7 @@ check (Gen.unit) (NONE)
       (fn () =>
         let val t = @{term "x"}
             val net = Index.empty |> ins t |> ins @{term "\<lambda>x. f x"} in
-        Index.generalisations eq net t = [t]
+        Index.generalisations net t = [t]
         end)
 ]
   
@@ -218,7 +218,7 @@ timer "Creation of net" 10
       def_net_gen
       I,
 timer "Content of net" 10
-      (Index.content eq)
+      (Index.content)
       (def_net_gen #> fst),
 timer "Insert one term" 30
       (fn (net,term) => Index.insert_safe eq (term,term) net)
@@ -230,18 +230,18 @@ timer "Delete one term" 30
                |> fst
                |> (fn (n,t) => (Index.insert_safe eq (t,t) n,t))),
 timer "Get 10% of terms in net" 3
-      (fn (n,r) => (n, Gen.shuffle (Index.content eq n) r
+      (fn (n,r) => (n, Gen.shuffle (Index.content n) r
                        |> fst
-                       |> take (length (Index.content eq n) div 10)))
+                       |> take (length (Index.content n) div 10)))
       def_net_gen,
 timer "Delete 10% of terms in net" 3
       (fn (net,terms) => fold (fn x => fn net => Index.delete_safe eq (x,x) net) terms net)
       (def_net_gen
-       #> (fn (n,r) => (n, Gen.shuffle (Index.content eq n) r |> fst
-           |> take (length (Index.content eq n) div 10)))
+       #> (fn (n,r) => (n, Gen.shuffle (Index.content n) r |> fst
+           |> take (length (Index.content n) div 10)))
       ),
 timer "Replace part of term with Var and retrieve matching terms from net" 30
-      (fn (t,n,r) => Index.unifiables eq n (replace_subterm (Gen.var 1) t r |> fst))
+      (fn (t,n,r) => Index.unifiables n (replace_subterm (Gen.var 1) t r |> fst))
       (fn r => Gen.zip3 (def_term_gen, def_net_gen, Random.split) r |> fst)
 ]
 
@@ -251,6 +251,6 @@ check (def_term_gen) NONE
       (fn t => (writeln (@{make_string} (Term.size_of_term t)); true)) ();
 check (def_net_gen) NONE
       "Netsize distribution"
-      (fn n => (writeln (@{make_string} (Index.content eq n |> List.length)); true)) ())
+      (fn n => (writeln (@{make_string} (Index.content n |> List.length)); true)) ())
 
 end;

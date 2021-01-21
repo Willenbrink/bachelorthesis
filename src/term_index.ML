@@ -1,23 +1,24 @@
 
 signature TERM_INDEX =
 sig
-    type 'a T
-    val empty: 'a T
-    val is_empty: 'a T -> bool
-    val content: 'a T -> 'a list
+    type value
+    type T
+    val empty: T
+    val is_empty: T -> bool
+    val content: T -> value list
 
     exception INSERT
-    val insert: ('a * 'a -> bool) -> term * 'a -> 'a T -> 'a T
-    val insert_safe: ('a * 'a -> bool) -> term * 'a -> 'a T -> 'a T
+    val insert: (value * value -> bool) -> term * value -> T -> T
+    val insert_safe: (value * value -> bool) -> term * value -> T -> T
 
     exception DELETE
-    val delete: ('a * 'a -> bool) -> term * 'a -> 'a T -> 'a T
-    val delete_safe: ('a * 'a -> bool) -> term * 'a -> 'a T -> 'a T
+    val delete: (value * value -> bool) -> term * value -> T -> T
+    val delete_safe: (value * value -> bool) -> term * value -> T -> T
     
-    val lookup: 'a T -> term -> 'a list
-    val generalisations: 'a T -> term -> 'a list
-    val instances: 'a T -> term -> 'a list
-    val unifiables: 'a T -> term -> 'a list
+    val lookup: T -> term -> value list
+    val generalisations: T -> term -> value list
+    val instances: T -> term -> value list
+    val unifiables: T -> term -> value list
 
 (*    val subtract: ('a * 'a -> bool) -> 'a T -> 'a T -> 'a list
     val merge: ('a * 'a -> bool) -> 'a T * 'a T -> 'a T
