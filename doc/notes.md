@@ -1,6 +1,6 @@
 # Tasks
 ## TODO
-
+* Spec_Check Compilervariante fixen
 -3. Memory consumption?
   - spaeter dann in QuickCheck?
 2. Validierung ob Testergebnisse mit Literaturergebnissen zusammenpassen

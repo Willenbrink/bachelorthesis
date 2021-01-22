@@ -1,7 +1,7 @@
 theory "Scratch"
 imports Main "../spec_check/src/Spec_Check"
 begin
-ML_file "net_interface.ML"
+ML_file "term_index.ML"
 ML_file "net.ML"
 ML_file "path.ML"
 ML_file "pprinter.ML"
@@ -18,11 +18,37 @@ TFree ("'a",["'a", "'b"]);
 @{term "(\<lambda> x. x)"};
 \<close>
 
+ML \<open>
+structure V = struct type value = term val eq = Term.aconv_untyped end
+structure Net = Net(V);
+structure Path = Path(V);
+\<close>
+
+ML \<open>
+
+Generator.fold_seq 20 (curry op ::) (Generator.free' 0.9 0 (Random.new ())) []
+|> map pterm;
+local
+fun term_gen height index (seq,r) =
+  let
+    val (symbol,seq) = Seq.pull seq |> (fn SOME x => x)
+    val (num_args,r) = Random.range_int (2,10) r
+    val state' = (seq,r)
+  in
+  if height >= 5 orelse (index <> 2 andalso height <> 0)
+  then (symbol,0,state')
+  else (symbol,num_args,state')
+  end
+val (r1,r2) = Random.new () |> Random.split
+in
+val term = Generator.term_det term_gen (Generator.def_sym_seq (1.0,0.0,0.0) 0.1 1 r1, r2) |> pterm
+end
+\<close>
 
 ML \<open>
 val eq = Term.aconv_untyped
-fun ins t tree = Path.insert_term eq (t,t) tree
-fun del t tree = Path.delete_term eq (t,t) tree
+fun ins t tree = Path.insert eq (t,t) tree
+fun del t tree = Path.delete eq (t,t) tree
 val terms =
 @{term "f"} ::
 @{term "f x"} ::
@@ -35,8 +61,8 @@ val terms =
 @{term "f (g (h a) y z)"} ::
 []
 
-val pathl = fold (fn t => fn net => Path.insert_term eq (t,t) net) terms Path.empty
-fun match unif (values,tree) term = Path.match unif values tree term |> map (pterm o op !)
+val pathl = fold (fn t => fn net => Path.insert eq (t,t) net) terms Path.empty
+fun match unif (values,tree) term = Path.generalisations tree term |> map (pterm o op !)
 \<close>
 
 ML_val \<open>
