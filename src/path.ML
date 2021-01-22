@@ -188,7 +188,8 @@ fun lookup_one (Node (con,tree)) key = case key of
        Stab.lookup tree name
        >>= (fn xs => nth xs index)
        >>= (fn x => lookup_one x key)
-       |> Option.valOf
+       |> (fn SOME xs => xs | NONE => [])
+       handle Subscript => []
 
 fun lookup (values,tree) t =
     let fun intersect k acc = inter (V.eq) acc (lookup_one tree k)

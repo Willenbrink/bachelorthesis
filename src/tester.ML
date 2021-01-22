@@ -6,7 +6,7 @@ val ==> = Property.==>
 infix 1 ==>
 
 val eq = Term.aconv_untyped
-fun def_sym_gen n = Gen.def_sym_gen (1.0,2.0,1.0,5.0) n
+fun def_sym_gen n = Gen.def_sym_gen (2.0,1.0,5.0) n
 fun term_gen n r =
   let
     val (num,r) = Random.range_int (0,n) r (* TODO find better solution for spread *)
@@ -55,21 +55,21 @@ fun replace_subterm sym t r =
 
 val def_term_gen = term_gen 30
 val def_net_gen = net_gen 30 def_term_gen
-fun term_in_net_gen r = (* Returns (term,net) where term is guaranteed to be in the net *)
+fun term_in_net_gen net_gen r = (* Returns (term,net) where term is guaranteed to be in the net *)
   let
-    val (net,r) = Gen.gen_prop (fn n => Index.content n <> []) def_net_gen r
+    val (net,r) = Gen.gen_prop (fn n => Index.content n <> []) net_gen r
     val (term,r) = Gen.selectL (Index.content net ) r
   in
   ((term,net),r)
   end
-fun term_instance_gen r =
-  let val (base_term,r) = def_term_gen r
+fun term_instance_gen term_gen r =
+  let val (base_term,r) = term_gen r
       val (general_term,r) = replace_subterm (Gen.var 1) base_term r
   in
   ((base_term,general_term),r)
   end
-fun term_unif_gen r =
-  let val (base_term,r) = def_term_gen r
+fun term_unif_gen term_gen r =
+  let val (base_term,r) = term_gen r
       val (term1,r) = replace_subterm (Gen.var 1) base_term r
       val (term2,r) = replace_subterm (Gen.var 1) base_term r
   in
@@ -96,27 +96,27 @@ check_prop (Gen.zip (def_term_gen, def_net_gen)) NONE
 check_prop (Gen.zip (def_term_gen, def_net_gen)) NONE
       "Insertion of new term increases size"
       ((fn (t,n) => not (mem t n)) ==> (fn (t,n) => length (ins t n |> con) = length (con n) + 1)),
-check (term_in_net_gen) NONE
+check (term_in_net_gen def_net_gen) NONE
       "Duplicate exception on insert"
       (fn (t,n) => (ins t n; false) handle Index.INSERT => true),
-check (term_in_net_gen) NONE
+check (term_in_net_gen def_net_gen) NONE
       "Safe insert raises no exception"
       (fn (t,n) => (ins' t n; true) handle Index.INSERT => false),
 
 (* Delete *)
-check (term_in_net_gen) NONE
+check (term_in_net_gen def_net_gen) NONE
       "Deletion removes value from content"
       ((fn (t,n) => set_eq (Index.content n |> remove eq t) (Index.content (del t n)))),
-check (term_in_net_gen) NONE
+check (term_in_net_gen def_net_gen) NONE
       "Deletion of contained term decreases size"
       ((fn (t,n) => length (del t n |> con) = length (con n) - 1)),
-check (term_in_net_gen) NONE
+check (term_in_net_gen def_net_gen) NONE
       "Duplicate exception on delete"
       (fn (t,n) => (del t n |> del t; false) handle Index.DELETE => true),
-check (term_in_net_gen) NONE
+check (term_in_net_gen def_net_gen) NONE
       "Safe delete raises no exception"
       (fn (t,n) => (del t n |> del' t; true) handle Index.DELETE => false),
-check (term_in_net_gen) (SOME @{make_string})
+check (term_in_net_gen def_net_gen) (SOME @{make_string})
       "Value saved under multiple keys gets deleted correctly"
       (fn (t,n) =>
         let val snd_term = Const ("x", dummyT)
@@ -132,39 +132,39 @@ check (term_in_net_gen) (SOME @{make_string})
 check_prop (Gen.zip (def_term_gen, def_net_gen)) NONE
       "Insertion and deletion of new term returns identical net"
       ((fn (t,n) => not (mem t n)) ==> (fn (t,n) => con n = con (ins t n |> del t))),
-check_prop (term_in_net_gen) NONE
+check_prop (term_in_net_gen def_net_gen) NONE
       "Deletion and insertion of contained term returns identical net"
       ((fn (t,n) => not (mem t n)) ==> (fn (t,n) => con n = con (ins t n |> del t)))
 ]
 
 val test_queries = [
-check (term_in_net_gen) (SOME @{make_string})
+check (term_in_net_gen def_net_gen) (SOME @{make_string})
       "variants includes the queried term"
       (fn (t,n) => member eq (Index.lookup n t) t),
 (* variants argument-term being included together with the subset condition implies
  that the other queries include the passed term too *)
-check (term_in_net_gen) (SOME @{make_string})
+check (term_in_net_gen def_net_gen) (SOME @{make_string})
       "lookup \<subseteq> generalisations, instances and unifiables"
       (fn (t,n) => subset eq (Index.lookup n t, Index.generalisations n t)
            andalso subset eq (Index.lookup n t, Index.instances n t)
            andalso subset eq (Index.lookup n t, Index.unifiables n t)),
-check (term_in_net_gen) (SOME @{make_string})
-      "match \<subseteq> unify"
+check (term_in_net_gen def_net_gen) (SOME @{make_string})
+      "generalisation \<subseteq> unifiables"
       (fn (t,n) => subset eq (Index.generalisations n t, Index.unifiables n t)),
-check (term_in_net_gen) (SOME @{make_string})
-      "instances \<subseteq> unify"
+check (term_in_net_gen def_net_gen) (SOME @{make_string})
+      "instances \<subseteq> unifiables"
       (fn (t,n) => subset eq (Index.instances n t, Index.unifiables n t)),
-check (Gen.zip (term_instance_gen, def_net_gen))
+check (Gen.zip (term_instance_gen def_term_gen, def_net_gen))
       (SOME (fn ((t,u),n) => @{make_string} (t, u, n)))
-      "match returns itself and generalisation"
+      "generalisation returns itself and generalisation"
       (fn ((t,u),n) => subset eq ([t,u],Index.generalisations (ins' u n |> ins' t) t)),
-check (Gen.zip (term_instance_gen, def_net_gen))
+check (Gen.zip (term_instance_gen def_term_gen, def_net_gen))
       (SOME (fn ((t,u),n) => @{make_string} (t, u, n)))
       "instances returns itself and instance"
       (fn ((t,u),n) => subset eq ([t,u],Index.instances (ins' t n |> ins' u) u)),
-check (Gen.zip (term_unif_gen, def_net_gen))
+check (Gen.zip (term_unif_gen def_term_gen, def_net_gen))
       (SOME (fn ((t,u),n) => @{make_string} (t, u, n)))
-      "unif returns itself and unifiable"
+      "unifiables returns itself and unifiable"
       (fn ((t,u),n) => subset eq ([t,u],Index.unifiables (ins' u n |> ins' t) t))
 ]
 
@@ -183,6 +183,28 @@ fun test () = fold I tests ()
 
 
 (* Benchmarking *)
+
+
+
+local
+fun symbol_gen cut_off arg_range height index (seq,r) =
+  let
+    val (symbol,seq) = Seq.pull seq |> (fn SOME x => x)
+    val (num_args,r) = Random.range_int arg_range r
+    val state' = (seq,r)
+  in
+  if cut_off (height, index)
+  then (symbol,0,state')
+  else (symbol,num_args,state')
+  end
+fun term_gen freq reuse cut_off arg_range r =
+  Random.split r
+  |>> Generator.def_sym_seq freq reuse 1
+  |> Generator.term_det (symbol_gen cut_off arg_range)
+in
+fun term_ground_no_reuse argr = term_gen (1.0,0.0,0.1) 0.0 (fn (h,i) => h >= 1000 div (fst argr + snd argr)) argr
+end
+
 
 fun add_timings {elapsed = elapsed1, cpu = cpu1, gc = gc1} {elapsed = elapsed2, cpu = cpu2, gc = gc2} =
   {elapsed = elapsed1 + elapsed2,
@@ -212,44 +234,77 @@ fun timer name repetitions f_test f_input =
 
 (* Significantly larger for benchmarks than tests *)
 val def_term_gen = term_gen 30
-val def_net_gen = net_gen 1000 def_term_gen
-fun benchmark () = [
+fun def_net_gen term_gen = net_gen 1000 term_gen
+fun benchmark term_gen net_gen =
+  let val term_gen = case term_gen of SOME x => x | NONE => def_term_gen
+      val net_gen = case net_gen of SOME x => x term_gen | NONE => def_net_gen term_gen
+  in [
 timer "Creation of net" 10
-      def_net_gen
+      net_gen
       I,
 timer "Content of net" 10
       (Index.content)
-      (def_net_gen #> fst),
+      (net_gen #> fst),
 timer "Insert one term" 30
       (fn (net,term) => Index.insert_safe eq (term,term) net)
-      (fn r => Gen.zip (def_net_gen, def_term_gen) r
+      (fn r => Gen.zip (net_gen, term_gen) r
                |> fst),
 timer "Delete one term" 30
       (fn (net,term) => Index.delete eq (term,term) net)
-      (fn r => Gen.zip (def_net_gen, def_term_gen) r
+      (fn r => Gen.zip (net_gen, term_gen) r
                |> fst
                |> (fn (n,t) => (Index.insert_safe eq (t,t) n,t))),
 timer "Get 10% of terms in net" 3
       (fn (n,r) => (n, Gen.shuffle (Index.content n) r
                        |> fst
                        |> take (length (Index.content n) div 10)))
-      def_net_gen,
+      net_gen,
 timer "Delete 10% of terms in net" 3
       (fn (net,terms) => fold (fn x => fn net => Index.delete_safe eq (x,x) net) terms net)
-      (def_net_gen
+      (net_gen
        #> (fn (n,r) => (n, Gen.shuffle (Index.content n) r |> fst
            |> take (length (Index.content n) div 10)))
       ),
 timer "Replace part of term with Var and retrieve matching terms from net" 30
       (fn (t,n,r) => Index.unifiables n (replace_subterm (Gen.var 1) t r |> fst))
-      (fn r => Gen.zip3 (def_term_gen, def_net_gen, Random.split) r |> fst)
-]
+      (fn r => Gen.zip3 (term_gen, net_gen, Random.split) r |> fst)
+] end
 
-fun print_distribution () = (
-check (def_term_gen) NONE
+fun benchmark_queries term_gen net_gen =
+  let val term_gen = case term_gen of SOME x => x | NONE => def_term_gen
+      val net_gen = case net_gen of SOME x => x term_gen | NONE => def_net_gen term_gen
+  in [
+timer "Lookup existing term" 30
+      (fn (t,n) => Index.lookup n t)
+      (term_in_net_gen net_gen #> fst),
+timer "Lookup non-existing term" 30
+      (fn (t,n) => Index.lookup n t)
+      (Gen.zip (term_gen,net_gen) #> fst), (* TODO use precondition when using quichcheck *)
+timer "instances existing term" 30
+      (fn (t,n) => Index.instances n t)
+      (term_in_net_gen net_gen #> fst),
+timer "instances non-existing term" 30
+      (fn (t,n) => Index.instances n t)
+      (Gen.zip (term_gen,net_gen) #> fst),
+timer "generalisations existing term" 30
+      (fn (t,n) => Index.generalisations n t)
+      (term_in_net_gen net_gen #> fst),
+timer "generalisations non-existing term" 30
+      (fn (t,n) => Index.generalisations n t)
+      (Gen.zip (term_gen,net_gen) #> fst),
+timer "unifiables existing term" 30
+      (fn (t,n) => Index.unifiables n t)
+      (term_in_net_gen net_gen #> fst),
+timer "unifiables non-existing term" 30
+      (fn (t,n) => Index.unifiables n t)
+      (Gen.zip (term_gen,net_gen) #> fst)
+] end
+
+fun print_distribution term_gen net_gen () = (
+check (term_gen) NONE
       "Termsize distribution"
       (fn t => (writeln (@{make_string} (Term.size_of_term t)); true)) ();
-check (def_net_gen) NONE
+check (net_gen term_gen) NONE
       "Netsize distribution"
       (fn n => (writeln (@{make_string} (Index.content n |> List.length)); true)) ())
 
