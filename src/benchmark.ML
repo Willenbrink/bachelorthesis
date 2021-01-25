@@ -119,27 +119,28 @@ fun benchmark_queries net_list =
 timer "Lookup existing term"
       (fn (t,n) => map (Index.lookup n) t)
       (term_in_net),
-timer "Lookup non-existing term"
-      (fn (t,n) => map (Index.lookup n) t)
-      (term_not_in_net),
 timer "instances existing term"
       (fn (t,n) => map (Index.instances n) t)
       (term_in_net),
-timer "instances non-existing term"
-      (fn (t,n) => map (Index.instances n) t)
-      (term_not_in_net),
 timer "generalisations existing term"
       (fn (t,n) => map (Index.generalisations n) t)
       (term_in_net),
+timer "unifiables existing term"
+      (fn (t,n) => map (Index.unifiables n) t)
+      (term_in_net)
+(*,
+timer "Lookup non-existing term"
+      (fn (t,n) => map (Index.lookup n) t)
+      (term_not_in_net),
+timer "instances non-existing term"
+      (fn (t,n) => map (Index.instances n) t)
+      (term_not_in_net),
 timer "generalisations non-existing term"
       (fn (t,n) => map (Index.generalisations n) t)
       (term_not_in_net),
-timer "unifiables existing term"
-      (fn (t,n) => map (Index.unifiables n) t)
-      (term_in_net),
 timer "unifiables non-existing term"
       (fn (t,n) => map (Index.unifiables n) t)
-      (term_not_in_net)
+      (term_not_in_net)*)
 ] end
 end
 
@@ -149,9 +150,9 @@ fun print_real real =
   |> StringCvt.padLeft #" " 6
 
 fun compare categories tests (resultss : {cpu: Time.time, elapsed: Time.time, gc: Time.time} list list) =
-    (fold (fn name => fn acc => StringCvt.padLeft #" " 6 name ^ "\t\t" ^ acc) categories "" |> writeln;
+    (fold (fn name => fn acc => StringCvt.padLeft #" " 6 name ^ "\t" ^ acc) categories "" |> writeln;
     map_index
       (fn (i,name) =>
-        fold (fn timing => fn acc => (#elapsed timing |> Time.toReal |> print_real) ^ "\t\t" ^ acc)
+        fold (fn timing => fn acc => (#elapsed timing |> Time.toReal |> print_real) ^ "\t" ^ acc)
           (map (fn el => nth el i) resultss) name)
       tests |> map writeln)

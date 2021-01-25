@@ -18,6 +18,8 @@ fun term_gen freq reuse cut_off arg_range r =
   ||> snd
 in
 fun term_ground reuse depth argr =
-  term_gen (1.0,0.0,0.1) reuse (fn (h,i) => h >= depth) argr
+  term_gen (1.0,0.0,0.0) reuse (fn (h,i) => h >= depth) argr
+fun term_with_var var depth argr =
+  term_gen (1.0,var,0.0) 0.3 (fn (h,i) => h >= depth) argr
 end
 end

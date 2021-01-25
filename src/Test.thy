@@ -33,7 +33,7 @@ NetTest.test ();
 \<close>
 *)
 ML \<open>
-val size = 10
+val size = 1000
 val eq = Term.aconv_untyped
 \<close>
 
@@ -44,9 +44,13 @@ Timing.timing (fn () => Random.new () |> PathBench.net_gen size (term_ground 0.0
 
 ML \<open>
 val term_gens = [
-("LR", term_ground 0.0 5 (0,6)),
-("MR", term_ground 0.3 5 (0,6)),
-("HR", term_ground 0.5 5 (0,6))
+(* Reuse of symbols *)
+("LR", term_ground 0.0 5 (2,6)),
+("MR", term_ground 0.3 5 (2,6)),
+("HR", term_ground 0.5 5 (2,6)),
+("LV", term_with_var 0.5 5 (2,6)),
+("MV", term_with_var 1.0 5 (2,6)),
+("HV", term_with_var 2.0 5 (2,6))
 ]
 val termss = map (fn (name,gen) => (name,funpow_yield size gen (Random.new ()) |> fst)) term_gens
 val index_list = map (fn (name,terms) =>
