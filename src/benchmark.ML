@@ -147,27 +147,11 @@ fun print_real real =
   real
   |> Real.fmt (StringCvt.FIX (SOME 3))
   |> StringCvt.padLeft #" " 6
-fun diff {elapsed = _, cpu = c1, gc = _} {elapsed = _, cpu = c2, gc = _} =
-  (Time.toReal c1 - Time.toReal c2, (Time.toReal c1) / (Time.toReal c2))
 
-fun compare name1 name2 res1 res2 =
-  let val res =
-    map_index (fn (i,(name,x)) => (name,diff x (nth res2 i |> snd))) res1
-  in
-  (writeln (name1 ^ " vs " ^ name2 ^ 
-            "\nAbs. (" ^ name1 ^" - " ^ name2 ^ ")\tRel. (" ^ name1 ^ "/" ^ name2 ^ ")\tName");
-   map (fn (name,(abs,rel)) => (print_real abs ^ "s\t\t"
-                                  ^ print_real rel ^ "\t\t"
-                                  ^ name)
-                                  |> writeln) res)
-  end
-
-fun compare names results =
-  let
-    val results = fold (fn ((name1,result1),(_,result2)) => fn acc => (name1, [result1, result2]) :: acc) results []
-  in
-  (fold (fn name => fn acc => StringCvt.padLeft #" " 6 name ^ "\t" ^ acc) names "" |> writeln;
-  map (fn (test_name, timings : Timing.timing list) =>
-    fold (fn timing => fn acc => (#elapsed timing |> Time.toReal |> print_real) ^ "\t" ^ acc) timings "" ^
-    test_name) results |> map writeln)
-  end
+fun compare categories tests (resultss : {cpu: Time.time, elapsed: Time.time, gc: Time.time} list list) =
+    (fold (fn name => fn acc => StringCvt.padLeft #" " 6 name ^ "\t\t" ^ acc) categories "" |> writeln;
+    map_index
+      (fn (i,name) =>
+        fold (fn timing => fn acc => (#elapsed timing |> Time.toReal |> print_real) ^ "\t\t" ^ acc)
+          (map (fn el => nth el i) resultss) name)
+      tests |> map writeln)

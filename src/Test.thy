@@ -16,10 +16,12 @@ setup "type_pat_setup"
 
 ML \<open>
 structure V = struct type value = term val eq = Term.aconv_untyped end
-structure NetTest = Tester(Net(V));
-structure PathTest = Tester(Path(V));
-structure NetBench = Benchmark(Net(V));
-structure PathBench = Benchmark(Path(V));
+structure N = Net(V)
+structure P = Path(V)
+structure NetTest = Tester(N);
+structure PathTest = Tester(P);
+structure NetBench = Benchmark(N);
+structure PathBench = Benchmark(P);
 \<close>
 (*
 ML \<open>
@@ -31,7 +33,8 @@ NetTest.test ();
 \<close>
 *)
 ML \<open>
-val size = 50
+val size = 10
+val eq = Term.aconv_untyped
 \<close>
 
 ML \<open>
@@ -40,17 +43,25 @@ Timing.timing (fn () => Random.new () |> PathBench.net_gen size (term_ground 0.0
 \<close>
 
 ML \<open>
-val path_gen = PathBench.net_gen size (term_ground 0.0 5 (0,6))
-val net_gen = NetBench.net_gen size (term_ground 0.0 5 (0,6))
-val paths = List.tabulate (2, fn i => Random.new () |> funpow i Random.next |> path_gen |> fst) handle exn => (@{make_string} exn; Exn.reraise exn)
-val nets = List.tabulate (2, fn i => Random.new () |> funpow i Random.next |> net_gen |> fst) handle exn => (@{make_string} exn; Exn.reraise exn)
-\<close> 
-ML \<open>
-val pathb = PathBench.benchmark_queries paths;
-val netb = NetBench.benchmark_queries nets;
+val term_gens = [
+("LR", term_ground 0.0 5 (0,6)),
+("MR", term_ground 0.3 5 (0,6)),
+("HR", term_ground 0.5 5 (0,6))
+]
+val termss = map (fn (name,gen) => (name,funpow_yield size gen (Random.new ()) |> fst)) term_gens
+val index_list = map (fn (name,terms) =>
+  (name,
+   fold (fn t => P.insert_safe eq (t,t)) terms P.empty,
+   fold (fn t => N.insert_safe eq (t,t)) terms N.empty)) termss
 \<close>
 ML \<open>
-compare ["PI", "DN"] (ListPair.zip (pathb,netb))
+val pathb = map (fn (name,path,_) => ("PI-" ^ name, PathBench.benchmark_queries [path])) index_list;
+val netb = map (fn (name,_,net) => ("DN-" ^ name, NetBench.benchmark_queries [net])) index_list;
+val names = pathb |> hd |> snd |> map fst
+val (categories,results) = pathb @ netb |> map (fn (x,y) => (x,map snd y)) |> ListPair.unzip
+\<close>
+ML \<open>
+compare categories names results
 \<close>
 (*
 ML \<open>
