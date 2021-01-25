@@ -17,7 +17,7 @@ fun term_gen freq reuse cut_off arg_range r =
   |> Generator.term_det (symbol_gen cut_off arg_range)
   ||> snd
 in
-fun term_ground reuse size argr =
-  term_gen (1.0,0.0,0.1) reuse (fn (h,i) => h >= size div ((fst argr + snd argr) div 2)) argr
+fun term_ground reuse depth argr =
+  term_gen (1.0,0.0,0.1) reuse (fn (h,i) => h >= depth) argr
 end
 end

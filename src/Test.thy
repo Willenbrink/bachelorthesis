@@ -5,8 +5,10 @@ ML_file "term_index.ML"
 ML_file "net.ML"
 ML_file "path.ML"
 ML_file "pprinter.ML"
+ML_file "term_gen.ML"
 ML_file "tester.ML"
-ML "open Pprinter"
+ML_file "benchmark.ML"
+ML "open Pprinter Term_Gen"
 setup "term_pat_setup"
 setup "type_pat_setup"
 
@@ -16,8 +18,10 @@ ML \<open>
 structure V = struct type value = term val eq = Term.aconv_untyped end
 structure NetTest = Tester(Net(V));
 structure PathTest = Tester(Path(V));
+structure NetBench = Benchmark(Net(V));
+structure PathBench = Benchmark(Path(V));
 \<close>
-
+(*
 ML \<open>
 writeln "Path";
 PathTest.test ();
@@ -25,36 +29,37 @@ PathTest.test ();
 writeln "Net";
 NetTest.test ();
 \<close>
+*)
+ML \<open>
+val size = 50
+\<close>
 
 ML \<open>
-fun print_real real = 
-  real
-  |> Real.fmt (StringCvt.FIX (SOME 3))
-  |> StringCvt.padLeft #" " 6
-fun diff {elapsed = _, cpu = c1, gc = _} {elapsed = _, cpu = c2, gc = _} =
-  (Time.toReal c1 - Time.toReal c2, (Time.toReal c1) / (Time.toReal c2))
+Timing.timing (fn () => Random.new () |> (term_ground 0.0 5 (0,10))) () |> fst;
+Timing.timing (fn () => Random.new () |> PathBench.net_gen size (term_ground 0.0 5 (0,8))) () |> fst;
 \<close>
+
+ML \<open>
+val path_gen = PathBench.net_gen size (term_ground 0.0 5 (0,6))
+val net_gen = NetBench.net_gen size (term_ground 0.0 5 (0,6))
+val paths = List.tabulate (2, fn i => Random.new () |> funpow i Random.next |> path_gen |> fst) handle exn => (@{make_string} exn; Exn.reraise exn)
+val nets = List.tabulate (2, fn i => Random.new () |> funpow i Random.next |> net_gen |> fst) handle exn => (@{make_string} exn; Exn.reraise exn)
+\<close> 
+ML \<open>
+val pathb = PathBench.benchmark_queries paths;
+val netb = NetBench.benchmark_queries nets;
+\<close>
+ML \<open>
+compare ["PI", "DN"] (ListPair.zip (pathb,netb))
+\<close>
+(*
 ML \<open>
 val pathb = (writeln "Path"; PathTest.benchmark NONE NONE);
 val netb = (writeln "Net"; NetTest.benchmark NONE NONE);
 
 val res = map_index (fn (i,(name,reps,_,x)) => (name,reps,diff x (nth netb i |> (fn (_,_,_,x) => x)))) pathb;
-\<close>
-ML \<open>
-val pathb = (writeln "Path"; PathTest.benchmark_queries NONE NONE);
-val netb = (writeln "Net"; NetTest.benchmark_queries NONE NONE);
+\<close>*)
 
-val res = map_index (fn (i,(name,reps,_,x)) => (name,reps,diff x (nth netb i |> (fn (_,_,_,x) => x)))) pathb;
-\<close>
-
-ML \<open>
-writeln ("Path indexing (PI) vs discrimination net (DN)\nAbs. (PI - DN)\tRel. (PI/DN)\tRepetitions\tName");
-map (fn (name,reps,(abs,rel)) => (print_real abs ^ "s\t\t"
-                                  ^ print_real rel ^ "\t\t"
-                                  ^ @{make_string} reps ^ "\t\t"
-                                  ^ name)
-                                  |> writeln) res
-\<close>
 (* Deletion does not work for Path Indexing! Can't reproduce test input since different namegen *)
 
 ML \<open>PathTest.print_distribution ()\<close>

@@ -17,12 +17,22 @@ fun replace_subterm sym t r =
   else (Term.list_comb (f,nth_map index (fn t => replace_subterm sym t r1 |> fst) args), r2)
   end
 
-fun term_in_net_gen net_gen r = (* Returns (term,net) where term is guaranteed to be in the net *)
+fun terms_not_in_net_gen amount net_gen r = (* Returns (term,net) where term is guaranteed to not be in the net *)
   let
     val (net,r) = Gen.gen_prop (fn n => Index.content n <> []) net_gen r
-    val (term,r) = Gen.selectL (Index.content net ) r
+    val (con,r) = Gen.shuffle (Index.content net) r
+    val terms = take amount con
+    val net = fold (fn t => Index.delete eq (t,t)) (take (length con div 10) con) net
   in
-  ((term,net),r)
+  ((terms,net),r)
+  end
+fun terms_in_net_gen amount net_gen r = (* Returns (term,net) where term is guaranteed to be in the net *)
+  let
+    val (net,r) = Gen.gen_prop (fn n => Index.content n <> []) net_gen r
+    val (con,r) = Gen.shuffle (Index.content net) r
+    val terms = take amount con
+  in
+  ((terms,net),r)
   end
 fun term_instance_gen term_gen r =
   let val (base_term,r) = term_gen r
@@ -60,84 +70,76 @@ fun add_timings {elapsed = elapsed1, cpu = cpu1, gc = gc1} {elapsed = elapsed2, 
    cpu = cpu1 + cpu2,
    gc = gc1 + gc2}
 
-fun timer name repetitions f_test f_input =
+fun timer name f_test inputs =
   let
     val r = Random.new ()
-    fun add_results (prep,test) (prep_total, test_total) =
-      (prep + prep_total,
-       add_timings test test_total)
+    fun add_results test test_total =
+      (add_timings test test_total)
   in
-  writeln (name ^ ":");
-  1 upto repetitions
-  |> map (fn i => r
+  writeln (name);
+  inputs
+  |> map_index (fn (i,input) => r
           |> funpow i Random.next
-          |> Timing.timing (f_input #> fst)
-          |>> (fn {elapsed,...} => elapsed)
-          ||> Timing.timing f_test
-          |> (fn (prep,(test,result)) => (ignore result; (prep,test)) ))
-  |> (fn list => fold add_results list
-      (Time.fromSeconds 0, {elapsed = Time.fromSeconds 0, cpu = Time.fromSeconds 0, gc = Time.fromSeconds 0}))
-  (*|> tap (fn (prep,test) => writeln ("  Prep: " ^ @{make_string} prep ^ "s - Test: " ^ Timing.message test))*)
-  |> (fn (prep,test) => (name,prep,test))
+          |> input
+          |> fst (* Discard returned random value *)
+          |> Timing.timing f_test
+          |> fst)
+  |> (fn list => fold add_results list {elapsed = Time.fromSeconds 0, cpu = Time.fromSeconds 0, gc = Time.fromSeconds 0})
+  |> (fn test => (name,test))
   end
 
 (* Significantly larger for benchmarks than tests *)
-fun benchmark term_gen net_gen = [
-timer "Creation of net" 10
+fun benchmark term_gen net_list repetitions =
+  let val nets = map Gen.lift net_list
+      val term_in_net = map (terms_in_net_gen 10) nets
+      val term_not_in_net = map (terms_not_in_net_gen 10) nets in [
+timer "Creation of net"
       net_gen
-      (fn x => (x, Random.new ())),
-timer "Content of net" 10
+      (List.tabulate (repetitions,K Random.split)),
+timer "Content of net"
       (Index.content)
-      (net_gen),
-timer "Insert one term" 30
-      (fn (net,term) => Index.insert_safe eq (term,term) net)
-      (fn r => Gen.zip (net_gen, term_gen) r),
-timer "Delete one term" 30
-      (fn (net,term) => Index.delete eq (term,term) net)
-      (fn r => Gen.zip (net_gen, term_gen) r
-               |>> (fn (n,t) => (Index.insert_safe eq (t,t) n,t))),
-timer "Get 10% of terms in net" 3
-      (fn (n,r) => (n, Gen.shuffle (Index.content n) r
-                       |> fst
-                       |> take (length (Index.content n) div 10)))
-      (Gen.zip (net_gen, Random.split)),
-timer "Delete 10% of terms in net" 3
+      (nets),
+timer "Insert terms"
+      (fn (terms,net) => fold (fn term => Index.insert_safe eq (term,term)) terms net)
+      (term_not_in_net),
+timer "Delete term s"
+      (fn (terms,net) => fold (fn term => Index.delete eq (term,term)) terms net)
+      (term_in_net),
+timer "Delete 10% of terms in net"
       (fn (net,terms) => fold (fn x => fn net => Index.delete_safe eq (x,x) net) terms net)
-      (net_gen
-       #> (fn (n,r) => (n, Gen.shuffle (Index.content n) r
-                           |>> take (length (Index.content n) div 10)))
-       #> (fn (n,(c,r)) => ((n,c),r))
-      )
-]
+      (map (fn n => fn r => ((n r |> fst,
+                              Index.content (n r |> fst) |> take (length (Index.content (n r |> fst)) div 10)),
+                              ())) nets)
+] end
 
-fun benchmark_queries term_gen net_size repetitions =
-  let val timer = (fn name => timer name repetitions)
-      val net_gen = net_gen net_size term_gen
-      val term_in_net_gen = term_in_net_gen net_gen in [
+fun benchmark_queries net_list =
+  let val nets = map Gen.lift net_list
+      val term_in_net = map (terms_in_net_gen 100) nets
+      val term_not_in_net = map (terms_not_in_net_gen 100) nets in [
 timer "Lookup existing term"
-      (fn (t,n) => Index.lookup n t)
-      (term_in_net_gen),
+      (fn (t,n) => map (Index.lookup n) t)
+      (term_in_net),
 timer "Lookup non-existing term"
-      (fn (t,n) => Index.lookup n t)
-      (Gen.zip (term_gen,net_gen)), (* TODO use precondition when using quichcheck *)
+      (fn (t,n) => map (Index.lookup n) t)
+      (term_not_in_net),
 timer "instances existing term"
-      (fn (t,n) => Index.instances n t)
-      (term_in_net_gen),
+      (fn (t,n) => map (Index.instances n) t)
+      (term_in_net),
 timer "instances non-existing term"
-      (fn (t,n) => Index.instances n t)
-      (Gen.zip (term_gen,net_gen)),
+      (fn (t,n) => map (Index.instances n) t)
+      (term_not_in_net),
 timer "generalisations existing term"
-      (fn (t,n) => Index.generalisations n t)
-      (term_in_net_gen),
+      (fn (t,n) => map (Index.generalisations n) t)
+      (term_in_net),
 timer "generalisations non-existing term"
-      (fn (t,n) => Index.generalisations n t)
-      (Gen.zip (term_gen,net_gen)),
+      (fn (t,n) => map (Index.generalisations n) t)
+      (term_not_in_net),
 timer "unifiables existing term"
-      (fn (t,n) => Index.unifiables n t)
-      (term_in_net_gen),
+      (fn (t,n) => map (Index.unifiables n) t)
+      (term_in_net),
 timer "unifiables non-existing term"
-      (fn (t,n) => Index.unifiables n t)
-      (Gen.zip (term_gen,net_gen))
+      (fn (t,n) => map (Index.unifiables n) t)
+      (term_not_in_net)
 ] end
 end
 
@@ -150,7 +152,7 @@ fun diff {elapsed = _, cpu = c1, gc = _} {elapsed = _, cpu = c2, gc = _} =
 
 fun compare name1 name2 res1 res2 =
   let val res =
-    map_index (fn (i,(name,_,x)) => (name,diff x (nth res2 i |> (fn (_,_,x) => x)))) res1
+    map_index (fn (i,(name,x)) => (name,diff x (nth res2 i |> snd))) res1
   in
   (writeln (name1 ^ " vs " ^ name2 ^ 
             "\nAbs. (" ^ name1 ^" - " ^ name2 ^ ")\tRel. (" ^ name1 ^ "/" ^ name2 ^ ")\tName");
@@ -158,4 +160,14 @@ fun compare name1 name2 res1 res2 =
                                   ^ print_real rel ^ "\t\t"
                                   ^ name)
                                   |> writeln) res)
+  end
+
+fun compare names results =
+  let
+    val results = fold (fn ((name1,result1),(_,result2)) => fn acc => (name1, [result1, result2]) :: acc) results []
+  in
+  (fold (fn name => fn acc => StringCvt.padLeft #" " 6 name ^ "\t" ^ acc) names "" |> writeln;
+  map (fn (test_name, timings : Timing.timing list) =>
+    fold (fn timing => fn acc => (#elapsed timing |> Time.toReal |> print_real) ^ "\t" ^ acc) timings "" ^
+    test_name) results |> map writeln)
   end
