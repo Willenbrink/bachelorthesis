@@ -29,14 +29,14 @@ ML \<open>
 (*
 writeln "Path";
 PathTest.test ();
-*)
 
 writeln "Net";
 NetTest.test ();
+*)
 \<close>
 
 ML \<open>
-val size = 1000
+val size = 500
 \<close>
 
 ML \<open>

@@ -195,16 +195,22 @@ fun lookup (values,tree) t =
     let fun intersect k acc = inter (V.eq) acc (lookup_one tree k)
     in fold intersect (key_of_term t) values end
 
+fun intersect values acc =(* case values of
+    NONE => acc
+  | SOME xs =>*)
+  inter V.eq values acc
+
 datatype query_type = Variants | Generalisations | Instances | Unifiables
+exception NoConstraint
 
 fun query query_type term (values,(Node (con,tree))) =
   let
     fun symbols sym = Stab.lookup_list con sym
-    val handle_var = case query_type of
+    fun  handle_var () = case query_type of
         Variants => symbols VarS
-      | Instances => values
+      | Instances => raise NoConstraint
       | Generalisations => symbols VarS
-      | Unifiables => values
+      | Unifiables => raise NoConstraint
     fun handle_sym sym = case query_type of
         Variants => symbols sym
       | Instances => symbols sym
@@ -217,7 +223,7 @@ fun query query_type term (values,(Node (con,tree))) =
           query query_type arg (values,(nth list index))
           handle Subscript => []
       in
-      fold_index (fn (i,arg) => fn acc => inter V.eq (arg_to_terms i arg) acc) args values
+      fold_index (fn (i,arg) => fn acc => intersect (arg_to_terms i arg) acc handle NoConstraint => acc) args values
       end
     fun handle_func func args = case query_type of
         Variants => query_args func args
@@ -226,15 +232,16 @@ fun query query_type term (values,(Node (con,tree))) =
       | Unifiables => symbols VarS @ query_args func args
   in
   case strip_comb term of
-    (Var _,_) => handle_var
-  | (Abs _,_) => handle_var
+    (Var _,_) => handle_var ()
+  | (Abs _,_) => handle_var ()
   | (sym,[]) => handle_sym (symbol_of_term sym)
   | (func,args) => handle_func (symbol_of_term func) args
   end
 
-fun query_wrapper query_type t tree =
-  query query_type t tree
+fun query_wrapper query_type t (values,node) =
+  query query_type t (values,node)
   |> distinct (op V.eq)
+  handle NoConstraint => values
 
 fun variants tree t = query_wrapper Variants t tree
 fun instances tree t = query_wrapper Instances t tree
