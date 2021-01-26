@@ -1,11 +1,8 @@
 # Tasks
 ## TODO
 * Spec_Check Compilervariante fixen
--3. Memory consumption?
-  - spaeter dann in QuickCheck?
-2. Validierung ob Testergebnisse mit Literaturergebnissen zusammenpassen
+* Memory consumption in QuickCheck?
 * Später: Pathindexing mit Variablennamen
-* Memory consumption anschauen
 * Interface-Ideen:
   - Lazy values returnen?
   - Gleich auf Alphaeq, Instanziierung, Generalisations, Unification
@@ -55,6 +52,8 @@
     + Tools/induct.ML
     + HOL/Tools/Lifting/lifting_def_code_dt.ML
   - subtract: gar nicht?
+* Memory consumption: Pathindexing besser bei hohem Reuse, schlecht bei Variablen
+* Validierung ob Testergebnisse mit Literaturergebnissen zusammenpassen: Nein, eigentlich überhaupt nicht
 
 ## Bis 19.01
 * Exception Trace statt reines failen beim Test

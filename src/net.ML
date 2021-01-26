@@ -260,6 +260,7 @@ fun generalisations net t = query_wrapper Generalisations t net
 fun unifiables net t = query_wrapper Unifiables t net
 
 fun generalisations' net t = matching false t net [] |> extract_leaves
+fun unifiables' net t = matching true t net [] |> extract_leaves
 
 
 (** operations on nets **)

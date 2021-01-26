@@ -25,6 +25,9 @@ struct
 fun >>= (x,f) = Option.map f x
 infix 1 >>=
 
+fun eq (x,y) = if pointer_eq (x,y) then true else V.eq (x,y)
+
+
 datatype symbol =
     VarS
   | AtomS of string
@@ -192,13 +195,13 @@ fun lookup_one (Node (con,tree)) key = case key of
        handle Subscript => []
 
 fun lookup (values,tree) t =
-    let fun intersect k acc = inter (V.eq) acc (lookup_one tree k)
+    let fun intersect k acc = inter eq acc (lookup_one tree k)
     in fold intersect (key_of_term t) values end
 
 fun intersect values acc =(* case values of
     NONE => acc
   | SOME xs =>*)
-  inter V.eq values acc
+  inter eq values acc
 
 datatype query_type = Variants | Generalisations | Instances | Unifiables
 exception NoConstraint
@@ -240,7 +243,7 @@ fun query query_type term (values,(Node (con,tree))) =
 
 fun query_wrapper query_type t (values,node) =
   query query_type t (values,node)
-  |> distinct (op V.eq)
+  |> distinct (op eq)
   handle NoConstraint => values
 
 fun variants tree t = query_wrapper Variants t tree

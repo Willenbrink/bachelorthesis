@@ -36,7 +36,7 @@ NetTest.test ();
 \<close>
 
 ML \<open>
-val size = 500
+val size = 200
 \<close>
 
 ML \<open>
@@ -50,15 +50,28 @@ val term_gens = [
 ("LR", term_ground 0.0 5 (2,6)),
 ("MR", term_ground 0.3 5 (2,6)),
 ("HR", term_ground 0.5 5 (2,6)),
-("LV", term_with_var 0.5 5 (2,6)),
-("MV", term_with_var 1.0 5 (2,6)),
-("HV", term_with_var 2.0 5 (2,6))
+("LV", term_with_var 0.1 5 (2,6)),
+("MV", term_with_var 0.2 5 (2,6)),
+("HV", term_with_var 0.5 5 (2,6))
 ]
 val termss = map (fn (name,gen) => (name,funpow_yield size gen (Random.new ()) |> fst)) term_gens
 val index_list = map (fn (name,terms) =>
   (name,
    fold (fn t => P.insert_safe eq (t,t)) terms P.empty,
    fold (fn t => N.insert_safe eq (t,t)) terms N.empty)) termss
+\<close>
+ML \<open>
+ML_Heap.share_common_data ();
+ML_Heap.gc_now ();
+\<close>
+ML \<open>
+map (fn (name,p,n) =>
+      let val path = ML_Heap.obj_size p
+          val net = ML_Heap.obj_size n
+      in (name,
+          "PI: " ^ (Real.fromInt path / 1000000.0 |> @{make_string}) ^ "MB", 
+          "DN: " ^ (Real.fromInt net / 1000000.0 |> @{make_string}) ^ "MB",
+          Real.fromInt path / Real.fromInt net) |> @{make_string} |> writeln end) index_list;
 \<close>
 ML \<open>
 val pathb = map (fn (name,path,_) => ("PI-" ^ name, PathBench.benchmark_queries [path])) index_list;
