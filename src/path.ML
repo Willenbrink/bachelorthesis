@@ -198,41 +198,50 @@ fun lookup (values,tree) t =
     let fun intersect k acc = inter eq acc (lookup_one tree k)
     in fold intersect (key_of_term t) values end
 
-fun intersect values acc =(* case values of
-    NONE => acc
-  | SOME xs =>*)
-  inter eq values acc
-
 datatype query_type = Variants | Generalisations | Instances | Unifiables
-exception NoConstraint
+datatype 'a term_set = List of 'a list
+                     | Intersection of 'a term_set list
+                     | Union of 'a term_set list
+                     | NoConstraint
+exception NoConstraint_exn
+
+fun compute_set term_set = case term_set of
+    List xs => xs
+  | Intersection [] => raise NoConstraint_exn
+  | Intersection (x::xs) => fold (fn x => fn acc => inter eq (compute_set x) acc handle NoConstraint_exn => acc) xs (compute_set x)
+  | Union xs => fold (fn x => fn acc => compute_set x @ acc) xs []
+  | NoConstraint => raise NoConstraint_exn
 
 fun query query_type term (values,(Node (con,tree))) =
   let
-    fun symbols sym = Stab.lookup_list con sym
+    fun symbols sym = Stab.lookup_list con sym |> List
     fun  handle_var () = case query_type of
         Variants => symbols VarS
-      | Instances => raise NoConstraint
+      | Instances => NoConstraint
       | Generalisations => symbols VarS
-      | Unifiables => raise NoConstraint
+      | Unifiables => NoConstraint
     fun handle_sym sym = case query_type of
         Variants => symbols sym
       | Instances => symbols sym
-      | Generalisations => symbols VarS @ symbols sym
-      | Unifiables => symbols VarS @ symbols sym
+      | Generalisations => Union [symbols VarS, symbols sym]
+      | Unifiables => Union [symbols VarS, symbols sym]
     fun query_args func args =
       let
         val list = Stab.lookup_list tree func
         fun arg_to_terms index arg =
           query query_type arg (values,(nth list index))
-          handle Subscript => []
+          handle Subscript => List []
       in
-      fold_index (fn (i,arg) => fn acc => intersect (arg_to_terms i arg) acc handle NoConstraint => acc) args values
+      map_index (fn (i,x) => arg_to_terms i x) args
+      |> Intersection
+(*
+      fold_index (fn (i,arg) => fn acc => (arg_to_terms i arg) :: acc) args values*)
       end
     fun handle_func func args = case query_type of
         Variants => query_args func args
       | Instances => query_args func args
-      | Generalisations => symbols VarS @ query_args func args
-      | Unifiables => symbols VarS @ query_args func args
+      | Generalisations => Union [symbols VarS, query_args func args]
+      | Unifiables => Union [symbols VarS, query_args func args]
   in
   case strip_comb term of
     (Var _,_) => handle_var ()
@@ -243,8 +252,9 @@ fun query query_type term (values,(Node (con,tree))) =
 
 fun query_wrapper query_type t (values,node) =
   query query_type t (values,node)
+  |> compute_set
   |> distinct (op eq)
-  handle NoConstraint => values
+  handle NoConstraint_exn => values
 
 fun variants tree t = query_wrapper Variants t tree
 fun instances tree t = query_wrapper Instances t tree
