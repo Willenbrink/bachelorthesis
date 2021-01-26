@@ -172,10 +172,10 @@ fun look1 (atoms, a) nets =
 *)
 fun matching unif t net nets =
   let
-    fun rands _ (Leaf _, nets) = nets
-      | rands t (Net{comb,atoms,...}, nets) =
+    fun rands _ (Leaf _) nets = nets
+      | rands t (Net{comb,atoms,...}) nets =
           case t of
-            f$t => fold_rev (check_var t) (rands f (comb,[])) nets
+            f$t => fold_rev (check_var t) (rands f comb []) nets
           | Const(c,_) => look1 (atoms, c) nets
           | Free(c,_)  => look1 (atoms, c) nets
           | Bound i    => look1 (atoms, Name.bound i) nets
@@ -192,7 +192,7 @@ fun matching unif t net nets =
     an eta-reduction, so regard the abstraction as a wildcard.*)
           | Abs _ => if unif then net_skip net nets
                      else var::nets           (*only a Var can match*)
-          | _ => rands t (net, var::nets)  (*var could match also*)
+          | _ => rands t net (var::nets)  (*var could match also*)
   in
   check_var t net nets
   end;
@@ -216,34 +216,33 @@ fun string_of_term t = case t of
       | _ => raise Fail "Invalid use of string_of_term"
 
 fun strip_comb_key i ks = case (i,ks) of
-    (0,_) => ks
-  | (i,[]) => raise Fail "Invalid strip_comb_key, too many combs"
+    (0,ks) => ks
+  | (_,[]) => raise Fail "Invalid strip_comb_key, too many combs"
   | (i, (CombK::ks)) => strip_comb_key (i+1) ks
   | (i, (_::ks)) => strip_comb_key (i-1) ks
 
-fun query query_type keys net =
+fun query mode keys net =
   case net of
     (Leaf xs) => xs
   | (Net {comb, var, atoms}) =>
     let
-      fun query_rec keys net = query query_type keys net
       fun con net = case net of Leaf xs => xs | _ => []
       fun symbols sym = case Symtab.lookup atoms sym of NONE => emptynet | SOME net => net
-      fun handle_var ks = case query_type of
-          Variants => query_rec ks var
-        | Instances => net_skip net [] |> maps (query_rec ks)
-        | Generalisations => query_rec ks var
-        | Unifiables => net_skip net [] |> maps (query_rec ks)
-      fun handle_sym ks sym = case query_type of
-          Variants => query_rec ks (symbols sym)
-        | Instances => query_rec ks (symbols sym)
-        | Generalisations => query_rec ks var @ query_rec ks (symbols sym)
-        | Unifiables => query_rec ks var @ query_rec ks (symbols sym)
-      fun handle_func ks = case query_type of
-          Variants => query_rec ks comb
-        | Instances => query_rec ks comb
-        | Generalisations => query_rec (strip_comb_key 1 ks) var @ query_rec ks comb
-        | Unifiables => query_rec (strip_comb_key 1 ks) var @ query_rec ks comb
+      fun handle_var ks = case mode of
+          Variants => query mode ks var
+        | Instances => net_skip net [] |> maps (query mode ks)
+        | Generalisations => query mode ks var
+        | Unifiables => net_skip net [] |> maps (query mode ks)
+      fun handle_sym ks sym = case mode of
+          Variants => query mode ks (symbols sym)
+        | Instances => query mode ks (symbols sym)
+        | Generalisations => query mode ks var @ query mode ks (symbols sym)
+        | Unifiables => query mode ks var @ query mode ks (symbols sym)
+      fun handle_func ks = case mode of
+          Variants => query mode ks comb
+        | Instances => query mode ks comb
+        | Generalisations => query mode (strip_comb_key 1 (tl ks)) var @ query mode ks comb
+        | Unifiables => query mode (strip_comb_key 1 (tl ks)) var @ query mode ks comb
     in
       case keys of
         [] => con net
@@ -252,13 +251,15 @@ fun query query_type keys net =
       | (CombK :: ks) => handle_func ks
     end
 
-fun query_wrapper query_type t net =
-  query query_type (key_of_term t) net
+fun query_wrapper mode t net =
+  query mode (key_of_term t) net
 
 fun lookup net t = query_wrapper Variants t net
 fun instances net t = query_wrapper Instances t net
 fun generalisations net t = query_wrapper Generalisations t net
 fun unifiables net t = query_wrapper Unifiables t net
+
+fun generalisations' net t = matching false t net [] |> extract_leaves
 
 
 (** operations on nets **)

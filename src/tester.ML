@@ -53,8 +53,8 @@ fun replace_subterm sym t r =
   else (Term.list_comb (f,nth_map index (fn t => replace_subterm sym t r1 |> fst) args), r2)
   end
 
-val def_term_gen = term_gen 30
-val def_net_gen = net_gen 30 def_term_gen
+val def_term_gen = term_gen 6
+val def_net_gen = net_gen 100 def_term_gen
 fun term_in_net_gen net_gen r = (* Returns (term,net) where term is guaranteed to be in the net *)
   let
     val (net,r) = Gen.gen_prop (fn n => Index.content n <> []) net_gen r
@@ -155,7 +155,7 @@ check (term_in_net_gen def_net_gen) (SOME @{make_string})
       "instances \<subseteq> unifiables"
       (fn (t,n) => subset eq (Index.instances n t, Index.unifiables n t)),
 check (Gen.zip (term_instance_gen def_term_gen, def_net_gen))
-      (SOME (fn ((t,u),n) => @{make_string} (t, u, n)))
+      (SOME (fn ((t,u),n) => @{make_string} (t, u, con (ins' u n |> ins' t))))
       "generalisation returns itself and generalisation"
       (fn ((t,u),n) => subset eq ([t,u],Index.generalisations (ins' u n |> ins' t) t)),
 check (Gen.zip (term_instance_gen def_term_gen, def_net_gen))
@@ -163,7 +163,7 @@ check (Gen.zip (term_instance_gen def_term_gen, def_net_gen))
       "instances returns itself and instance"
       (fn ((t,u),n) => subset eq ([t,u],Index.instances (ins' t n |> ins' u) u)),
 check (Gen.zip (term_unif_gen def_term_gen, def_net_gen))
-      (SOME (fn ((t,u),n) => @{make_string} (t, u, n)))
+      (SOME (fn ((t,u),n) => @{make_string} (t, u, con (ins' u n |> ins' t))))
       "unifiables returns itself and unifiable"
       (fn ((t,u),n) => subset eq ([t,u],Index.unifiables (ins' u n |> ins' t) t))
 ]

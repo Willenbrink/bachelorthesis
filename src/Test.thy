@@ -15,6 +15,7 @@ setup "type_pat_setup"
 (* Testing and Benchmarking *)
 
 ML \<open>
+val eq = Term.aconv_untyped
 structure V = struct type value = term val eq = Term.aconv_untyped end
 structure N = Net(V)
 structure P = Path(V)
@@ -23,18 +24,19 @@ structure PathTest = Tester(P);
 structure NetBench = Benchmark(N);
 structure PathBench = Benchmark(P);
 \<close>
-(*
+
 ML \<open>
+(*
 writeln "Path";
 PathTest.test ();
+*)
 
 writeln "Net";
 NetTest.test ();
 \<close>
-*)
+
 ML \<open>
 val size = 1000
-val eq = Term.aconv_untyped
 \<close>
 
 ML \<open>
