@@ -25,7 +25,6 @@ structure Path = Path(V);
 \<close>
 
 ML \<open>
-
 Generator.fold_seq 20 (curry op ::) (Generator.free' 0.9 0 (Random.new ())) []
 |> map pterm;
 local
@@ -41,7 +40,7 @@ fun term_gen height index (seq,r) =
   end
 val (r1,r2) = Random.new () |> Random.split
 in
-val term = Generator.term_det term_gen (Generator.def_sym_seq (1.0,0.0,0.0) 0.1 1 r1, r2) |> pterm
+val term = Generator.term_det term_gen (Generator.def_sym_seq (1.0,0.0,0.0) 0.1 1 r1, r2) |>> pterm
 end
 \<close>
 
@@ -62,7 +61,7 @@ val terms =
 []
 
 val pathl = fold (fn t => fn net => Path.insert eq (t,t) net) terms Path.empty
-fun match unif (values,tree) term = Path.generalisations tree term |> map (pterm o op !)
+fun match unif (values,tree) term = Path.generalisations tree term |> map (pterm)
 \<close>
 
 ML_val \<open>
@@ -72,7 +71,7 @@ fun f1 height index state =
       val (sym,state) = Gen_Base.chooseL' options state
   in (sym, num_args, state) end
 val t1 = Generator.term_det f1 (Random.new ());
-t1 |> pterm;
+t1 |>> pterm;
 \<close>
 
 ML_val \<open>
@@ -94,15 +93,7 @@ val x = Generator.term_det (fn height => fn index => fn state =>
       val (sym,state) = Generator.free num_args state in
    (sym,num_args,state)
    end) (Random.new ());
-x |> pterm
-\<close>
-ML_val \<open>
-val r = Random.new ()
-fun f r = Generator.term_fol_structure 3 10 r
-|-> Generator.term_fol_map (Generator.def_sym_gen (1.0,1.0,1.0,1.0))
-|> fst;
-val x = f r |> pterm;
-val y = f r;
+x |>> pterm
 \<close>
 
 (*
@@ -124,59 +115,17 @@ end
 \<close>
 
 ML \<open>
-Net.empty
-|> Net.insert (op =) (Net.key_of_term @{term "f x"}, 1)
-|> Net.insert (op =) (Net.key_of_term @{term "f x"}, 2)
-|> Net.insert (op =) (Net.key_of_term @{term "g y"}, 1)
-|> Net.delete (op =) (Net.key_of_term @{term "f x"}, 1)
-|> Net.content
-\<close>
-
-ML \<open>
-fun ins' (k,v) n = Net.insert_term_safe eq (k,v) n
-fun ins t n = Net.insert_term eq (t,t) n
-val x = Const ("x",TFree ("'a",[]))
-val y = Free ("a", TVar (("'a", 0), []))
-val z = Var (("b", 3), TVar (("'a", 0), []))
-val net = Net.empty |> ins y |> ins z
-val net_con = Net.content net
-val net' = net |> ins' (x,z) |> Net.delete_term eq (x,z) |> Net.content
-(*Net {atoms = {("a", Leaf [Free ("a", TVar (("'a", 0), []))])}, comb = Leaf [], var =
-      Leaf [Var (("b", 3), TVar (("'a", 0), []))]})*)
-\<close>
-
-ML \<open>
 local
 val a = Var (("x",0),@{typ "'a"}) (* @{term "?x"} *)
 val b = @{term "\<lambda>x. g (f x)"}
 val c = @{term "c"}
-val net  = Net.empty  |> Net.insert_term eq (a,a)  |> Net.insert_term eq (b,b) |> Net.insert_term eq (c,c)
-val path = Path.empty |> Path.insert_term eq (a,a) |> Path.insert_term eq (b,b) |> Path.insert_term eq (c,c)
+val net  = Net.empty  |> Net.insert eq (a,a)  |> Net.insert eq (b,b) |> Net.insert eq (c,c)
+val path = Path.empty |> Path.insert eq (a,a) |> Path.insert eq (b,b) |> Path.insert eq (c,c)
 in
-val net = Net.match_term net a |> map pterm
-val path = Path.match_term path a |> map pterm
+val net = Net.generalisations net a |> map pterm
+val path = Path.generalisations path a |> map pterm
 end
 \<close>
-
-ML \<open>
-((Property.pred (fn _ => raise Fail "ERROR"))) (0, Property.stats)
-\<close>
-
-ML \<open>
-Spec_Check.check_gen @{context} "Name" (Random.range_int (0,100)) (SOME @{make_string})
-  (Property.==> ((fn x => x < 2), (fn x => raise Fail "ERROR IN TEST\n\n\n"))) (Random.deterministic_seed 0);
-
-Spec_Check.check_gen @{context} "Name" (Random.range_int (0,100)) (SOME @{make_string})
-  (Property.==> ((fn x => x < 2), (fn x => x < 1))) (Random.deterministic_seed 0);
-
-Spec_Check.check_gen @{context} "Name" (Generator.unit) (SOME @{make_string})
-  (Property.==> ((fn x => true), (fn x => false)))
-\<close>
-
-
-
-
-
 
 
 

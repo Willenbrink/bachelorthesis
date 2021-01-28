@@ -53,7 +53,8 @@
     + HOL/Tools/Lifting/lifting_def_code_dt.ML
   - subtract: gar nicht?
 * Memory consumption: Pathindexing besser bei hohem Reuse, schlecht bei Variablen
-* Validierung ob Testergebnisse mit Literaturergebnissen zusammenpassen: Nein, eigentlich überhaupt nicht
+* Validierung ob Testergebnisse mit Literaturergebnissen zusammenpassen: In etwa
+* Memory consumption in QuickCheck: Schwer, wann genau soll getestet werden? Außerdem: memory consumption bestimmen ist langsam
 
 ## Bis 19.01
 * Exception Trace statt reines failen beim Test
