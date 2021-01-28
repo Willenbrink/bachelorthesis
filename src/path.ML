@@ -179,20 +179,6 @@ fun content_node eq tree =
 
 fun content (values,_) = values
 
-(*Return the list of items at the given node, [] if no such node*)
-fun lookup_one (Node (con,tree)) key = case key of
-    End n => (case Stab.lookup con n of NONE => [] | SOME xs => xs)
-  | Fun (name,index,key) =>
-       Stab.lookup tree name
-       >>= (fn xs => nth xs index)
-       >>= (fn x => lookup_one x key)
-       |> (fn SOME xs => xs | NONE => [])
-       handle Subscript => []
-
-fun lookup (values,tree) t =
-    let fun intersect k acc = inter eq acc (lookup_one tree k)
-    in fold intersect (key_of_term t) values end
-
 datatype query_type = Variants | Generalisations | Instances | Unifiables
 datatype 'a term_set = List of 'a list
                      | Intersection of 'a term_set list
@@ -225,12 +211,11 @@ fun query query_type term (values,(Node (con,tree))) =
     fun query_args func args =
       let
         val list = Stab.lookup_list tree func
-        fun arg_to_terms index arg =
-          query query_type arg (values,(nth list index))
+        fun arg_to_terms (index, arg) =
+          query query_type arg (values, (nth list index))
           handle Subscript => List []
       in
-      map_index (fn (i,x) => arg_to_terms i x) args
-      |> Intersection
+      Intersection (map_index arg_to_terms args)
       end
     fun handle_func func args = case query_type of
         Variants => query_args func args
@@ -251,7 +236,7 @@ fun query_wrapper query_type t (values,node) =
   |> distinct (op eq)
   handle NoConstraint_exn => values
 
-fun variants tree t = query_wrapper Variants t tree
+fun lookup tree t = query_wrapper Variants t tree
 fun instances tree t = query_wrapper Instances t tree
 fun generalisations tree t = query_wrapper Generalisations t tree
 fun unifiables tree t = query_wrapper Unifiables t tree
@@ -267,8 +252,14 @@ fun dest (Node (con,tree)) =
       |> maps (fn (sym,ind,value) => dest value |> map (fn (k,v) => (Fun (sym,ind,k),v)))
   in content_alist @ tree_alist end
 
+(* FIXME non-canonical merge order!?! *)
 fun merge eq (values1,tree1) (values2,tree2) =
-  (union (op eq) values1 values2, fold (fn t => insert_ref_safe eq t) (dest tree2 |> map (fn (k,v) => ([k],v))) tree1)  (* FIXME non-canonical merge order!?! *)
+  let
+    val values = union (op eq) values1 values2
+    val tree = fold (fn t => insert_ref_safe eq t) (dest tree2 |> map (fn (k,v) => ([k],v))) tree1
+  in
+  (values, tree)
+  end
 
 (* Useful for what exactly?
 fun dot_of_node (node as Node(con,tree)) =
