@@ -21,14 +21,17 @@ end
 functor Path (V : EQ) =
 struct
 
-fun eq (x,y) = if pointer_eq (x,y) then true else V.eq (x,y)
+fun ord ((x,_),(y,_)) = int_ord (x,y)
+fun eqw eq (x,y) =
+  if is_equal (ord (x,y))
+  then true
+  else if pointer_eq (x,y)
+  then true
+  else eq (snd x, snd y)
 
 datatype symbol =
     VarS
   | AtomS of string
-datatype key =
-    End of symbol
-  | Fun of symbol * int * key (* function,number of children, key from that child onwards *)
 
 fun sym_ord (VarS, VarS) = EQUAL
   | sym_ord (VarS, _) = LESS
@@ -37,9 +40,9 @@ fun sym_ord (VarS, VarS) = EQUAL
 
 structure Stab = Table(type key = symbol val ord = sym_ord);
 type value = V.value
-type 'a content = 'a list Stab.table
+type 'a content = (int * 'a) Ord_List.T Stab.table
 datatype 'a tree = Node of 'a content * 'a tree list Stab.table
-type T = V.value list * V.value tree
+type T = int * V.value list * V.value tree
 
 fun symbol_of_term t = case t of
           Const (n,_) => AtomS n
@@ -49,19 +52,6 @@ fun symbol_of_term t = case t of
         | Abs _ => VarS
         | _$_ => raise Fail "Invalid use of symbol_of_term"
 
-fun key_of_term t : key list =
-  let val (func, args) = Term.strip_comb t
-      val sym = symbol_of_term func
-  in
-  case args of
-    [] => [End sym]
-  | args =>
-      map key_of_term args
-      |> map_index (fn (i,keys) => map (fn k => Fun(sym,i,k)) keys)
-      |> flat
-      |> (fn x => key_of_term func @ x)
-  end
-
 (* Trees/Nets are indexed by keys. Each key represents a single node.
    Each node contains content as 'a list Symtab and a recursive tree.
    There is no leaf as the tree can be an empty table.
@@ -69,9 +59,7 @@ fun key_of_term t : key list =
 *)
 
 val empty_node = Node (Stab.empty, Stab.empty)
-val empty = ([],empty_node);
-fun is_empty ([],_) = true
-  | is_empty _ = false
+val empty = (0, [], empty_node);
 
 (*** Insertion ***)
 
@@ -79,44 +67,40 @@ exception INSERT;       (*duplicate item in the net*)
 
 fun append_sym eq (k,v) table =
   let fun update vs =
-    if member eq vs v
+    if member (eqw eq) vs v
     then raise INSERT
-    else v::vs
+    else Ord_List.insert ord v vs
   in Stab.map_default (k, []) update table end
 
-fun nth_map_default (index : int) (f : 'a -> 'a) (default : 'a) (xs : 'a list) : 'a list =
-     case (xs,index) of
-      ([],0) => [f default]
-    | ([],i) => default :: nth_map_default (i-1) f default []
-    | (x::xs,0) => f x :: xs
-    | (x::xs,i) => x :: nth_map_default (i-1) f default xs
+fun map_child f (sym,args) tree =
+  let fun map_list args xs =
+        case (args,xs) of
+          ([],xs) => xs
+        | (a :: args, x :: xs) => f a x :: map_list args xs
+        | (a :: args, []) => f a empty_node :: map_list args []
+  in
+  Stab.map_default (sym,[]) (map_list args) tree
+  end
 
 (*Adds item x to the list at the node addressed by the keys.
   Creates node if not already present.
   eq is the equality test for items.
-  TODO inefficient approach: Insert each key independently.
-  For e.g. f(g(h(x,y))) path from root to h is repeated thrice, for h,x,y
-  TODO perhaps drop subkeys from keylist? For f(g(x)) only save <f,1,g,1> = x? Why doesn't that work?
 *)
-fun insert_one eq (key, v) (Node (con,tree)) = case key of
-      End n => Node (append_sym eq (n,v) con, tree)
-    | Fun (name,index,key) =>
-        let fun ins tree = insert_one eq (key,v) tree
-            fun ins_list xs = nth_map_default index ins empty_node xs
-            fun ins_symtab f tree = Stab.map_default (name,[]) f tree
-        in Node (con, ins_symtab ins_list tree) end
 
-(* Insert a reference directly. Only internal usage *)
-fun insert_ref_safe eq (keys,term_ref) net =
-  Library.foldl (fn (acc,k) => insert_one eq (k, term_ref) acc) (net,keys)
-  handle INSERT => net
-
-fun insert eq (t,v) (values,tree) =
-  let 
-    val values = v :: values
-    val tree = Library.foldl (fn (acc,k) => insert_one eq (k, v) acc) (tree, key_of_term t)
+fun insert eq (t,v) (id, values, Node (con,tree)) =
+  let
+    fun app_sym sym con = append_sym eq (sym, (id, v)) con
+    fun ins t (Node (con, tree)) = case strip_comb t of
+        (Var _,_) => Node (app_sym VarS con, tree)
+      | (Abs _,_) => Node (app_sym VarS con, tree)
+      | (sym,[]) => Node (app_sym (symbol_of_term sym) con, tree)
+      | (func,args) =>
+          let
+            val con = app_sym (symbol_of_term func) con
+            val tree = map_child ins (symbol_of_term func,args) tree
+          in Node (con, tree) end
   in
-  (values,tree)
+  (id + 1, v :: values, ins t (Node(con,tree)))
   end
 
 fun insert_safe eq entry net = insert eq entry net handle INSERT => net;
@@ -129,49 +113,38 @@ exception DELETE;       (*missing item in the net*)
 (*Deletes item x from the list at the node addressed by the keys.
   Raises DELETE if absent. TODO Collapses the net if possible?
   eq is the equality test for items. *)
-fun delete_one eq (key, v) (Node (con,tree)) =
-  let fun rem content = if member eq content v then remove eq v content
-                        else raise DELETE in
-  case key of
-      End n => Node (Stab.map_default (n,[]) rem con, tree)
-    | Fun (name,index,key) =>
-           delete_one eq (key,v)
-        |> (fn f => nth_map index (fn xs => f xs))
-        |> (fn x => Stab.map_default (name,[]) x tree)
-        |> (fn x => Node (con, x))
-   end
 
-fun delete eq (t, v) (values, tree) =
-  let
-    (* TODO The value is saved at multiple locations. If some keys are removed from the list
+    
+(* TODO The value is saved at multiple locations. If some keys are removed from the list
       those will not be deleted from the tree but will be from the values *)
-    val values = if member eq values v then remove eq v values else raise DELETE
-    val tree = Library.foldl (fn (acc,k) => delete_one eq (k, v) acc) (tree, key_of_term t)
+
+fun delete eq (t,v) (id, values, Node (con,tree)) =
+  let
+    fun rem content =
+    (* TODO eq unnecessary? *)
+      if member (fn (x,y) => eq (x, snd y)) content v
+      then remove (fn (x,y) => eq (x, snd y)) v content
+      else raise DELETE
+    fun del t (Node (con, tree)) = case strip_comb t of
+        (Var _,_) => Node (Stab.map_default (VarS,[]) rem con, tree)
+      | (Abs _,_) => Node (Stab.map_default (VarS,[]) rem con, tree)
+      | (sym,[]) => Node (Stab.map_default (symbol_of_term sym,[]) rem con, tree)
+      | (func,args) =>
+          let
+            val con = Stab.map_default (symbol_of_term func,[]) rem con
+            val tree = map_child del (symbol_of_term func, args) tree
+          in Node (con, tree) end
+      
   in
-  (values,tree)
+  if member eq values v
+  then (id, remove eq v values, del t (Node(con,tree)))
+  else raise DELETE
   end
 
 fun delete_safe eq entry net = delete eq entry net handle DELETE => net;
 
 
 (*** Retrieval functions ***)
-fun content_node eq tree =
-  let fun aux (Node (con,tree)) =
-    let val con_fst =
-          con |> Stab.dest 
-              |> maps snd
-        val con_snd =
-          tree |> Stab.dest
-               |> maps snd
-               |> maps aux
-    in con_fst @ con_snd end
-  in
-  aux tree
-  |> distinct (op eq)
-  end
-
-fun content (values,_) = values
-
 datatype query_type = Variants | Generalisations | Instances | Unifiables
 datatype 'a term_set = List of 'a list
                      | Intersection of 'a term_set list
@@ -183,12 +156,16 @@ fun compute_set term_set = case term_set of
     List xs => xs
   | Intersection [] => raise Fail "Empty intersect is undefined"
   | Intersection (x::xs) =>
-      let fun f x acc = inter eq (compute_set x) acc handle NoConstraint_exn => acc
+      let fun f x acc = Ord_List.inter ord (compute_set x) acc handle NoConstraint_exn => acc
       in fold f xs (compute_set x) end
-  | Union xs => fold (fn x => fn acc => compute_set x @ acc) xs []
+  | Union xs => (*map compute_set xs |> Ord_List.unions ord*) fold (fn x => Ord_List.union ord (compute_set x)) xs []
   | NoConstraint => raise NoConstraint_exn
 
-fun query query_type term (values,(Node (con,tree))) =
+fun content (_, values, _) = values
+
+fun is_empty (_, values, _) = null values
+
+fun query query_type term (Node (con,tree)) =
   let
     fun symbols sym = Stab.lookup_list con sym |> List
     fun  handle_var () = case query_type of
@@ -205,13 +182,13 @@ fun query query_type term (values,(Node (con,tree))) =
       let
         val list = Stab.lookup_list tree func
         fun arg_to_terms (index, arg) =
-          query query_type arg (values, (nth list index))
+          query query_type arg (nth list index)
           handle Subscript => List []
       in
       Intersection (map_index arg_to_terms args)
       end
     fun all_args_var args =
-      fold (fn x => fn acc => case strip_comb x |> fst of (Var _) => acc | _ => false) args true
+(*      fold (fn x => fn acc => case strip_comb x |> fst of (Var _) => acc | _ => false) args true *) false
     fun handle_func func args = case query_type of
         Variants => query_args func args
       | Instances =>
@@ -233,10 +210,10 @@ fun query query_type term (values,(Node (con,tree))) =
   | (func,args) => handle_func (symbol_of_term func) args
   end
 
-fun query_wrapper query_type t (values,node) =
-  query query_type t (values,node)
+fun query_wrapper query_type t (_, values, node) =
+  query query_type t node
   |> compute_set
-  |> distinct (op eq)
+  |> map snd
   handle NoConstraint_exn => values
 
 fun lookup tree t = query_wrapper Variants t tree
@@ -244,25 +221,31 @@ fun instances tree t = query_wrapper Instances t tree
 fun generalisations tree t = query_wrapper Generalisations t tree
 fun unifiables tree t = query_wrapper Unifiables t tree
 
-fun dest (Node (con,tree)) =
+fun dest (Node (con,tree)) : ((symbol * int) list * 'a) list =
   let
     val content_alist =
       Stab.dest con
-      |> maps (fn (k,vs) => map (fn v => (End k,v)) vs)
+      |> maps (fn (k,vs) => map (fn v => ([(k,0)], snd v)) vs)
     val tree_alist =
       Stab.dest tree
       |> maps (fn (sym,vs) => map_index (fn (i,v) => (sym,i,v)) vs)
-      |> maps (fn (sym,ind,value) => dest value |> map (fn (k,v) => (Fun (sym,ind,k),v)))
+      |> maps (fn (sym,ind,value) => dest value |> map (fn (k,v) => ((sym,ind)::k,v)))
   in content_alist @ tree_alist end
 
+fun insert_at_node eq (keys, v) id (Node (con,tree)) =
+  case keys of
+    [] => raise Fail "Invalid key at insert_at_node"
+  | [(sym,_)] => Node (append_sym eq (sym, (id, v)) con, tree)
+  | (sym,ind) :: keys =>
+    let fun update_single f (sym,ind) tree = Stab.map_default (sym,[]) (fn xs => take (ind-1) xs @ f (nth xs ind) :: drop ind xs) tree
+    in
+    Node (con, update_single (insert_at_node eq (keys,v) id) (sym,ind) tree)
+    end
+
 (* FIXME non-canonical merge order!?! *)
-fun merge eq (values1,tree1) (values2,tree2) =
-  let
-    val values = union (op eq) values1 values2
-    val tree = fold (fn t => insert_ref_safe eq t) (dest tree2 |> map (fn (k,v) => ([k],v))) tree1
-  in
-  (values, tree)
-  end
+fun merge eq (id1, values1, tree1) (_, values2, tree2) =
+  fold (fn t => fn (id, tree) => (id+1, insert_at_node eq t id tree)) (dest tree2) (id1, tree1)
+  |> (fn (id,tree) => (id, union eq values1 values2, tree))
 
 (* Useful for what exactly?
 fun dot_of_node (node as Node(con,tree)) =
