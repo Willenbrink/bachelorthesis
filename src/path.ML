@@ -68,11 +68,6 @@ fun key_of_term t : key list =
       |> (fn x => key_of_term func @ x)
   end
 
-(*encode_type -- for indexing purposes*)
-fun encode_type (Type (c, Ts)) = Term.list_comb (Const (c, dummyT), map encode_type Ts)
-  | encode_type (TFree (a, _)) = Free (a, dummyT)
-  | encode_type (TVar (a, _)) = Var (a, dummyT);
-
 (* Trees/Nets are indexed by keys. Each key represents a single node.
    Each node contains content as 'a list Symtab and a recursive tree.
    There is no leaf as the tree can be an empty table.
@@ -207,8 +202,10 @@ exception NoConstraint_exn
 
 fun compute_set term_set = case term_set of
     List xs => xs
-  | Intersection [] => raise NoConstraint_exn
-  | Intersection (x::xs) => fold (fn x => fn acc => inter eq (compute_set x) acc handle NoConstraint_exn => acc) xs (compute_set x)
+  | Intersection [] => raise Fail "Empty intersect is undefined"
+  | Intersection (x::xs) =>
+      let fun f x acc = inter eq (compute_set x) acc handle NoConstraint_exn => acc
+      in fold f xs (compute_set x) end
   | Union xs => fold (fn x => fn acc => compute_set x @ acc) xs []
   | NoConstraint => raise NoConstraint_exn
 
@@ -234,8 +231,6 @@ fun query query_type term (values,(Node (con,tree))) =
       in
       map_index (fn (i,x) => arg_to_terms i x) args
       |> Intersection
-(*
-      fold_index (fn (i,arg) => fn acc => (arg_to_terms i arg) :: acc) args values*)
       end
     fun handle_func func args = case query_type of
         Variants => query_args func args
@@ -272,10 +267,8 @@ fun dest (Node (con,tree)) =
       |> maps (fn (sym,ind,value) => dest value |> map (fn (k,v) => (Fun (sym,ind,k),v)))
   in content_alist @ tree_alist end
 
-fun merge eq ((values1,tree1), (values2,tree2)) =
+fun merge eq (values1,tree1) (values2,tree2) =
   (union (op eq) values1 values2, fold (fn t => insert_ref_safe eq t) (dest tree2 |> map (fn (k,v) => ([k],v))) tree1)  (* FIXME non-canonical merge order!?! *)
-
-fun subtract eq tree1 tree2 = Library.subtract (swap #> eq) (content tree1) (content tree2)
 
 (* Useful for what exactly?
 fun dot_of_node (node as Node(con,tree)) =

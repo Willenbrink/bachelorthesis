@@ -20,9 +20,12 @@ sig
     val instances: T -> term -> value list
     val unifiables: T -> term -> value list
 
-(*    val subtract: ('a * 'a -> bool) -> 'a T -> 'a T -> 'a list
-    val merge: ('a * 'a -> bool) -> 'a T * 'a T -> 'a T
+    val merge: (value * value -> bool) -> T -> T -> T
 
-    val encode_type: typ -> term
-Usage? *)
 end;
+
+(* TODO move somewhere more appropriate *)
+(*encode_type -- for indexing purposes*)
+fun encode_type (Type (c, Ts)) = Term.list_comb (Const (c, dummyT), map encode_type Ts)
+    | encode_type (TFree (a, _)) = Free (a, dummyT)
+    | encode_type (TVar (a, _)) = Var (a, dummyT);

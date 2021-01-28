@@ -48,12 +48,6 @@ fun add_key_of_terms (term, keys) : key list =
 (*convert a term to a list of keys*)
 fun key_of_term t = add_key_of_terms (t, []);
 
-(*encode_type -- for indexing purposes*)
-fun encode_type (Type (c, Ts)) = Term.list_comb (Const (c, dummyT), map encode_type Ts)
-    | encode_type (TFree (a, _)) = Free (a, dummyT)
-    | encode_type (TVar (a, _)) = Var (a, dummyT);
-
-
 (*Trees indexed by key lists: each arc is labelled by a key.
     Each node contains a list of items, and arcs to children.
     The empty key addresses the entire net.
@@ -265,24 +259,6 @@ fun unifiables' net t = matching true t net [] |> extract_leaves
 
 (** operations on nets **)
 
-(*subtraction: collect entries of second net that are NOT present in first net*)
-fun subtract eq net1 net2 =
-    let
-    fun subtr (Net _) (Leaf ys) = append ys
-        | subtr (Leaf xs) (Leaf ys) =
-            fold_rev (fn y => if member eq xs y then I else cons y) ys
-        | subtr (Leaf _) (net as Net _) = subtr emptynet net
-        | subtr (Net {comb = comb1, var = var1, atoms = atoms1})
-            (Net {comb = comb2, var = var2, atoms = atoms2}) =
-            subtr comb1 comb2
-            #> subtr var1 var2
-            #> Symtab.fold (fn (a, net) =>
-            subtr (the_default emptynet (Symtab.lookup atoms1 a)) net) atoms2
-    in subtr net1 net2 [] end;
-
-fun entries net = subtract (K false) empty net;
-
-
 (* merge *)
 
 fun cons_fst x (xs, y) = (x :: xs, y);
@@ -295,7 +271,7 @@ fun dest (Leaf xs) = map (pair []) xs
 
 fun content net = map #2 (dest net);
 
-fun merge eq (net1, net2) =
+fun merge eq net1 net2 =
   (* FIXME non-canonical merge order!?! *)
   fold (fn (k,v) => fn acc => insert_key eq v (k,acc)) (dest net2) (net1)
 
