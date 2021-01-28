@@ -20,13 +20,8 @@ end
 
 functor Path (V : EQ) =
 struct
-(* TODO is_first_order function in term! *)
-
-fun >>= (x,f) = Option.map f x
-infix 1 >>=
 
 fun eq (x,y) = if pointer_eq (x,y) then true else V.eq (x,y)
-
 
 datatype symbol =
     VarS
@@ -61,8 +56,7 @@ fun key_of_term t : key list =
   case args of
     [] => [End sym]
   | args =>
-      args
-      |> map key_of_term
+      map key_of_term args
       |> map_index (fn (i,keys) => map (fn k => Fun(sym,i,k)) keys)
       |> flat
       |> (fn x => key_of_term func @ x)
@@ -72,7 +66,6 @@ fun key_of_term t : key list =
    Each node contains content as 'a list Symtab and a recursive tree.
    There is no leaf as the tree can be an empty table.
    There is no empty key.
-   TODO Lookup functions preserve order in items stored at same level?
 *)
 
 val empty_node = Node (Stab.empty, Stab.empty)
@@ -217,11 +210,21 @@ fun query query_type term (values,(Node (con,tree))) =
       in
       Intersection (map_index arg_to_terms args)
       end
+    fun all_args_var args =
+      fold (fn x => fn acc => case strip_comb x |> fst of (Var _) => acc | _ => false) args true
     fun handle_func func args = case query_type of
         Variants => query_args func args
-      | Instances => query_args func args
+      | Instances =>
+          (* Shortcut if all args are variables *)
+          if all_args_var args
+          then symbols func
+          else query_args func args
       | Generalisations => Union [symbols VarS, query_args func args]
-      | Unifiables => Union [symbols VarS, query_args func args]
+      | Unifiables =>
+          (* Shortcut if all args are variables *)
+          if all_args_var args
+          then symbols func
+          else Union [symbols VarS, query_args func args]
   in
   case strip_comb term of
     (Var _,_) => handle_var ()
