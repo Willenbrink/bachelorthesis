@@ -40,9 +40,7 @@ NetTest.test ();
 \<close>
 
 ML \<open>
-val size = 5000;
-
-profile_time (fn () => Random.new () |> term_with_var 0.2 5 (4,6)) ()
+val size = 3000;
 \<close>
 
 ML \<open>
@@ -92,6 +90,9 @@ compare categories names results
 (* TODO Lookup can sometimes be really, really slow in PI, perhaps GC? *)
 \<close>
 (*
+profile_time
+        37 Net().add_key_of_terms(2)aux(2)
+        45 Net().query(3)handle_func(1)
 
 val index_list = map (fn (name,terms) =>
   (name,

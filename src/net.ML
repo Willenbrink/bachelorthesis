@@ -146,7 +146,7 @@ fun net_skip (Leaf _) nets = nets
       var :: nets
       |> Symtab.fold (fn (k,v) => fn acc => v :: acc) atoms
 (* net_skip comb [] only skipped combs so far so another skip is required *)
-(* TODO why fold_rev? fold should be faster and we only concatenate nets *)
+(* TODO Investigate further. Why is fold_rev faster? *)
       |> fold_rev net_skip (net_skip comb [])
 
 
