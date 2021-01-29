@@ -1,7 +1,22 @@
 # Tasks
 ## TODO
+* Occurs Check in PI?
+* Ground terms useless
+* EQ von insert entfernen bzw. wrappen in convenience functor
+* Doku anschauen
+Introduction: Was hat Isabelle, was bieten wir. 
+Hintergrund: TI
+DN/PI erklären
+State of Affairs QC: nicht verwendet, verbessert
+Vergleich
+Conclusion
+
+Theorie Praxis splitten
+FOL!
+Caveats etc.: Intersection auslagern
+
+* Generation von Symoblen hochzählen
 * Spec_Check Compilervariante fixen
-* Memory consumption in QuickCheck?
 * Später: Pathindexing mit Variablennamen
 * Interface-Ideen:
   - Lazy values returnen?
@@ -42,6 +57,31 @@
 * Near-eta conversion in net.ML?
 * Isabelle besser herrichten
 * Interne Repräsentation von FOL, Quantifiers, Lambdas, Theorems etc. genauer anschauen, print_satement hernehmen?
+
+## Tasks - Meeting
+-1. Direkt Terme erzeugen mit disjunkten Namen bei Zufallsbaeumen
+  - Counter statt zufallsstring
+0.5. Lambda Term Generation Dokumentation
+2. Validierung ob Testergebnisse mit Literaturergebnissen zusammenpassen
+3. Thesis schreiben: Path Indexing und Discrimination Nets Theory
+
+3. Discuss: should we provide interfaces that return boolean flags
+3. Discuss: shouldn't we include the names of variables? 
+  - It's unclear if it gives any advantages in times of speed due to increased memory consumption. Check out a newer paper
+4. Implement path indexing and another method
+4. Beispiele, wo net.ML Überapproximationen lieftert, ob eta-normalform eta-long normal form sein soll, und ob content = entries
+5. Create benchmarks (FOL)
+  - Discimination Nets vs Path Indexing vs Termtabs on ground terms
+  - Discrimination Nets vs Path Indexing
+5.5 was passiert wenn man ergebnisse zurueckgibt, die aber andere typen besitzen?
+7. Termtabs:
+  - verschiedene Instanziierung erwähnen
+  - Vorteile und Nachteile
+  - Anwendungsfälle
+
+## 02.02
+* Subtract entfernt, encode aus Modul raus (wohin genau?), merge gelassen
+* Intersection optimieren
 
 ## 26.01
 * Pathindexing parametrisieren

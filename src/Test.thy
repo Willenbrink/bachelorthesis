@@ -94,6 +94,12 @@ profile_time
         37 Net().add_key_of_terms(2)aux(2)
         45 Net().query(3)handle_func(1)
 
+ DN-HV	 DN-MV	 DN-LV	 PI-HV	 PI-MV	 PI-LV	 
+ 0.127	 0.290	 0.383	 0.223	 0.517	 0.688	Lookup existing term 
+70.253	92.953	74.675	 0.166	 0.424	 0.624	instances existing term 
+ 0.309	 0.632	 0.883	 0.338	 0.890	 0.822	generalisations existing term 
+71.579	95.156	73.403	 0.192	 0.440	 0.666	unifiables existing term
+
 val index_list = map (fn (name,terms) =>
   (name,
    Timing.timing (fn () => fold (fn t => P.insert_safe eq (t,t)) terms P.empty) () |> fst |> @{make_string} |> writeln,

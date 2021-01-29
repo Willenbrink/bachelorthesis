@@ -26,20 +26,29 @@ fun terms_not_in_net_gen amount net_gen r = (* Returns (term,net) where term is 
   in
   ((terms,net),r)
   end
+
 fun terms_in_net_gen amount net_gen r = (* Returns (term,net) where term is guaranteed to be in the net *)
   let
-    val (net,r) = Gen.gen_prop (fn n => Index.content n <> []) net_gen r
+    val (net,r) = net_gen r
     val (con,r) = Gen.shuffle (Index.content net) r
-    val terms = take amount con
+    val (terms,r) =
+      if amount < length con
+      then (take amount con,r)
+      else
+        let val ((con2,_),r) = terms_in_net_gen (amount - length con) (Gen.lift net) r
+        in (con @ con2, r) end
+        
   in
   ((terms,net),r)
   end
+
 fun term_instance_gen term_gen r =
   let val (base_term,r) = term_gen r
       val (general_term,r) = replace_subterm (Gen.var 1) base_term r
   in
   ((base_term,general_term),r)
   end
+
 fun term_unif_gen term_gen r =
   let val (base_term,r) = term_gen r
       val (term1,r) = replace_subterm (Gen.var 1) base_term r
@@ -114,7 +123,7 @@ timer "Delete 10% of terms in net"
 
 fun benchmark_queries net_list =
   let val nets = map Gen.lift net_list
-      val term_in_net = map (terms_in_net_gen 100) nets
+      val term_in_net = map (terms_in_net_gen 10000) nets
       val term_not_in_net = map (terms_not_in_net_gen 100) nets in [
 timer "Lookup existing term"
       (fn (t,n) => map (Index.lookup n) t)
