@@ -209,11 +209,13 @@ fun string_of_term t = case t of
       | Bound i => Name.bound i
       | _ => raise Fail "Invalid use of string_of_term"
 
+(* Start with 2 because f $ x consists of one CombK (stripped before call) and two symbols.
+  Every additional symbol adds one CombK before it's appearance. *)
 fun strip_comb_key i ks = case (i,ks) of
-    (0,ks) => ks
-  | (_,[]) => raise Fail "Invalid strip_comb_key, too many combs"
-  | (i, (CombK::ks)) => strip_comb_key (i+1) ks
+    (i, (CombK::ks)) => strip_comb_key (i+1) ks
+  | (0,ks) => ks
   | (i, (_::ks)) => strip_comb_key (i-1) ks
+  | (_,[]) => raise Fail "Invalid strip_comb_key, too many combs"
 
 fun query mode keys net =
   case net of
@@ -235,8 +237,8 @@ fun query mode keys net =
       fun handle_func ks = case mode of
           Variants => query mode ks comb
         | Instances => query mode ks comb
-        | Generalisations => query mode (strip_comb_key 1 (tl ks)) var @ query mode ks comb
-        | Unifiables => query mode (strip_comb_key 1 (tl ks)) var @ query mode ks comb
+        | Generalisations => query mode (strip_comb_key 2 ks) var @ query mode ks comb
+        | Unifiables => query mode (strip_comb_key 2 ks) var @ query mode ks comb
     in
       case keys of
         [] => con net
