@@ -83,9 +83,9 @@ check (Gen.unit) NONE
 check (Gen.unit) NONE
       "Empty net is empty"
       (fn () => Index.is_empty Index.empty),
-check (def_net_gen) NONE
-      "Removing all terms returns empty net"
-      (fn n => fold (fn t => fn n => Index.delete eq (t,t) n) (Index.content n) n |> Index.is_empty)
+check (def_net_gen) (SOME (fn n => @{make_string} (Index.content n)))
+      "Deleting all terms returns empty net"
+      (fn n => fold (fn t => Index.delete eq (t,t)) (Index.content n) n |> Index.is_empty)
 ]
 
 val test_modifying = [ (* Tests functions that modify the net: insert and delete *)

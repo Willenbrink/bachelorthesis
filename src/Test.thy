@@ -24,22 +24,25 @@ structure PathTest = Tester(P);
 structure NetBench = Benchmark(N);
 structure PathBench = Benchmark(P);
 \<close>
-
+(*
+ML \<open>ML_system_pp (fn _ => fn _ => Pretty.to_polyml o raw_pp_typ)\<close>
+*)
+ML \<open>
+\<close>
 ML \<open>
 (*
 writeln "Path";
 PathTest.test ();
+*)
 
 writeln "Net";
 NetTest.test ();
-*)
 \<close>
 
 ML \<open>
-val size = 200
-\<close>
+val size = 5000;
 
-profile_time (fn () => Random.new () |> term_with_var 0.2 8 (4,6)) ()
+profile_time (fn () => Random.new () |> term_with_var 0.2 5 (4,6)) ()
 \<close>
 
 ML \<open>
@@ -62,11 +65,11 @@ val index_list =
    fold (fn t => P.insert_safe eq (t,t)) terms P.empty,
    fold (fn t => N.insert_safe eq (t,t)) terms N.empty))
 \<close>
-(*
 ML \<open>
 ML_Heap.share_common_data ();
 ML_Heap.gc_now ();
 \<close>
+(*
 ML \<open>
 map (fn (name,p,n) =>
       let val path = ML_Heap.obj_size p
