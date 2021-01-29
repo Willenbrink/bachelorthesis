@@ -39,27 +39,30 @@ ML \<open>
 val size = 200
 \<close>
 
-ML \<open>
-Timing.timing (fn () => Random.new () |> (term_ground 0.0 5 (0,10))) () |> fst;
-Timing.timing (fn () => Random.new () |> PathBench.net_gen size (term_ground 0.0 5 (0,8))) () |> fst;
+profile_time (fn () => Random.new () |> term_with_var 0.2 8 (4,6)) ()
 \<close>
 
 ML \<open>
-val term_gens = [
+val term_gens_reuse = [
 (* Reuse of symbols *)
 ("LR", term_ground 0.0 5 (2,6)),
 ("MR", term_ground 0.3 5 (2,6)),
-("HR", term_ground 0.5 5 (2,6)),
+("HR", term_ground 0.5 5 (2,6))
+]
+val term_gens_var = [
 ("LV", term_with_var 0.1 5 (2,6)),
 ("MV", term_with_var 0.2 5 (2,6)),
 ("HV", term_with_var 0.5 5 (2,6))
 ]
-val termss = map (fn (name,gen) => (name,funpow_yield size gen (Random.new ()) |> fst)) term_gens
-val index_list = map (fn (name,terms) =>
+val index_list =
+  term_gens_var
+  |> map (fn (name,gen) => (name,funpow_yield size gen (Random.new ()) |> fst))
+  |> map (fn (name,terms) =>
   (name,
    fold (fn t => P.insert_safe eq (t,t)) terms P.empty,
-   fold (fn t => N.insert_safe eq (t,t)) terms N.empty)) termss
+   fold (fn t => N.insert_safe eq (t,t)) terms N.empty))
 \<close>
+(*
 ML \<open>
 ML_Heap.share_common_data ();
 ML_Heap.gc_now ();
@@ -73,23 +76,23 @@ map (fn (name,p,n) =>
           "DN: " ^ (Real.fromInt net / 1000000.0 |> @{make_string}) ^ "MB",
           Real.fromInt path / Real.fromInt net) |> @{make_string} |> writeln end) index_list;
 \<close>
+*)
 ML \<open>
 val pathb = map (fn (name,path,_) => ("PI-" ^ name, PathBench.benchmark_queries [path])) index_list;
 val netb = map (fn (name,_,net) => ("DN-" ^ name, NetBench.benchmark_queries [net])) index_list;
 val names = pathb |> hd |> snd |> map fst
 val (categories,results) = pathb @ netb |> map (fn (x,y) => (x,map snd y)) |> ListPair.unzip
+
 \<close>
 ML \<open>
 compare categories names results
+(* TODO Lookup can sometimes be really, really slow in PI, perhaps GC? *)
 \<close>
 (*
-ML \<open>
-val pathb = (writeln "Path"; PathTest.benchmark NONE NONE);
-val netb = (writeln "Net"; NetTest.benchmark NONE NONE);
 
-val res = map_index (fn (i,(name,reps,_,x)) => (name,reps,diff x (nth netb i |> (fn (_,_,_,x) => x)))) pathb;
-\<close>*)
-
-(* Deletion does not work for Path Indexing! Can't reproduce test input since different namegen *)
-
+val index_list = map (fn (name,terms) =>
+  (name,
+   Timing.timing (fn () => fold (fn t => P.insert_safe eq (t,t)) terms P.empty) () |> fst |> @{make_string} |> writeln,
+   Timing.timing (fn () => fold (fn t => N.insert_safe eq (t,t)) terms N.empty) () |> fst |> @{make_string} |> writeln)) termss
 ML \<open>PathTest.print_distribution ()\<close>
+*)
