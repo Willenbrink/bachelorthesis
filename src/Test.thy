@@ -51,6 +51,7 @@ val term_gens_reuse = [
 ("HR", term_ground 0.5 5 (2,6))
 ]
 val term_gens_var = [
+("NV", term_with_var 0.01 5 (2,6)),
 ("LV", term_with_var 0.1 5 (2,6)),
 ("MV", term_with_var 0.2 5 (2,6)),
 ("HV", term_with_var 0.5 5 (2,6))

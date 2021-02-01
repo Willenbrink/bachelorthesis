@@ -44,15 +44,15 @@ fun terms_in_net_gen amount net_gen r = (* Returns (term,net) where term is guar
 
 fun term_instance_gen term_gen r =
   let val (base_term,r) = term_gen r
-      val (general_term,r) = replace_subterm (Gen.var 1) base_term r
+      val (general_term,r) = replace_subterm (Gen.var (~1) 1 |> Gen.lift) base_term r
   in
   ((base_term,general_term),r)
   end
 
 fun term_unif_gen term_gen r =
   let val (base_term,r) = term_gen r
-      val (term1,r) = replace_subterm (Gen.var 1) base_term r
-      val (term2,r) = replace_subterm (Gen.var 1) base_term r
+      val (term1,r) = replace_subterm (Gen.var (~1) 1 |> Gen.lift) base_term r
+      val (term2,r) = replace_subterm (Gen.var (~2) 1 |> Gen.lift) base_term r
   in
   ((term1,term2),r)
   end

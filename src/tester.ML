@@ -6,12 +6,13 @@ val ==> = Property.==>
 infix 1 ==>
 
 val eq = Term.aconv_untyped
-fun def_sym_gen n = Gen.def_sym_gen (2.0,1.0,5.0) n
+fun def_sym_gen amount args r =
+  let val (id,r) = Random.range_int (0,amount) r in Gen.def_sym_gen (2.0,1.0,5.0) id args r end
 fun term_gen n r =
   let
     val (num,r) = Random.range_int (0,n) r (* TODO find better solution for spread *)
   in
-  Gen.term_fol def_sym_gen 5 num r
+  Gen.term_fol (def_sym_gen (num div 5)) 5 num r
   end
 
 fun net_gen num_term term_gen r =
@@ -64,14 +65,14 @@ fun term_in_net_gen net_gen r = (* Returns (term,net) where term is guaranteed t
   end
 fun term_instance_gen term_gen r =
   let val (base_term,r) = term_gen r
-      val (general_term,r) = replace_subterm (Gen.var 1) base_term r
+      val (general_term,r) = replace_subterm (Gen.var (~1) 1 |> Gen.lift) base_term r
   in
   ((base_term,general_term),r)
   end
 fun term_unif_gen term_gen r =
   let val (base_term,r) = term_gen r
-      val (term1,r) = replace_subterm (Gen.var 1) base_term r
-      val (term2,r) = replace_subterm (Gen.var 1) base_term r
+      val (term1,r) = replace_subterm (Gen.var (~1) 1 |> Gen.lift) base_term r
+      val (term2,r) = replace_subterm (Gen.var (~2) 1 |> Gen.lift) base_term r
   in
   ((term1,term2),r)
   end
