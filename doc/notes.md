@@ -59,7 +59,6 @@ Caveats etc.: Intersection auslagern
 * Interne Repräsentation von FOL, Quantifiers, Lambdas, Theorems etc. genauer anschauen, print_satement hernehmen?
 
 ## Tasks - Meeting
-0.5. Lambda Term Generation Dokumentation
 2. Validierung ob Testergebnisse mit Literaturergebnissen zusammenpassen
 3. Thesis schreiben: Path Indexing und Discrimination Nets Theory
 
@@ -77,11 +76,13 @@ Caveats etc.: Intersection auslagern
   - Vorteile und Nachteile
   - Anwendungsfälle
 
-## 02.02
+## 04.02
 * Subtract entfernt, encode aus Modul raus (wohin genau?), merge gelassen
 * Intersection optimieren
 * Direkt Terme erzeugen mit disjunkten Namen bei Zufallsbaeumen
   - Counter statt zufallsstring
+* Path Indexing angefangen zu schreiben
+* Lambda Term Generation Dokumentation
 
 ## 26.01
 * Pathindexing parametrisieren
