@@ -1,5 +1,14 @@
 # Tasks
 ## TODO
+* gen_construction zuerst fixen
+* Net_skip beschreiben?
+* eq ändern
+* v5_10.10? etc. bei Variablennamen
+* termtabs vergleichen auf lookup
+* itemtab selbe signatur? Auch vergleichen!
+* Mit mathe Notation schreiben, evtl andere Syntax
+* Queries Fokus, nicht die Details
+* Mehr Prosa, mehr Geschichte. Was sind Probleme, wie kann ich die lösen, nicht so distanziert. Mehr we. But what about variables? etc.
 * Occurs Check in PI?
 * Ground terms useless
 * EQ von insert entfernen bzw. wrappen in convenience functor
@@ -59,22 +68,26 @@ Caveats etc.: Intersection auslagern
 * Interne Repräsentation von FOL, Quantifiers, Lambdas, Theorems etc. genauer anschauen, print_satement hernehmen?
 
 ## Tasks - Meeting
+-5. Dynamische Testkonstruktion zum builden bringen
 2. Validierung ob Testergebnisse mit Literaturergebnissen zusammenpassen
 3. Thesis schreiben: Path Indexing und Discrimination Nets Theory
+  - insert, unifiables, generalisations, lookup, instances
+
+5. Create benchmarks for Termtabs
+6. Create benchmarks for item_net
+
+4. Beispiele, wo net.ML Überapproximationen lieftert, ob eta-normalform eta-long normal form sein soll, und ob content = entries
+6. Check where `net.ml`, `item_net.ml`, and termtabs are used.
+  - Is is it just random?
+  - Do people prefer one or the other?
+  - Do people seem to even have thought about their choice?
+5.5 was passiert wenn man ergebnisse zurueckgibt, die aber andere typen besitzen?
 
 3. Discuss: should we provide interfaces that return boolean flags
 3. Discuss: shouldn't we include the names of variables? 
   - It's unclear if it gives any advantages in times of speed due to increased memory consumption. Check out a newer paper
-4. Implement path indexing and another method
-4. Beispiele, wo net.ML Überapproximationen lieftert, ob eta-normalform eta-long normal form sein soll, und ob content = entries
-5. Create benchmarks (FOL)
-  - Discimination Nets vs Path Indexing vs Termtabs on ground terms
-  - Discrimination Nets vs Path Indexing
-5.5 was passiert wenn man ergebnisse zurueckgibt, die aber andere typen besitzen?
-7. Termtabs:
-  - verschiedene Instanziierung erwähnen
-  - Vorteile und Nachteile
-  - Anwendungsfälle
+8. Termstruktur ändern für Indextree? (spine representation)
+9. Implement path indexing and another method
 
 ## 04.02
 * Subtract entfernt, encode aus Modul raus (wohin genau?), merge gelassen
