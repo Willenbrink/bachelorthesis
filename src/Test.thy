@@ -28,6 +28,14 @@ structure PathBench = Benchmark(P);
 ML \<open>ML_system_pp (fn _ => fn _ => Pretty.to_polyml o raw_pp_typ)\<close>
 *)
 ML \<open>
+val x = @{term "f x"}
+val y = @{term "f x y"}
+;
+P.empty
+|> P.insert eq (x,x)
+|> P.insert eq (y,y)
+|> (fn n => P.lookup n x)
+|> map pterm
 \<close>
 ML \<open>
 (*
@@ -40,24 +48,25 @@ NetTest.test ();
 \<close>
 
 ML \<open>
-val size = 3000;
+val size = 300;
 \<close>
 
 ML \<open>
 val term_gens_reuse = [
 (* Reuse of symbols *)
-("LR", term_ground 0.0 5 (2,6)),
-("MR", term_ground 0.3 5 (2,6)),
-("HR", term_ground 0.5 5 (2,6))
+("LR", term_var_reuse 0.0 5 (2,6)),
+("MR", term_var_reuse 0.3 5 (2,6)),
+("HR", term_var_reuse 0.5 5 (2,6))
 ]
 val term_gens_var = [
-("NV", term_with_var 0.01 5 (2,6)),
+("VLV", term_with_var 0.01 5 (2,6)),
 ("LV", term_with_var 0.1 5 (2,6)),
 ("MV", term_with_var 0.2 5 (2,6)),
-("HV", term_with_var 0.5 5 (2,6))
+("HV", term_with_var 0.5 5 (2,6)),
+("TV", term_terminal_var 5 (2,6))
 ]
 val index_list =
-  term_gens_var
+  term_gens_reuse
   |> map (fn (name,gen) => (name,funpow_yield size gen (Random.new ()) |> fst))
   |> map (fn (name,terms) =>
   (name,
@@ -88,18 +97,23 @@ val (categories,results) = pathb @ netb |> map (fn (x,y) => (x,map snd y)) |> Li
 \<close>
 ML \<open>
 compare categories names results
-(* TODO Lookup can sometimes be really, really slow in PI, perhaps GC? *)
 \<close>
 (*
 profile_time
         37 Net().add_key_of_terms(2)aux(2)
         45 Net().query(3)handle_func(1)
 
- DN-HV	 DN-MV	 DN-LV	 PI-HV	 PI-MV	 PI-LV	 
- 0.127	 0.290	 0.383	 0.223	 0.517	 0.688	Lookup existing term 
-70.253	92.953	74.675	 0.166	 0.424	 0.624	instances existing term 
- 0.309	 0.632	 0.883	 0.338	 0.890	 0.822	generalisations existing term 
-71.579	95.156	73.403	 0.192	 0.440	 0.666	unifiables existing term
+ DN-TV	 DN-HV	 DN-MV	 DN-LV	DN-VLV	 PI-TV	 PI-HV	 PI-MV	 PI-LV	PI-VLV	 
+ 0.369	 0.113	 0.277	 0.407	 0.563	 0.664	 0.191	 0.418	 0.623	 1.108	Lookup existing term 
+ 0.538	 7.414	 9.923	 8.129	 2.211	 0.460	 0.143	 0.353	 0.568	 0.915	instances existing term 
+ 1.134	 0.257	 0.599	 0.894	 1.307	 0.800	 0.264	 0.564	 0.812	 1.337	generalisations existing term 
+ 1.233	 8.208	10.889	 8.962	 2.973	 0.535	 0.188	 0.434	 0.717	 1.197	unifiables existing term
+
+ DN-HR	 DN-MR	 DN-LR	 PI-HR	 PI-MR	 PI-LR	 
+ 0.686	 0.466	 0.389	 0.629	 0.656	 0.704	Lookup existing term 
+11.101	 9.577	 9.746	 0.566	 0.601	 0.551	instances existing term 
+ 0.953	 1.079	 0.929	 0.854	 0.887	 0.936	generalisations existing term 
+10.324	10.619	12.406	 0.728	 0.760	 0.717	unifiables existing term 
 
 val index_list = map (fn (name,terms) =>
   (name,
