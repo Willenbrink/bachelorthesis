@@ -7,7 +7,7 @@ infix 1 ==>
 
 val eq = Term.aconv_untyped
 fun def_sym_gen amount args r =
-  let val (id,r) = Random.range_int (0,amount) r in Gen.def_sym_gen (2.0,1.0,5.0) id args r end
+  Gen.def_sym_gen (3.0,1.0,0.0) amount args r
 fun term_gen n r =
   let
     val (num,r) = Random.range_int (0,n) r (* TODO find better solution for spread *)
