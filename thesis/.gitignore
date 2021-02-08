@@ -1,0 +1,12 @@
+/build/*
+#!/build/main.pdf #Reenable later
+/logos/*.pdf
+main.log
+main.aux
+main.loa
+main.out
+main.pdf
+main.run.xml
+main.toc
+main-blx.bib
+.auctex-auto/*

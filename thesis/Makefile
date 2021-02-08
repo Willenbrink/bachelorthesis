@@ -16,3 +16,7 @@ clean:
 .PHONY: purge
 purge:
 	rm -rf $(OUT)
+
+.PHONY: start
+start:
+	gnome-terminal -x "bash" -c "make watch" &

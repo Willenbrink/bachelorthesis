@@ -1,0 +1,60 @@
+\RequirePackage[l2tabu,orthodox]{nag}
+
+%decide if one-sided/two-sided
+\documentclass[headsepline,footsepline,footinclude=false,fontsize=11pt,paper=a4,listof=totoc,bibliography=totoc,BCOR=12mm,DIV=12]{scrbook} % two-sided
+%\documentclass[headsepline,footsepline,footinclude=false,oneside,fontsize=11pt,paper=a4,listof=totoc,bibliography=totoc]{scrbook} % one-sided
+
+% Set page numbering to avoid "destination with the same identifier has been already used" warning for cover page.
+% (see https://en.wikibooks.org/wiki/LaTeX/Hyperlinks#Problems_with_Links_and_Pages).
+\pagenumbering{alph}
+
+\input{settings}
+
+\newcommand*{\getUniversity}{Technical University of Munich}
+\newcommand*{\getFaculty}{Department of Informatics}
+\newcommand*{\getTitle}{Techniques for First-Order Term Indexing in Isabelle/ML}
+\newcommand*{\getTitleGer}{Techniken zur First-Order Termindizierung in Isabelle/ML}
+\newcommand*{\getAuthor}{Sebastian Willenbrink}
+\newcommand*{\getDoctype}{Bachelor's Thesis in Informatics}
+\newcommand*{\getSupervisor}{Prof. Dr. Tobias Nipkow}
+% TODO: change thesis information
+\newcommand*{\getAdvisor}{Kevin Kappelmann}
+%\newcommand*{\getSubmissionDate}{July 27, 2017}
+%\newcommand*{\getSubmissionLocation}{Munich}
+
+\begin{document}
+
+%\input{pages/cover}
+
+\frontmatter{}
+
+%\input{pages/title}
+%\input{pages/disclaimer}
+%\input{pages/acknowledgements}
+%\input{pages/abstract}
+\microtypesetup{protrusion=false}
+%\tableofcontents
+\microtypesetup{protrusion=true}
+
+\mainmatter{}
+
+\input{chapters/indexing_methods}
+%\input{chapters/01_introduction}
+%\input{chapters/02_model_problem_formulation}
+%\input{chapters/03_preliminaries}
+%\input{chapters/04_optimal_offline_scheduling}
+%\input{chapters/05_approximative_offline_scheduling}
+%\input{chapters/06_conclusion}
+
+\appendix{}
+
+\microtypesetup{protrusion=false}
+%\listoffigures{}
+%\listoftables{}
+%\listofalgorithms
+\addtocontents{loa}{\def\string\figurename{Algorithm}}
+\microtypesetup{protrusion=true}
+\printbibliography{}
+%\input{chapters/notation}
+
+\end{document}

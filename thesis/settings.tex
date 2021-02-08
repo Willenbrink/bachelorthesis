@@ -1,0 +1,116 @@
+\PassOptionsToPackage{table,svgnames,dvipsnames}{xcolor}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[ngerman,english]{babel}
+\usepackage[autostyle]{csquotes}
+\usepackage[%
+  backend=bibtex,
+  url=false,
+  %style=alphabetic,
+  maxnames=4,
+  minnames=3,
+  maxbibnames=99,
+  giveninits,
+  uniquename=init]{biblatex} 
+\usepackage{graphicx}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.13}
+\usepackage{pgfplotstable}
+\usepackage{booktabs}
+\usepackage[final]{microtype}
+\usepackage{caption}
+\captionsetup{format=plain}
+\usepackage[hidelinks]{hyperref} % hidelinks removes colored boxes around references and links
+\hypersetup{
+ colorlinks,
+ linktoc=page,
+ linkcolor=blue,
+ citecolor=blue,
+ urlcolor=blue
+ %linkcolor=black,
+ %citecolor=black,
+ %urlcolor=black
+}
+
+\bibliography{bibliography}
+
+\setkomafont{disposition}{\normalfont\bfseries} % set font
+
+% Add table of contents to PDF bookmarks
+\BeforeTOCHead[toc]{{\cleardoublepage\pdfbookmark[0]{\contentsname}{toc}}}
+
+% Settings added by Kevin
+\usepackage{longtable}
+\usepackage{enumitem}
+\usepackage{multicol}
+
+% Math packages
+\usepackage{bm}
+\usepackage{mathtools}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{stmaryrd}
+
+% Proof system
+\usepackage{amsthm}
+% spacing fixes for proof system
+\makeatletter
+\def\thm@space@setup{%
+  \thm@preskip=\parskip \thm@postskip=0pt
+}
+\makeatother
+\theoremstyle{plain}
+\newtheorem{thm}[equation]{Theorem}
+\newtheorem{lem}[equation]{Lemma}
+\newtheorem{prop}[equation]{Proposition}
+\newtheorem{cor}[equation]{Corollary}
+\theoremstyle{definition}
+\newtheorem{defn}[equation]{Definition}
+\newtheorem{exmpl}[equation]{Example}
+%\newtheoremstyle{rem} % name
+    %{\topsep}                    % Space above
+    %{\topsep}                    % Space below
+    %{}                   % Body font
+    %{}                           % Indent amount
+    %{\bf}                   % Theorem head font
+    %{:}                          % Punctuation after theorem head
+    %{.5em}                       % Space after theorem head
+    %{}  % Theorem head spec (can be left empty, meaning ‘normal’)
+%\theoremstyle{rem}
+%\newtheorem*{remark}{Note}
+
+% Algorithms
+\input{settings_algorithms}
+
+% Graphs
+\usepackage{standalone}
+\usetikzlibrary{calc,arrows.meta,positioning}
+%\usepackage{tikz-3dplot}
+\usepackage{subcaption}
+
+% Notes
+%\usepackage{xargs} % Use more than one optional parameter in a new commands
+\usepackage[colorinlistoftodos,prependcaption,textsize=tiny]{todonotes}
+
+% Custom commands
+\DeclarePairedDelimiter\ceil{\lceil}{\rceil}
+\DeclarePairedDelimiter\floor{\lfloor}{\rfloor}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\newcommand{\mx}{\mathcal{X}}
+\newcommand{\inp}{\mathcal{I}}
+\newcommand{\costs}{c}
+\newcommand{\opcosts}{c_{op}}
+\newcommand{\swcosts}{c_{sw}}
+\newcommand{\aswcosts}{\widehat{c}_{sw}}
+\newcommand{\beps}{\boldsymbol\varepsilon}
+\newcommand{\fromto}[2]{\{#1,\dotsc,#2\}}
+\newcommand{\dotcup}{\mathbin{\mathaccent\cdot\cup}}
+%\newcommandx{\unsure}[2][1=]{\todo[linecolor=red,backgroundcolor=red!25,bordercolor=red,#1]{#2}}
+%\newcommandx{\unsure}[2][1=]{}
+
+% Line breaks after paragraph
+\usepackage[parfill]{parskip}
+% double line spacing
+%\linespread{1.5}
