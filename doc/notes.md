@@ -1,9 +1,7 @@
 # Tasks
 ## TODO
-* gen_construction zuerst fixen
 * Net_skip beschreiben?
 * eq ändern
-* v5_10.10? etc. bei Variablennamen
 * termtabs vergleichen auf lookup
 * itemtab selbe signatur? Auch vergleichen!
 * Mit mathe Notation schreiben, evtl andere Syntax
@@ -88,6 +86,10 @@ Caveats etc.: Intersection auslagern
   - It's unclear if it gives any advantages in times of speed due to increased memory consumption. Check out a newer paper
 8. Termstruktur ändern für Indextree? (spine representation)
 9. Implement path indexing and another method
+
+## 09.02
+* v5_10.10? etc. bei Variablennamen
+* gen_construction zuerst fixen
 
 ## 04.02
 * Subtract entfernt, encode aus Modul raus (wohin genau?), merge gelassen
