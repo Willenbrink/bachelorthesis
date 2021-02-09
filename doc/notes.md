@@ -1,16 +1,4 @@
-# Tasks
-## TODO
-* Net_skip beschreiben?
-* eq ändern
-* termtabs vergleichen auf lookup
-* itemtab selbe signatur? Auch vergleichen!
-* Mit mathe Notation schreiben, evtl andere Syntax
-* Queries Fokus, nicht die Details
-* Mehr Prosa, mehr Geschichte. Was sind Probleme, wie kann ich die lösen, nicht so distanziert. Mehr we. But what about variables? etc.
-* Occurs Check in PI?
-* Ground terms useless
-* EQ von insert entfernen bzw. wrappen in convenience functor
-* Doku anschauen
+# Gliederung
 Introduction: Was hat Isabelle, was bieten wir. 
 Hintergrund: TI
 DN/PI erklären
@@ -22,8 +10,17 @@ Theorie Praxis splitten
 FOL!
 Caveats etc.: Intersection auslagern
 
-* Generation von Symoblen hochzählen
-* Spec_Check Compilervariante fixen
+# Tasks
+## TODO
+* Net_skip beschreiben?
+* EQ von insert entfernen bzw. wrappen in convenience functor
+* termtabs vergleichen auf lookup
+* itemtab selbe signatur? Auch vergleichen!
+* Mit mathe Notation schreiben, evtl andere Syntax
+* Queries Fokus, nicht die Details
+* Mehr Prosa, mehr Geschichte. Was sind Probleme, wie kann ich die lösen, nicht so distanziert. Mehr we. But what about variables? etc.
+* Occurs Check in PI?
+* Ground terms useless
 * Später: Pathindexing mit Variablennamen
 * Interface-Ideen:
   - Lazy values returnen?
@@ -57,16 +54,8 @@ Caveats etc.: Intersection auslagern
         + TT braucht weniger Steps (da balanciert) aber immer wieder neuer Vergleich (kein prefix sharing)
         + Was zeichnet andere Worst-/Best-Cases aus?
     - DN vs PI in general
-* Termstruktur ändern für Indextree (Spine representation?)
-
-## Low Priority
-* Seven Virtues of STT lesen
-* Near-eta conversion in net.ML?
-* Isabelle besser herrichten
-* Interne Repräsentation von FOL, Quantifiers, Lambdas, Theorems etc. genauer anschauen, print_satement hernehmen?
 
 ## Tasks - Meeting
--5. Dynamische Testkonstruktion zum builden bringen
 2. Validierung ob Testergebnisse mit Literaturergebnissen zusammenpassen
 3. Thesis schreiben: Path Indexing und Discrimination Nets Theory
   - insert, unifiables, generalisations, lookup, instances
