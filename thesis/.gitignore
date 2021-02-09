@@ -1,11 +1,11 @@
 /build/*
-#!/build/main.pdf #Reenable later
+!/build/main.pdf
 /logos/*.pdf
 main.log
 main.aux
 main.loa
 main.out
-main.pdf
+!main.pdf
 main.run.xml
 main.toc
 main-blx.bib
