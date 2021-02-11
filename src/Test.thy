@@ -28,20 +28,18 @@ structure PathBench = Benchmark(P);
 ML \<open>ML_system_pp (fn _ => fn _ => Pretty.to_polyml o raw_pp_typ)\<close>
 *)
 ML \<open>
-val x = @{term "f x"}
-val y = @{term "f x y"}
+val x = @{term "f a"}
+val y = @{term "f b"}
 ;
 P.empty
-|> P.insert eq (x,x)
-|> P.insert eq (y,y)
-|> (fn n => P.lookup n x)
-|> map pterm
+|> P.insert (op =) (x,3)
+|> P.insert (op =) (y,3)
 \<close>
 ML \<open>
-(*
+
 writeln "Path";
 PathTest.test ();
-*)
+
 
 writeln "Net";
 NetTest.test ();

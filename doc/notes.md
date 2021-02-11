@@ -54,6 +54,12 @@ Caveats etc.: Intersection auslagern
         + TT braucht weniger Steps (da balanciert) aber immer wieder neuer Vergleich (kein prefix sharing)
         + Was zeichnet andere Worst-/Best-Cases aus?
     - DN vs PI in general
+* Lösungsansätze für PI identischer Value an mehreren Stellen    
+  - terme bei values mit rein
+  - termtab zu id mapping
+  - term zu id hashing
+  - in jeder Node mitabspeichern
+  - in der ersten Node mitabspeichern? Komplex!
 
 ## Tasks - Meeting
 2. Validierung ob Testergebnisse mit Literaturergebnissen zusammenpassen
@@ -75,6 +81,9 @@ Caveats etc.: Intersection auslagern
   - It's unclear if it gives any advantages in times of speed due to increased memory consumption. Check out a newer paper
 8. Termstruktur ändern für Indextree? (spine representation)
 9. Implement path indexing and another method
+
+## 16.02
+* Fix insert and delete in PI
 
 ## 09.02
 * v5_10.10? etc. bei Variablennamen
