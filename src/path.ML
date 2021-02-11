@@ -145,7 +145,7 @@ fun delete_safe eq entry net = delete eq entry net handle DELETE => net;
 
 
 (*** Retrieval functions ***)
-datatype query_type = Variants | Generalisations | Instances | Unifiables
+datatype query_type = Lookup | Generalisations | Instances | Unifiables
 datatype 'a term_set = List of 'a list
                      | Intersection of 'a term_set list
                      | Union of 'a term_set list
@@ -169,12 +169,12 @@ fun query query_type term (Node (con,tree)) =
   let
     fun symbols sym = Stab.lookup_list con sym |> List
     fun  handle_var () = case query_type of
-        Variants => symbols VarS
+        Lookup => symbols VarS
       | Instances => NoConstraint
       | Generalisations => symbols VarS
       | Unifiables => NoConstraint
     fun handle_sym sym = case query_type of
-        Variants => symbols sym
+        Lookup => symbols sym
       | Instances => symbols sym
       | Generalisations => Union [symbols VarS, symbols sym]
       | Unifiables => Union [symbols VarS, symbols sym]
@@ -190,7 +190,7 @@ fun query query_type term (Node (con,tree)) =
     fun all_args_var args =
 (*      fold (fn x => fn acc => case strip_comb x |> fst of (Var _) => acc | _ => false) args true *) false
     fun handle_func func args = case query_type of
-        Variants => query_args func args
+        Lookup => query_args func args
       | Instances =>
           (* Shortcut if all args are variables *)
           if all_args_var args
@@ -216,7 +216,7 @@ fun query_wrapper query_type t (_, values, node) =
   |> map snd
   handle NoConstraint_exn => values
 
-fun lookup tree t = query_wrapper Variants t tree
+fun lookup tree t = query_wrapper Lookup t tree
 fun instances tree t = query_wrapper Instances t tree
 fun generalisations tree t = query_wrapper Generalisations t tree
 fun unifiables tree t = query_wrapper Unifiables t tree

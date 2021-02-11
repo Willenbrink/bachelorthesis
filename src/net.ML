@@ -201,7 +201,7 @@ fun match_term net t =
 fun unify_term net t =
     extract_leaves (matching true t net []);
 
-datatype query_type = Variants | Generalisations | Instances | Unifiables
+datatype query_type = Lookup | Generalisations | Instances | Unifiables
 
 fun string_of_term t = case t of
         Const (n,_) => n
@@ -225,17 +225,17 @@ fun query mode keys net =
       fun con net = case net of Leaf xs => xs | _ => []
       fun symbols sym = case Symtab.lookup atoms sym of NONE => emptynet | SOME net => net
       fun handle_var ks = case mode of
-          Variants => query mode ks var
+          Lookup => query mode ks var
         | Instances => net_skip net [] |> maps (query mode ks)
         | Generalisations => query mode ks var
         | Unifiables => net_skip net [] |> maps (query mode ks)
       fun handle_sym ks sym = case mode of
-          Variants => query mode ks (symbols sym)
+          Lookup => query mode ks (symbols sym)
         | Instances => query mode ks (symbols sym)
         | Generalisations => query mode ks var @ query mode ks (symbols sym)
         | Unifiables => query mode ks var @ query mode ks (symbols sym)
       fun handle_func ks = case mode of
-          Variants => query mode ks comb
+          Lookup => query mode ks comb
         | Instances => query mode ks comb
         | Generalisations => query mode (strip_comb_key 2 ks) var @ query mode ks comb
         | Unifiables => query mode (strip_comb_key 2 ks) var @ query mode ks comb
@@ -250,11 +250,12 @@ fun query mode keys net =
 fun query_wrapper mode t net =
   query mode (key_of_term t) net
 
-fun lookup net t = query_wrapper Variants t net
+fun lookup net t = query_wrapper Lookup t net
 fun instances net t = query_wrapper Instances t net
 fun generalisations net t = query_wrapper Generalisations t net
 fun unifiables net t = query_wrapper Unifiables t net
 
+fun lookup' net t = lookup_aux net (key_of_term t)
 fun generalisations' net t = matching false t net [] |> extract_leaves
 fun unifiables' net t = matching true t net [] |> extract_leaves
 
