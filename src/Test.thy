@@ -4,6 +4,7 @@ begin
 ML_file "term_index.ML"
 ML_file "net.ML"
 ML_file "path.ML"
+ML_file "termtab.ML"
 ML_file "pprinter.ML"
 ML_file "term_gen.ML"
 ML_file "tester.ML"
@@ -19,8 +20,10 @@ val eq = Term.aconv_untyped
 structure V = struct type value = term val eq = Term.aconv_untyped end
 structure N = Net(V)
 structure P = Path(V)
+structure TT = TT_Index
 structure NetTest = Tester(N);
 structure PathTest = Tester(P);
+structure TTTest = Tester(TT);
 structure NetBench = Benchmark(N);
 structure PathBench = Benchmark(P);
 \<close>
@@ -31,18 +34,21 @@ ML \<open>
 val x = @{term "f a"}
 val y = @{term "f b"}
 ;
-P.empty
-|> P.insert (op =) (x,3)
-|> P.insert (op =) (y,3)
+TT.empty
+|> TT.insert (op aconv) (x,x)
+|> TT.delete (op aconv) (x,x)
+|> TT.content
 \<close>
 ML \<open>
 
 writeln "Path";
 PathTest.test ();
 
-
 writeln "Net";
 NetTest.test ();
+
+writeln "TT";
+TTTest.test ();
 \<close>
 
 ML \<open>

@@ -97,14 +97,10 @@ fun timer name f_test inputs =
   |> (fn test => (name,test))
   end
 
-(* Significantly larger for benchmarks than tests *)
-fun benchmark term_gen net_list repetitions =
+fun benchmark_basic net_list =
   let val nets = map Gen.lift net_list
-      val term_in_net = map (terms_in_net_gen 10) nets
-      val term_not_in_net = map (terms_not_in_net_gen 10) nets in [
-timer "Creation of net"
-      net_gen
-      (List.tabulate (repetitions,K Random.split)),
+      val term_in_net = map (terms_in_net_gen 1000) nets
+      val term_not_in_net = map (terms_not_in_net_gen 1000) nets in [
 timer "Content of net"
       (Index.content)
       (nets),
@@ -114,16 +110,17 @@ timer "Insert terms"
 timer "Delete term s"
       (fn (terms,net) => fold (fn term => Index.delete eq (term,term)) terms net)
       (term_in_net),
-timer "Delete 10% of terms in net"
-      (fn (net,terms) => fold (fn x => fn net => Index.delete_safe eq (x,x) net) terms net)
-      (map (fn n => fn r => ((n r |> fst,
-                              Index.content (n r |> fst) |> take (length (Index.content (n r |> fst)) div 10)),
-                              ())) nets)
+timer "Lookup existing term"
+      (fn (t,n) => map (Index.lookup n) t)
+      (term_in_net),
+timer "Lookup non-existing term"
+      (fn (t,n) => map (Index.lookup n) t)
+      (term_not_in_net)
 ] end
 
 fun benchmark_queries net_list =
   let val nets = map Gen.lift net_list
-      val term_in_net = map (terms_in_net_gen 10000) nets
+      val term_in_net = map (terms_in_net_gen 1000) nets
       val term_not_in_net = map (terms_not_in_net_gen 100) nets in [
 timer "Lookup existing term"
       (fn (t,n) => map (Index.lookup n) t)
