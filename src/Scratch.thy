@@ -16,6 +16,8 @@ ML_val \<open>
 @{typ_pat "'a \<Rightarrow> 'a"};
 TFree ("'a",["'a", "'b"]);
 @{term "(\<lambda> x. x)"};
+Spec_Check.check_gen @{context} "Name" (Generator.int) NONE (K (Property.Result false)) (Random.new ());
+Generator.var 10 10
 \<close>
 
 ML \<open>
