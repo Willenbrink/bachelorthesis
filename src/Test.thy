@@ -5,6 +5,7 @@ ML_file "term_index.ML"
 ML_file "net.ML"
 ML_file "path.ML"
 ML_file "termtab.ML"
+ML_file "item_index.ML"
 ML_file "pprinter.ML"
 ML_file "term_gen.ML"
 ML_file "tester.ML"
@@ -21,11 +22,15 @@ structure V = struct type value = term val eq = Term.aconv_untyped end
 structure N = Net(V)
 structure P = Path(V)
 structure TT = TT_Index
+structure IN = Item_Index
 structure NetTest = Tester(N);
 structure PathTest = Tester(P);
 structure TTTest = Tester(TT);
+structure INTest = Tester(IN);
 structure NetBench = Benchmark(N);
 structure PathBench = Benchmark(P);
+structure INBench = Benchmark(IN);
+structure TTBench = Benchmark(TT);
 \<close>
 (*
 ML \<open>ML_system_pp (fn _ => fn _ => Pretty.to_polyml o raw_pp_typ)\<close>
@@ -40,22 +45,26 @@ TT.empty
 |> TT.content
 \<close>
 ML \<open>
+val tests = [
+(*
+*)
+("Path", PathTest.test),
+("Net", NetTest.test),
+("TT", TTTest.test),
+("IN", INTest.test)
+];
 
-writeln "Path";
-PathTest.test ();
-
-writeln "Net";
-NetTest.test ();
-
-writeln "TT";
-TTTest.test ();
+fold (fn (name,test) => fn _ => (writeln name; test ())) tests ()
 \<close>
 
 ML \<open>
-val size = 300;
+val size = 5000;
 \<close>
 
 ML \<open>
+val term_gen_single = [
+("", term_with_var 0.1 5 (2,7))
+]
 val term_gens_reuse = [
 (* Reuse of symbols *)
 ("LR", term_var_reuse 0.0 5 (2,6)),
@@ -70,12 +79,15 @@ val term_gens_var = [
 ("TV", term_terminal_var 5 (2,6))
 ]
 val index_list =
-  term_gens_reuse
+  term_gen_single
   |> map (fn (name,gen) => (name,funpow_yield size gen (Random.new ()) |> fst))
   |> map (fn (name,terms) =>
   (name,
    fold (fn t => P.insert_safe eq (t,t)) terms P.empty,
-   fold (fn t => N.insert_safe eq (t,t)) terms N.empty))
+   fold (fn t => N.insert_safe eq (t,t)) terms N.empty,
+   fold (fn t => TT.insert_safe eq (t,t)) terms TT.empty,
+   fold (fn t => IN.insert_safe eq (t,t)) terms IN.empty
+   ))
 \<close>
 ML \<open>
 ML_Heap.share_common_data ();
@@ -93,11 +105,17 @@ map (fn (name,p,n) =>
 \<close>
 *)
 ML \<open>
-val pathb = map (fn (name,path,_) => ("PI-" ^ name, PathBench.benchmark_queries [path])) index_list;
-val netb = map (fn (name,_,net) => ("DN-" ^ name, NetBench.benchmark_queries [net])) index_list;
-val names = pathb |> hd |> snd |> map fst
-val (categories,results) = pathb @ netb |> map (fn (x,y) => (x,map snd y)) |> ListPair.unzip
+val benchmarks = [
+(*
+*)
+map (fn (name,path,_,_,_) => ("PI-" ^ name, PathBench.benchmark_basic [path])) index_list,
+map (fn (name,_,net,_,_) => ("DN-" ^ name, NetBench.benchmark_basic [net])) index_list,
+map (fn (name,_,_,TT,_) => ("TT-" ^ name, TTBench.benchmark_basic [TT])) index_list,
+map (fn (name,_,_,_,IN) => ("IN-" ^ name, INBench.benchmark_basic [IN])) index_list,
 
+[]] |> flat;
+val names = benchmarks |> hd |> snd |> map fst;
+val (categories,results) = benchmarks |> map (fn (x,y) => (x, map snd y)) |> ListPair.unzip;
 \<close>
 ML \<open>
 compare categories names results

@@ -107,7 +107,7 @@ timer "Content of net"
 timer "Insert terms"
       (fn (terms,net) => fold (fn term => Index.insert_safe eq (term,term)) terms net)
       (term_not_in_net),
-timer "Delete term s"
+timer "Delete terms"
       (fn (terms,net) => fold (fn term => Index.delete eq (term,term)) terms net)
       (term_in_net),
 timer "Lookup existing term"
