@@ -6,39 +6,63 @@ In the following sections we give an overview of discrimination nets and path in
 \section{Discrimination Nets}
 
 \section{Path Indexing}
-Instead of storing a term as a tree of functions and their arguments we can specify the structure and symbols of a tree by combining every symbol of a term with its position, which we call its path. This path is sequence of $(symbol, index)$ pairs where the index describes the argument which we traverse next.\footnote{This is in contrast to coordinate indexing which only uses a sequence of indices.} The term $f(x,g(a,b))$ can thus be represented by a set of paths and their associated symbol.
-The paths always start at the root and end with the index at which the symbol is located, e.g. $<f \cdot 2 \cdot g \cdot 1>$ is the path of the symbol $a$. We use $<>$ to enclose a path and $\cdot$ to express the sequence of $(symbol, index)$ pairs. \todo{Notation chapter? Don't use at all, copy definition or have definition only in notation chapter?} We disregard the identity of variables as they are irrelevant to the queries. $Symbol_{t}(p)$ is used to refer to the symbol associated with path $p$.
+Instead of storing a term as a tree of functions and their arguments, we can specify the structure and symbols of a tree by combining every symbol of a term with its position, which we call its path.
+\begin{defn}
+  The path is a sequence of $(symbol, index)$ pairs where the index describes the index of the next argument to traverse.\footnote{This is in contrast to coordinate indexing which only uses a sequence of indices.}
+\end{defn}
+For example, the term $f(x,g(a,b))$ can be represented by a set of paths and their associated symbol as can be seen in \cref{termpaths}.
+The paths always start at the root and end with the index at which the symbol is located, e.g. $<(f,2), (g,1)>$ is the path of the symbol $a$. We represent a path by enclosing a sequence of $(symbol, index)$ pairs with $<>$. \todo{As of now: No Notation chapter because there is almost none}
+
+We disregard the identity of variables as they are mostly irrelevant to the queries and simplify the queries. Consequently, the terms $f(x,y)$ and $f(x,x)$ are both saved as $f(*,*)$. This leads to an overapproximation in some cases, for example $f(c,d)$ would be identified as an instance of $f(x,x)$.
+
+\begin{defn}
+  $Symbol_{t}(p)$ is used to refer to the symbol associated with path $p$ in the term $t$.
+\end{defn}
 
 \begin{figure}[h]
 \centering
 \includegraphics[scale=0.25]{figures/term_path.png}
 \caption{A term and its paths together with the symbols associated with them}
+\label{termpaths}
 \end{figure}\todo{Write as mapping: $<> \longrightarrow f$ etc.}
 
-This set of paths allows us to define terms not explicitly by their structure and symbols but rather by imposing constraints on them. A term must fulfill the constraint enforced by every path and its associated symbol. This is relevant to the structure of the path index but also to the queries where we drop certain constraints to retrieve multiple terms.
+A $(path, symbol)$ pair can be interpreted as a constraint on a term where the path defines the position of the symbol in the term. For example, $(<(f,1)>, c)$ is only fulfilled by terms of the form $f(c,...)$\footnote{The paths do not explicitly encode any information about the number of arguments.}. A term gives raise to a set of $(path, symbol)$ pairs, which, when interpreted as constraints, uniquely identify this term up to loss of variable identitification.
 
-We store multiple terms in one index structure by mapping each $(path, symbol)$ pair to a set of terms that fulfill this constraint. We call these path sets. Storing the path sets such that they can be quickly looked up by the $(path, symbol)$ pair can be achieved in multiple ways. We decided to use a trie-based approach as many of the paths share prefixes.
+These constraints allow us to define terms not explicitly by their structure and symbols but rather by imposing constraints on them. This concept is fundamental to path indexing which stores only the constraints. Queries are resolved by combining the constraints to retrieve a set of terms.\todo{Better phrasing}
 
-The nodes of the trie contain a mapping of symbols to path sets. The the edges are labelled with $(symbol, index)$ pairs which are the elements of the paths. When we insert a path $p$ of a term $t$ we start at the root and traverse the trie according to the elements of $p$. Once we reach the end of $p$ we insert a mapping $Symbol_{t}(p) \longrightarrow t$ into the path set at that node. To insert a term we simply insert all the paths that describe this term. This requires the insertion of many similar paths which profits from the prefix sharing.
+\begin{defn}
+  A path index is a function $f: Path \times Symbol \longrightarrow 2^{Term}$, that is, each constraint is mapped to a set of terms, which fulfill these constraints and are stored in the path index. We call this set of terms a path set.\todo{Drop ``path set'' completely?}
+\end{defn}
 
+Storing the path sets such that they can be quickly looked up by a $(path, symbol)$ pair can be achieved in multiple ways. We decided to use a trie-based approach as many of the paths share prefixes. The nodes of the trie contain a function $g: Symbol  \longrightarrow 2^{Term}$. The edges are labelled with $(symbol, index)$ pairs, which correspond to the elements of a path. When we insert a path $p$ of a term $t$ we start at the root and traverse the trie according to $p$. Once we reach the end of $p$ we extend $g$ of the current node by $Symbol_{t}(p) \longrightarrow \{t\}$.\todo{If already existant: Expand set, else extend definition of g to $Symbol_{t}(p)$} To insert a term we simply insert all the paths that describe this term. This requires the insertion of many similar paths which profits from the prefix sharing.
+
+\Cref{pathindex} shows a path index stored as a trie. The root contains a mapping from the symbol $f$ to both terms as they both share this constraint. In the first argument, reached by the edge $(f,1)$, the symbol $a$ is mapped only to the first term whereas $*$ is mapped to the second term. In the second argument, the terms share the constraint.
 \begin{figure}[h]
 \centering
 \includegraphics[scale=0.25]{figures/path_index.png}
-\caption{A term index}
+\caption{A path index}
+\label{pathindex}
 \end{figure}
 
-We are interested in retrieving the instances, generalisations and unifiables of a term stored in the index. Additionally to that we define a lookup to retrieve copies of the term. This can be used to check if a term is already contained but may also be of interest as different variables are not distinguished. The queries are based on intersections and unions of the different path sets to enforce constraints on the terms.
-To answer the simplest query, the lookup, we first compute the set of $(path, symbol)$ pairs describing the term. Next we retrieve the path sets corresponding to them in the index. The intersection of these path sets returns all terms containing symbols at identical paths as the query term. Under the assumption of consistent typing we retrieve only the original or no term as $f(x,y)$ can not exist simultaneously to $f(x)$.
+We are interested in retrieving the instances, generalisations and unifiables of a term stored in the index. In addition, we define a lookup to retrieve copies of the term. This can be used to check if a term is already contained but may also be of interest as different variables are not distinguished. The queries are based on intersections and unions of the different path sets to enforce constraints on the terms.
 
-To retrieve the unifiables of a term from the index we can use some observations regarding the unification problem.
+To answer the simplest query, the lookup, we procede as follows:
+\begin{enumerate}
+  \item Compute the set of $(path, symbol)$ pairs describing the term.
+  \item Retrieve the path sets corresponding to them in the index.
+  \item Intersect the path sets to retrieve all terms containing the same symbols at identical paths as the query term.
+\end{enumerate}
+  Under the assumption of consistent typing, we retrieve only terms of identical structure as $f(x,y)$ can not exist simultaneously to $f(x)$. Due to the loss of variable identity we may retrieve additional terms.
+
+To retrieve the unifiables of a term from the index, we can use some observations regarding the unification problem.
 \begin{enumerate}
   \item A variable is unifiable with any other term
   \item Constants are unifiable with themselves and variables
-  \item A function $f(x_{1},...,x_{n})$ is unifiable with term $t$ if $t$ is a variable or a function $g(y_{1},...,y_{n})$ where $f = g$ and for all i $x_{i}$ is unifiable with $y_{i}$. Again, differing number of arguments are impossible as the type of $f$ and $g$ would clash otherwise.
+  \item A function $f(x_{1},...,x_{n})$ is unifiable with term $t$ if and only if $t = x$ or $t = f(y_{1},...,y_{n})$ where for all i $x_{i}$ is unifiable with $y_{i}$. Again, a differing number of arguments are impossible as their types would clash otherwise.
 \end{enumerate}
-Using this we can define an algorithm recursing on the structure of the query term while intersecting and unifying the different path sets of the index. The different query types are quite similar, with the lookup being the most restrictive and the unifiables the least restrictive.
+Using this, we can define an algorithm recursing on the structure of the query term while intersecting and unifying the different path sets of the index. The different query types are quite similar, with the lookup being the most restrictive and the unifiables the least restrictive.
 
-$PathTerms(p)$ refers to the path set stored at the path $p$. $AllTerms$ is the collection of all terms stored in the index.
+$\mathrm{PathTerms(p)}$ refers to the path set stored at the path $p$. $\mathrm{AllTerms}$ is the collection of all terms stored in the index.
 \begin{figure}[h]
 \centering
 \includegraphics[scale=0.25]{figures/queries.png}
