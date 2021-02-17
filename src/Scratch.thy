@@ -4,20 +4,33 @@ begin
 ML_file "term_index.ML"
 ML_file "net.ML"
 ML_file "path.ML"
+ML_file "termtab.ML"
+ML_file "item_index.ML"
 ML_file "pprinter.ML"
+ML_file "term_gen.ML"
 ML_file "tester.ML"
+ML_file "benchmark.ML"
 ML "open Pprinter"
 setup "term_pat_setup"
 setup "type_pat_setup"
-(*ML \<open>ML_system_pp (fn _ => fn _ => Pretty.to_polyml o raw_pp_typ)\<close>*)
+ML \<open>ML_system_pp (fn _ => fn _ => Pretty.to_polyml o raw_pp_typ)\<close>
+
+ML_val \<open>
+
+val term = Generator.free 0 2 $ Generator.free 1 0 $ Generator.free 2 0 |> Syntax.check_term @{context};
+\<close>
 
 ML_val \<open>
 @{term_pat "f x y"};
 @{typ_pat "'a \<Rightarrow> 'a"};
-TFree ("'a",["'a", "'b"]);
-@{term "(\<lambda> x. x)"};
-Spec_Check.check_gen @{context} "Name" (Generator.int) NONE (K (Property.Result false)) (Random.new ());
-Generator.var 10 10
+Sign.typ_unify @{theory};
+val x = Generator.free 0 0;
+val x = @{term "f x y"};
+Syntax.check_term;
+val term = Term_Gen.term_with_var 0.0 1 (2,2) (Random.new ()) |> fst;
+type_of term
+;
+ 
 \<close>
 
 ML \<open>

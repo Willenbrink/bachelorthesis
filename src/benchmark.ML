@@ -19,7 +19,7 @@ fun replace_subterm sym t r =
 
 fun terms_not_in_net_gen amount net_gen r = (* Returns (term,net) where term is guaranteed to not be in the net *)
   let
-    val (net,r) = Gen.gen_prop (fn n => Index.content n <> []) net_gen r
+    val (net,r) = Gen.filter (fn n => Index.content n <> []) net_gen r
     val (con,r) = Gen.shuffle (Index.content net) r
     val terms = take amount con
     val net = fold (fn t => Index.delete eq (t,t)) (take (length con div 10) con) net
@@ -115,7 +115,10 @@ timer "Lookup existing term"
       (term_in_net),
 timer "Lookup non-existing term"
       (fn (t,n) => map (Index.lookup n) t)
-      (term_not_in_net)
+      (term_not_in_net),
+timer "unifiables existing term"
+      (fn (t,n) => map (Index.unifiables n) t)
+      (term_in_net)
 ] end
 
 fun benchmark_queries net_list =

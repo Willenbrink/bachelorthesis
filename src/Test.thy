@@ -95,7 +95,7 @@ ML_Heap.gc_now ();
 \<close>
 (*
 ML \<open>
-map (fn (name,p,n) =>
+map (fn (name,p,n,t,i) =>
       let val path = ML_Heap.obj_size p
           val net = ML_Heap.obj_size n
       in (name,
@@ -121,6 +121,28 @@ ML \<open>
 compare categories names results
 \<close>
 (*
+   IN-	   TT-	   DN-	   PI-	 
+ 0.000	 0.000	 0.652	 0.001	Content of net 
+ 0.677	 0.077	 0.231	 0.581	Insert terms 
+ 0.785	 0.006	 0.123	 2.530	Delete terms 
+ 0.533	 0.005	 0.100	 0.164	Lookup existing term 
+ 0.350	 0.003	 0.105	 0.161	Lookup non-existing term 
+ 0.000	 1.324	29.402	 0.212	unifiables existing term 
+
+Path Index without Check
+        11 Path().map_child(4)map_list(2)
+        18 Table().modify(3)modfy(1)
+        21 Path().insert(7)ins(2)
+total: 80
+
+Path Index with Check
+         4 Path().map_child(4)map_list(2)
+        12 Table().modify(3)modfy(1)
+        14 Path().insert(7)ins(2)
+        77 Term.aconv_untyped(2)
+total: 124
+
+
 profile_time
         37 Net().add_key_of_terms(2)aux(2)
         45 Net().query(3)handle_func(1)

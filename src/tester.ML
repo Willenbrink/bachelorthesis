@@ -58,7 +58,7 @@ val def_term_gen = term_gen 6
 val def_net_gen = net_gen 100 def_term_gen
 fun term_in_net_gen net_gen r = (* Returns (term,net) where term is guaranteed to be in the net *)
   let
-    val (net,r) = Gen.gen_prop (fn n => Index.content n <> []) net_gen r
+    val (net,r) = Gen.filter (fn n => Index.content n <> []) net_gen r
     val (term,r) = Gen.selectL (Index.content net ) r
   in
   ((term,net),r)

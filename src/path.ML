@@ -81,9 +81,13 @@ fun insert eq (t,v) (id, values, Node (con,tree)) =
             val tree = map_child ins (symbol_of_term func,args) tree
           in Node (con, tree) end
     val values =
+(* TODO Ordlist! *)
       case AList.lookup (fn ((t,v),(u,w)) => Term.aconv_untyped (t,u) andalso eq (v,w)) values (t,v) of
         NONE => ((t,v),id) :: values
       | SOME _ => raise INSERT (* term * value pair already exists *)
+(*
+    val values = ((t,v),id) :: values
+*)
   in
   (id + 1, values, ins t (Node(con,tree)))
   end

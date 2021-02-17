@@ -27,5 +27,5 @@ fun merge eq t1 t2 = IN.merge (t1,t2)
 fun lookup t x = IN.lookup t x
 fun generalisations _ = raise Fail "UNDEFINED"
 fun instances _ = raise Fail "UNDEFINED"
-fun unifiables _ = raise Fail "UNDEFINED"
+fun unifiables t x = IN.retrieve t x
 end

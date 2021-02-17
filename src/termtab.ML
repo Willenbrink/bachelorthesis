@@ -19,9 +19,9 @@ fun delete eq (t,v) table =
 fun delete_safe eq (t,v) table = delete eq (t,v) table handle DELETE => table
 
 fun lookup t x = case TT.lookup t x of NONE => [] | SOME xs => xs
-fun generalisations _ = raise Fail "UNDEFINED"
-fun instances _ = raise Fail "UNDEFINED"
-fun unifiables _ = raise Fail "UNDEFINED"
+fun generalisations t x = raise Fail "UNDEFINED"
+fun instances t x = raise Fail "UNDEFINED"
+fun unifiables t x = filter (fn y => Term.could_unify (x,y)) (content t)
 
 fun merge eq t1 t2 = TT.merge_list eq (t1,t2)
 end
