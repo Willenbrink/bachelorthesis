@@ -1,5 +1,3 @@
-Path Indexing mit Werten oder Termen als Value beschreiben?
-
 # Gliederung
 Introduction: Was hat Isabelle, was bieten wir. 
 Hintergrund: TI
@@ -10,7 +8,14 @@ Conclusion
 
 Theorie Praxis splitten
 FOL!
+Preliminary: FOL in HOL-Setting.
 Caveats etc.: Intersection auslagern
+Pseudocode, Inferenzregeln. Funktional!
+Kombination mit TT und PI in Paper
+Term,Value Pair speichern => Wie im Paper
+Lookup-Trick erklären: Wert enthalten? Exception!
+Ersetzen durch TT weil schneller
+Usecase: Resolutionsbeweiser: Literal zu Termlist: Welcher Terme beinhaltet das Literal?
 
 # Tasks
 ## TODO
@@ -64,12 +69,15 @@ Caveats etc.: Intersection auslagern
   - in der ersten Node mitabspeichern? Komplex!
 
 ## Tasks - Meeting
-2. Validierung ob Testergebnisse mit Literaturergebnissen zusammenpassen
-3. Thesis schreiben: Path Indexing und Discrimination Nets Theory
-  - insert, unifiables, generalisations, lookup, instances
-
+-1. delete kein value uebergeben
+0. Terme zusaetzlich in values rein
+  - mit termtables probieren
+2. Benchmark:
+    a) vor insert in termtable suchen
+    b) vor insert, lookup verwenden
 5. Create benchmarks for Termtabs
-6. Create benchmarks for item_net
+3. Thesis schreiben
+2. Validierung ob Testergebnisse mit Literaturergebnissen zusammenpassen
 
 4. Beispiele, wo net.ML Überapproximationen lieftert, ob eta-normalform eta-long normal form sein soll, und ob content = entries
 6. Check where `net.ml`, `item_net.ml`, and termtabs are used.
@@ -83,6 +91,9 @@ Caveats etc.: Intersection auslagern
   - It's unclear if it gives any advantages in times of speed due to increased memory consumption. Check out a newer paper
 8. Termstruktur ändern für Indextree? (spine representation)
 9. Implement path indexing and another method
+
+
+11. Create benchmarks for item_net???
 
 ## 16.02
 * Fix insert and delete in PI
