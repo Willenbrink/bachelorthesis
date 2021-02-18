@@ -7,7 +7,7 @@ infix ==>
 
 val eq = Term.aconv_untyped
 fun def_sym_gen amount args r =
-  Gen.def_sym_gen (3.0,1.0,0.0) amount args r
+  Gen.def_sym_gen (3,1,0) amount args r
 fun term_gen n r =
   let
     val (num,r) = Random.range_int (0,n) r (* TODO find better solution for spread *)
@@ -59,7 +59,7 @@ val def_net_gen = net_gen 100 def_term_gen
 fun term_in_net_gen net_gen r = (* Returns (term,net) where term is guaranteed to be in the net *)
   let
     val (net,r) = Gen.filter (fn n => Index.content n <> []) net_gen r
-    val (term,r) = Gen.selectL (Index.content net ) r
+    val (term,r) = Gen.elementsL (Index.content net) r
   in
   ((term,net),r)
   end

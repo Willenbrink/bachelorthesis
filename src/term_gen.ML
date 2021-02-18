@@ -16,17 +16,17 @@ fun term_gen freq reuse cut_off arg_range r =
   ||> snd                                                           
 in
 fun term_ground reuse depth argr =
-  term_gen (1.0,0.0,0.0) reuse (fn (h,i) => h >= depth) argr
+  term_gen (1,0,0) reuse (fn (h,i) => h >= depth) argr
 fun term_var_reuse reuse depth argr =
-  term_gen (1.0,0.1,0.0) reuse (fn (h,i) => h >= depth) argr
+  term_gen (10,1,0) reuse (fn (h,i) => h >= depth) argr
 fun term_with_var var depth argr =
-  term_gen (1.0,var,0.0) 0.3 (fn (h,i) => h >= depth) argr
+  term_gen (100,var,0) 0.3 (fn (h,i) => h >= depth) argr
 
 fun term_terminal_var depth argr r =
   let fun sym_gen height index (state,r) =
     let
       val (num_args,r) = Random.range_int argr r
-    val (symbol,(state,r)) = Generator.def_sym_genS (1.0,0.0,0.0) 0.3 num_args (state,r)
+    val (symbol,(state,r)) = Generator.def_sym_genS (1,0,0) 0.3 num_args (state,r)
     in
     if height >= depth
     then (Generator.var 0 0,0,(state,r))
