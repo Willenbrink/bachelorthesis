@@ -1,4 +1,4 @@
-functor Tester (Index : TERM_INDEX where type value = term) = 
+functor Tester (Index : TERM_INDEX) = 
 struct
 structure Gen = Generator
 
@@ -36,8 +36,8 @@ fun check gen printer name pred () = check_prop gen printer name (Property.pred 
 
 fun ins t n = Index.insert eq (t,t) n
 fun ins' t n = Index.insert_safe eq (t,t) n
-fun del t n = Index.delete eq (t,t) n
-fun del' t n = Index.delete_safe eq (t,t) n
+fun del t n = Index.delete (curry eq t) t n
+fun del' t n = Index.delete_safe (curry eq t) t n
 fun con n = Index.content n
 fun mem t n = member eq (con n) t
 fun set_eq fst snd = eq_set eq (fst,snd)
@@ -86,7 +86,7 @@ check (Gen.unit) NONE
       (fn () => Index.is_empty Index.empty),
 check (def_net_gen) (SOME (fn n => @{make_string} (Index.content n)))
       "Deleting all terms returns empty net"
-      (fn n => fold (fn t => Index.delete eq (t,t)) (Index.content n) n |> Index.is_empty)
+      (fn n => fold (fn t => Index.delete (curry eq t) t) (Index.content n) n |> Index.is_empty)
 ]
 
 val test_modifying = [ (* Tests functions that modify the net: insert and delete *)
@@ -112,7 +112,7 @@ check (term_in_net_gen def_net_gen) NONE
       "Deletion of contained term decreases size"
       ((fn (t,n) => length (del t n |> con) = length (con n) - 1)),
 check (term_in_net_gen def_net_gen) NONE
-      "Duplicate exception on delete"
+      "Deleting twice raises exception"
       (fn (t,n) => (del t n |> del t; false) handle Index.DELETE => true),
 check (term_in_net_gen def_net_gen) NONE
       "Safe delete raises no exception"
@@ -123,10 +123,10 @@ check (term_in_net_gen def_net_gen) (SOME @{make_string})
         let val snd_term = Const ("x", dummyT)
         in
         con_eq n (n |> Index.insert_safe eq (snd_term, t)
-                    |> Index.delete eq (snd_term, t))
+                    |> Index.delete (curry eq t) (snd_term))
         andalso
         con_eq n (n |> Index.insert_safe eq (snd_term, t)
-                    |> Index.delete eq (t, t))
+                    |> Index.delete (curry eq t) t)
         end),
 
 (* Combination *)

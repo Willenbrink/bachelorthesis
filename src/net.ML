@@ -13,7 +13,7 @@ match_term no longer treats abstractions as wildcards; instead they match
 only wildcards in patterns.  Requires operands to be beta-eta-normal.
 *)
 
-functor Net (V : sig type value end) =
+structure Net =
 struct
 
 fun >>= (x,f) = Option.map f x
@@ -53,11 +53,10 @@ fun key_of_term t = add_key_of_terms (t, []);
     The empty key addresses the entire net.
     Lookup functions preserve order in items stored at same level.
 *)
-type value = V.value
-datatype T = Leaf of value list
-            | Net of {comb: T,
-                      var: T,
-                      atoms: T Symtab.table};
+datatype 'a T = Leaf of 'a list
+              | Net of {comb: 'a T,
+                        var: 'a T,
+                        atoms: 'a T Symtab.table};
 
 val empty = Leaf[];
 fun is_empty (Leaf []) = true | is_empty _ = false;
@@ -100,14 +99,16 @@ fun newnet (args as {comb,var,atoms}) =
     if is_empty comb andalso is_empty var andalso Symtab.is_empty atoms
     then empty else Net args;
 
-(*Deletes item x from the list at the node addressed by the keys.
+(*Deletes values from the list at the node addressed by the keys.
     Raises DELETE if absent.  Collapses the net if possible.
-    eq is the equality test for items. *)
-fun delete eq (t, x) net =
+    test is the predicate for deletion on values. *)
+fun delete test t net =
     let fun del1 ([], Leaf xs) =
-            if member eq xs x then Leaf (remove eq x xs)
+            let val xs' = filter_out test xs in
+            if length xs' <> length xs then Leaf xs'
             else raise DELETE
-        | del1 (keys, Leaf[]) = raise DELETE
+            end
+        | del1 (_, Leaf[]) = raise DELETE
         | del1 (CombK :: keys, Net{comb,var,atoms}) =
             newnet{comb=del1(keys,comb), var=var, atoms=atoms}
         | del1 (VarK :: keys, Net{comb,var,atoms}) =
@@ -281,4 +282,4 @@ fun merge eq net1 net2 =
 end;
 
 (* Checks if module is compatible with interface while still exposing internal functions *)
-structure NetInterfaceCheck = Net (struct type value = term end) : TERM_INDEX;
+structure NetInterfaceCheck = Net : TERM_INDEX;

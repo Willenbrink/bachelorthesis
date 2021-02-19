@@ -1,4 +1,4 @@
-functor Benchmark (Index : TERM_INDEX where type value = term) =
+functor Benchmark (Index : TERM_INDEX) =
 struct
 
 structure Gen = Generator
@@ -22,7 +22,7 @@ fun terms_not_in_net_gen amount net_gen r = (* Returns (term,net) where term is 
     val (net,r) = Gen.filter (fn n => Index.content n <> []) net_gen r
     val (con,r) = Gen.shuffle (Index.content net) r
     val terms = take amount con
-    val net = fold (fn t => Index.delete eq (t,t)) (take (length con div 10) con) net
+    val net = fold (fn t => Index.delete (curry eq t) t) (take (length con div 10) con) net
   in
   ((terms,net),r)
   end
@@ -98,27 +98,23 @@ fun timer name f_test inputs =
   end
 
 fun benchmark_basic net_list =
-  let val nets = map Gen.lift net_list
-      val term_in_net = map (terms_in_net_gen 1000) nets
-      val term_not_in_net = map (terms_not_in_net_gen 1000) nets in [
+  let val term_in_net = map (fn n => terms_in_net_gen (Int.min (1000, Index.content n |> length)) (Gen.lift n)) net_list
+      val term_not_in_net = map (terms_not_in_net_gen 1000 o Gen.lift) net_list in [
 timer "Content of net"
       (Index.content)
-      (nets),
+      (map Gen.lift net_list),
 timer "Insert terms"
       (fn (terms,net) => fold (fn term => Index.insert_safe eq (term,term)) terms net)
       (term_not_in_net),
 timer "Delete terms"
-      (fn (terms,net) => fold (fn term => Index.delete eq (term,term)) terms net)
+      (fn (terms,net) => fold (fn t => Index.delete (curry eq t) t) terms net)
       (term_in_net),
 timer "Lookup existing term"
       (fn (t,n) => map (Index.lookup n) t)
       (term_in_net),
 timer "Lookup non-existing term"
       (fn (t,n) => map (Index.lookup n) t)
-      (term_not_in_net),
-timer "unifiables existing term"
-      (fn (t,n) => map (Index.unifiables n) t)
-      (term_in_net)
+      (term_not_in_net)
 ] end
 
 fun benchmark_queries net_list =

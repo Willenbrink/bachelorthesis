@@ -5,7 +5,6 @@ ML_file "term_index.ML"
 ML_file "net.ML"
 ML_file "path.ML"
 ML_file "termtab.ML"
-ML_file "item_index.ML"
 ML_file "pprinter.ML"
 ML_file "term_gen.ML"
 ML_file "tester.ML"
@@ -18,18 +17,14 @@ setup "type_pat_setup"
 
 ML \<open>
 val eq = Term.aconv_untyped
-structure V = struct type value = term val eq = Term.aconv_untyped end
-structure N = Net(V)
-structure P = Path(V)
+structure N = Net
+structure P = Path
 structure TT = TT_Index
-structure IN = Item_Index
 structure NetTest = Tester(N);
 structure PathTest = Tester(P);
 structure TTTest = Tester(TT);
-structure INTest = Tester(IN);
 structure NetBench = Benchmark(N);
 structure PathBench = Benchmark(P);
-structure INBench = Benchmark(IN);
 structure TTBench = Benchmark(TT);
 \<close>
 (*
@@ -41,7 +36,7 @@ val y = @{term "f b"}
 ;
 TT.empty
 |> TT.insert (op aconv) (x,x)
-|> TT.delete (op aconv) (x,x)
+|> TT.delete (curry (op aconv) x) (x)
 |> TT.content
 \<close>
 ML \<open>
@@ -50,15 +45,14 @@ val tests = [
 *)
 ("Path", PathTest.test),
 ("Net", NetTest.test),
-("TT", TTTest.test),
-("IN", INTest.test)
+("TT", TTTest.test)
 ];
 
 fold (fn (name,test) => fn _ => (writeln name; test ())) tests ()
 \<close>
 
 ML \<open>
-val size = 5000;
+val size = 300;
 \<close>
 
 ML \<open>
@@ -85,8 +79,7 @@ val index_list =
   (name,
    fold (fn t => P.insert_safe eq (t,t)) terms P.empty,
    fold (fn t => N.insert_safe eq (t,t)) terms N.empty,
-   fold (fn t => TT.insert_safe eq (t,t)) terms TT.empty,
-   fold (fn t => IN.insert_safe eq (t,t)) terms IN.empty
+   fold (fn t => TT.insert_safe eq (t,t)) terms TT.empty
    ))
 \<close>
 ML \<open>
@@ -108,10 +101,9 @@ ML \<open>
 val benchmarks = [
 (*
 *)
-map (fn (name,path,_,_,_) => ("PI-" ^ name, PathBench.benchmark_basic [path])) index_list,
-map (fn (name,_,net,_,_) => ("DN-" ^ name, NetBench.benchmark_basic [net])) index_list,
-map (fn (name,_,_,TT,_) => ("TT-" ^ name, TTBench.benchmark_basic [TT])) index_list,
-map (fn (name,_,_,_,IN) => ("IN-" ^ name, INBench.benchmark_basic [IN])) index_list,
+map (fn (name,path,_,_) => ("PI-" ^ name, PathBench.benchmark_basic [path])) index_list,
+map (fn (name,_,net,_) => ("DN-" ^ name, NetBench.benchmark_basic [net])) index_list,
+map (fn (name,_,_,TT) => ("TT-" ^ name, TTBench.benchmark_basic [TT])) index_list,
 
 []] |> flat;
 val names = benchmarks |> hd |> snd |> map fst;
