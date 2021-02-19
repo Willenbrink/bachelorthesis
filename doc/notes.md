@@ -16,33 +16,16 @@ Term,Value Pair speichern => Wie im Paper
 Lookup-Trick erklären: Wert enthalten? Exception!
 Ersetzen durch TT weil schneller
 Usecase: Resolutionsbeweiser: Literal zu Termlist: Welcher Terme beinhaltet das Literal?
+Mehr Prosa, mehr Geschichte. Was sind Probleme, wie kann ich die lösen, nicht so distanziert. Mehr we. But what about variables? etc.
 
 # Tasks
 ## TODO
 * Net_skip beschreiben?
-* EQ von insert entfernen bzw. wrappen in convenience functor
-* termtabs vergleichen auf lookup
-* itemtab selbe signatur? Auch vergleichen!
 * Mit mathe Notation schreiben, evtl andere Syntax
 * Queries Fokus, nicht die Details
-* Mehr Prosa, mehr Geschichte. Was sind Probleme, wie kann ich die lösen, nicht so distanziert. Mehr we. But what about variables? etc.
-* Occurs Check in PI?
 * Ground terms useless
 * Später: Pathindexing mit Variablennamen
-* Interface-Ideen:
-  - Lazy values returnen?
-  - Gleich auf Alphaeq, Instanziierung, Generalisations, Unification
-  - Operation: Insert only if no generalisation exists
-  - Interface mit boolean flags, e.g. generalisation_exists to avoid overhead when immediately discarding result list
-* Artemis JUnit XML für Quickcheck
-* basic symbol generator and adding an additional one which represents a recurring symbol whenever a new symbol is generated. That is, the probability for a symbol being reused changes during generation: 0.0  (no symbol generated yet) -> 0.5 -> 0.67 -> 0.75 etc.
 * Tests/Benchmarks als Fokus!
-* Später: Term generation verbessern
-  - Catalan number, Folien ca. 229-237: https://db.in.tum.de/teaching/ws2021/queryopt/slides/chapter3.pdf
-  - Prüfer sequenzen
-* Später: term_structure (random) mit disjunkten Variablennamen und später unification / mapping mit Index
-* Lehmer RNG überarbeiten: Shortlived seeds und split_seeds/sequence implementieren
-* Itemnet: Quasi zwei stufiges DN, erst Liste für letzten paar Terme, rest im Netz. Komplex, nicht im Detail anschauen
 * Vergleiche Nutzung von `net.ML`, `item_net.ml`, termtabs (`term_ord.ml`, `term_sharing.ml`) in Taktiken etc.
     - Unterschied zwischen Instanzen von TT
     - Zufällig?
@@ -69,7 +52,6 @@ Usecase: Resolutionsbeweiser: Literal zu Termlist: Welcher Terme beinhaltet das 
   - in der ersten Node mitabspeichern? Komplex!
 
 ## Tasks - Meeting
--1. delete kein value uebergeben
 0. Terme zusaetzlich in values rein
   - mit termtables probieren
 2. Benchmark:
@@ -94,6 +76,31 @@ Usecase: Resolutionsbeweiser: Literal zu Termlist: Welcher Terme beinhaltet das 
 
 
 11. Create benchmarks for item_net???
+
+## Future work
+* Artemis JUnit XML für Quickcheck
+* Create benchmarks for item_net???
+* Lehmer RNG überarbeiten: Shortlived seeds und split_seeds/sequence implementieren
+* Occurs Check in PI?
+* Später: term_structure (random) mit disjunkten Variablennamen und später unification / mapping mit Index
+  - TODO: Was genau ist gemeint?
+* Interface-Ideen:
+  - Lazy values returnen?
+  - Gleich auf Alphaeq, Instanziierung, Generalisations, Unification
+  - Operation: Insert only if no generalisation exists
+  - Interface mit boolean flags, e.g. generalisation_exists to avoid overhead when immediately discarding result list
+* Später: Term generation verbessern
+  - Catalan number, Folien ca. 229-237: https://db.in.tum.de/teaching/ws2021/queryopt/slides/chapter3.pdf
+  - Prüfer sequenzen
+* basic symbol generator and adding an additional one which represents a recurring symbol whenever a new symbol is generated. That is, the probability for a symbol being reused changes during generation: 0.0  (no symbol generated yet) -> 0.5 -> 0.67 -> 0.75 etc.
+  - Quasi implementiert mit def_sym_genS
+
+## 23.02
+* delete kein value uebergeben
+* EQ von insert entfernen bzw. wrappen in convenience functor
+* itemtab selbe signatur? Auch vergleichen!
+  - Nein, Itemtab braucht von Anfang an alle Terme
+* termtabs vergleichen auf lookup
 
 ## 16.02
 * Fix insert and delete in PI
