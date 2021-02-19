@@ -27,7 +27,7 @@ Sign.typ_unify @{theory};
 val x = Generator.free 0 0;
 val x = @{term "f x y"};
 Syntax.check_term;
-val term = Term_Gen.term_with_var 0.0 1 (2,2) (Random.new ()) |> fst;
+val term = Term_Gen.term_with_var 0 1 (2,2) (Random.new ()) |> fst;
 type_of term
 ;
  
@@ -55,7 +55,7 @@ fun term_gen height index (seq,r) =
   end
 val (r1,r2) = Random.new () |> Random.split
 in
-val term = Generator.term_det term_gen (Generator.def_sym_seq (1.0,0.0,0.0) 0.1 1 r1, r2) |>> pterm
+val term = Generator.term_det term_gen (Generator.def_sym_seq (1,0,0) 0.1 1 r1, r2) |>> pterm
 end
 \<close>
 

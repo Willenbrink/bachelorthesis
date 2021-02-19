@@ -57,7 +57,7 @@ val size = 300;
 
 ML \<open>
 val term_gen_single = [
-("", term_with_var 0.1 5 (2,7))
+("", term_with_var 10 5 (2,7))
 ]
 val term_gens_reuse = [
 (* Reuse of symbols *)
@@ -66,10 +66,10 @@ val term_gens_reuse = [
 ("HR", term_var_reuse 0.5 5 (2,6))
 ]
 val term_gens_var = [
-("VLV", term_with_var 0.01 5 (2,6)),
-("LV", term_with_var 0.1 5 (2,6)),
-("MV", term_with_var 0.2 5 (2,6)),
-("HV", term_with_var 0.5 5 (2,6)),
+("VLV", term_with_var 1 5 (2,6)),
+("LV", term_with_var 10 5 (2,6)),
+("MV", term_with_var 20 5 (2,6)),
+("HV", term_with_var 50 5 (2,6)),
 ("TV", term_terminal_var 5 (2,6))
 ]
 val index_list =
