@@ -202,8 +202,6 @@ fun match_term net t =
 fun unify_term net t =
     extract_leaves (matching true t net []);
 
-datatype query_type = Lookup | Generalisations | Instances | Unifiables
-
 fun string_of_term t = case t of
         Const (n,_) => n
       | Free (n,_) => n
@@ -218,28 +216,16 @@ fun strip_comb_key i ks = case (i,ks) of
   | (i, (_::ks)) => strip_comb_key (i-1) ks
   | (_,[]) => raise Fail "Invalid strip_comb_key, too many combs"
 
-fun query mode keys net =
+fun query keys net =
   case net of
     (Leaf xs) => xs
   | (Net {comb, var, atoms}) =>
     let
       fun con net = case net of Leaf xs => xs | _ => []
       fun symbols sym = case Symtab.lookup atoms sym of NONE => emptynet | SOME net => net
-      fun handle_var ks = case mode of
-          Lookup => query mode ks var
-        | Instances => net_skip net [] |> maps (query mode ks)
-        | Generalisations => query mode ks var
-        | Unifiables => net_skip net [] |> maps (query mode ks)
-      fun handle_sym ks sym = case mode of
-          Lookup => query mode ks (symbols sym)
-        | Instances => query mode ks (symbols sym)
-        | Generalisations => query mode ks var @ query mode ks (symbols sym)
-        | Unifiables => query mode ks var @ query mode ks (symbols sym)
-      fun handle_func ks = case mode of
-          Lookup => query mode ks comb
-        | Instances => query mode ks comb
-        | Generalisations => query mode (strip_comb_key 2 ks) var @ query mode ks comb
-        | Unifiables => query mode (strip_comb_key 2 ks) var @ query mode ks comb
+      fun handle_var ks = net_skip net [] |> maps (query ks)
+      fun handle_sym ks sym = query ks (symbols sym)
+      fun handle_func ks = query ks comb
     in
       case keys of
         [] => con net
@@ -248,17 +234,11 @@ fun query mode keys net =
       | (CombK :: ks) => handle_func ks
     end
 
-fun query_wrapper mode t net =
-  query mode (key_of_term t) net
-
-fun lookup net t = query_wrapper Lookup t net
-fun instances net t = query_wrapper Instances t net
-fun generalisations net t = query_wrapper Generalisations t net
-fun unifiables net t = query_wrapper Unifiables t net
-
-fun lookup' net t = lookup_aux net (key_of_term t)
-fun generalisations' net t = matching false t net [] |> extract_leaves
-fun unifiables' net t = matching true t net [] |> extract_leaves
+(* New implementation, not as exhaustively verified. *)
+fun instances net t = query (key_of_term t) net
+(* Old implementation *)
+fun generalisations net t = matching false t net [] |> extract_leaves
+fun unifiables net t = matching true t net [] |> extract_leaves
 
 
 (** operations on nets **)
