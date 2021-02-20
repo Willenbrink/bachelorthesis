@@ -91,10 +91,10 @@ check (def_net_gen) (SOME (fn n => @{make_string} (Index.content n)))
 
 val test_modifying = [ (* Tests functions that modify the net: insert and delete *)
 (* Insert *)
-check_prop (Gen.zip (def_term_gen, def_net_gen)) NONE
+check_prop (Gen.zip def_term_gen def_net_gen) NONE
       "Insertion adds value to content"
       ((fn (t,n) => not (mem t n)) ==> (fn (t,n) => set_eq (t :: Index.content n) (ins t n |> Index.content))),
-check_prop (Gen.zip (def_term_gen, def_net_gen)) NONE
+check_prop (Gen.zip def_term_gen def_net_gen) NONE
       "Insertion of new term increases size"
       ((fn (t,n) => not (mem t n)) ==> (fn (t,n) => length (ins t n |> con) = length (con n) + 1)),
 check (term_in_net_gen def_net_gen) NONE
@@ -130,7 +130,7 @@ check (term_in_net_gen def_net_gen) (SOME @{make_string})
         end),
 
 (* Combination *)
-check_prop (Gen.zip (def_term_gen, def_net_gen)) NONE
+check_prop (Gen.zip def_term_gen def_net_gen) NONE
       "Insertion and deletion of new term returns identical net"
       ((fn (t,n) => not (mem t n)) ==> (fn (t,n) => con n = con (ins t n |> del t))),
 check_prop (term_in_net_gen def_net_gen) NONE
@@ -155,15 +155,15 @@ check (term_in_net_gen def_net_gen) (SOME @{make_string})
 check (term_in_net_gen def_net_gen) (SOME @{make_string})
       "instances \<subseteq> unifiables"
       (fn (t,n) => subset eq (Index.instances n t, Index.unifiables n t)),
-check (Gen.zip (term_instance_gen def_term_gen, def_net_gen))
+check (Gen.zip (term_instance_gen def_term_gen) def_net_gen)
       (SOME (fn ((t,u),n) => @{make_string} (t, u, con (ins' u n |> ins' t))))
       "generalisation returns itself and generalisation"
       (fn ((t,u),n) => subset eq ([t,u],Index.generalisations (ins' u n |> ins' t) t)),
-check (Gen.zip (term_instance_gen def_term_gen, def_net_gen))
+check (Gen.zip (term_instance_gen def_term_gen) def_net_gen)
       (SOME (fn ((t,u),n) => @{make_string} (t, u, n)))
       "instances returns itself and instance"
       (fn ((t,u),n) => subset eq ([t,u],Index.instances (ins' t n |> ins' u) u)),
-check (Gen.zip (term_unif_gen def_term_gen, def_net_gen))
+check (Gen.zip (term_unif_gen def_term_gen) def_net_gen)
       (SOME (fn ((t,u),n) => @{make_string} (t, u, con (ins' u n |> ins' t))))
       "unifiables returns itself and unifiable"
       (fn ((t,u),n) => subset eq ([t,u],Index.unifiables (ins' u n |> ins' t) t))
