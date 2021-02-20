@@ -40,7 +40,7 @@ structure Path = Path(V);
 \<close>
 
 ML \<open>
-Generator.fold_seq 20 (curry op ::) (Generator.free' 0.9 0 (Random.new ())) []
+Utils.fold_seq_bounded 20 (curry op ::) (Generator.free' 0.9 0 (Random.new ())) []
 |> map pterm;
 local
 fun term_gen height index (seq,r) =
