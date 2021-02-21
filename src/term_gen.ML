@@ -3,7 +3,7 @@ struct
 local
 fun symbol_gen cut_off arg_range genS height index (state,r) =
   let
-    val (num_args,r) = Random.range_int arg_range r
+    val (num_args,r) = Gen_Base.range_int arg_range r
     val (symbol,(state,r)) = genS num_args (state,r)
   in
   if cut_off (height, index)
@@ -25,7 +25,7 @@ fun term_with_var var depth argr =
 fun term_terminal_var depth argr r =
   let fun sym_gen height index (state,r) =
     let
-      val (num_args,r) = Random.range_int argr r
+      val (num_args,r) = Gen_Base.range_int argr r
     val (symbol,(state,r)) = Generator.def_sym_genS (1,0,0) 0.3 num_args (state,r)
     in
     if height >= depth

@@ -7,7 +7,7 @@ val eq = Term.aconv_untyped
 
 fun replace_subterm sym t r =
   let val (f,args) = Term.strip_comb t
-      val (index,r) =  Random.range_int (~1,length args - 1) r
+      val (index,r) =  Gen_Base.range_int (~1,length args - 1) r
       (* Generate two random values, pass r1 to rec-call, ignore returned r and return r2 instead.
          This simply avoids some annoyance with passing values around. *)
       val (r1,r2) = Random.split r
@@ -69,7 +69,7 @@ fun net_gen num_term term_gen r =
             val (base,r) = aux (num_term - 1) r
         in (Index.insert_safe eq (term,term) base,r) end
   in 
-  Random.range_int (0,num_term) r
+  Gen_Base.range_int (0,num_term) r
   |-> aux
   end
 
