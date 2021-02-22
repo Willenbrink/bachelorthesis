@@ -10,7 +10,7 @@ fun def_sym_gen amount args r =
   Gen.def_sym_gen (3,1,0) amount args r
 fun term_gen n r =
   let
-    val (num,r) = Random.range_int (0,n) r (* TODO find better solution for spread *)
+    val (num,r) = Gen_Base.range_int (0,n) r (* TODO find better solution for spread *)
   in
   Gen.term_fol (def_sym_gen (num div 5)) 5 num r
   end
@@ -25,7 +25,7 @@ fun net_gen num_term term_gen r =
             val (base,r) = aux (num_term - 1) r
         in (Index.insert_safe eq (term,term) base,r) end
   in 
-  Random.range_int (0,num_term) r
+  Gen_Base.range_int (0,num_term) r
   |-> aux
   end
 
@@ -44,7 +44,7 @@ fun set_eq fst snd = eq_set eq (fst,snd)
 fun con_eq fst snd = set_eq (Index.content fst) (Index.content snd)
 fun replace_subterm sym t r =
   let val (f,args) = Term.strip_comb t
-      val (index,r) =  Random.range_int (~1,length args - 1) r
+      val (index,r) =  Gen_Base.range_int (~1,length args - 1) r
       (* Generate two random values, pass r1 to rec-call, ignore returned r and return r2 instead.
          This simply avoids some annoyance with passing values around. *)
       val (r1,r2) = Random.split r
@@ -91,10 +91,10 @@ check (def_net_gen) (SOME (fn n => @{make_string} (Index.content n)))
 
 val test_modifying = [ (* Tests functions that modify the net: insert and delete *)
 (* Insert *)
-check_prop (Gen.zip (def_term_gen, def_net_gen)) NONE
+check_prop (Gen.zip def_term_gen def_net_gen) NONE
       "Insertion adds value to content"
       ((fn (t,n) => not (mem t n)) ==> (fn (t,n) => set_eq (t :: Index.content n) (ins t n |> Index.content))),
-check_prop (Gen.zip (def_term_gen, def_net_gen)) NONE
+check_prop (Gen.zip def_term_gen def_net_gen) NONE
       "Insertion of new term increases size"
       ((fn (t,n) => not (mem t n)) ==> (fn (t,n) => length (ins t n |> con) = length (con n) + 1)),
 check (term_in_net_gen def_net_gen) NONE
@@ -130,7 +130,7 @@ check (term_in_net_gen def_net_gen) (SOME @{make_string})
         end),
 
 (* Combination *)
-check_prop (Gen.zip (def_term_gen, def_net_gen)) NONE
+check_prop (Gen.zip def_term_gen def_net_gen) NONE
       "Insertion and deletion of new term returns identical net"
       ((fn (t,n) => not (mem t n)) ==> (fn (t,n) => con n = con (ins t n |> del t))),
 check_prop (term_in_net_gen def_net_gen) NONE
@@ -155,15 +155,15 @@ check (term_in_net_gen def_net_gen) (SOME @{make_string})
 check (term_in_net_gen def_net_gen) (SOME @{make_string})
       "instances \<subseteq> unifiables"
       (fn (t,n) => subset eq (Index.instances n t, Index.unifiables n t)),
-check (Gen.zip (term_instance_gen def_term_gen, def_net_gen))
+check (Gen.zip (term_instance_gen def_term_gen) def_net_gen)
       (SOME (fn ((t,u),n) => @{make_string} (t, u, con (ins' u n |> ins' t))))
       "generalisation returns itself and generalisation"
       (fn ((t,u),n) => subset eq ([t,u],Index.generalisations (ins' u n |> ins' t) t)),
-check (Gen.zip (term_instance_gen def_term_gen, def_net_gen))
+check (Gen.zip (term_instance_gen def_term_gen) def_net_gen)
       (SOME (fn ((t,u),n) => @{make_string} (t, u, n)))
       "instances returns itself and instance"
       (fn ((t,u),n) => subset eq ([t,u],Index.instances (ins' t n |> ins' u) u)),
-check (Gen.zip (term_unif_gen def_term_gen, def_net_gen))
+check (Gen.zip (term_unif_gen def_term_gen) def_net_gen)
       (SOME (fn ((t,u),n) => @{make_string} (t, u, con (ins' u n |> ins' t))))
       "unifiables returns itself and unifiable"
       (fn ((t,u),n) => subset eq ([t,u],Index.unifiables (ins' u n |> ins' t) t))
