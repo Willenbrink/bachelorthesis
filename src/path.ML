@@ -30,7 +30,7 @@ fun sym_ord (VarS, VarS) = EQUAL
 structure Stab = Table(type key = symbol val ord = sym_ord);
 type 'a content = (int * 'a) Ord_List.T Stab.table
 datatype 'a tree = Node of 'a content * 'a tree list Stab.table
-type 'a T = int * (term * ('a * int) list) list * 'a tree
+type 'a T = int * ('a * int) list Termtab.table * 'a tree
 
 fun symbol_of_term t = case t of
           Const (n,_) => AtomS n
@@ -47,7 +47,7 @@ fun symbol_of_term t = case t of
 *)
 
 val empty_node = Node (Stab.empty, Stab.empty)
-val empty = (0, [], empty_node);
+val empty = (0, Termtab.empty, empty_node);
 
 (*** Insertion ***)
 
@@ -67,7 +67,7 @@ fun map_child f (sym,args) tree =
   Creates node if not already present.
   eq is the equality test for values. Terms must also be equal for INSERT to be raised.
 *)
-fun insert eq_v (t,v) (id, values, Node (con,tree)) =
+fun insert eq_v (t,v) ((id, values, Node (con,tree)) : 'a T) =
   let
     fun append_sym sym table = Stab.map_default (sym, []) (Ord_List.insert ord (id,v)) table
     fun ins t (Node (con, tree)) = case strip_comb t of
@@ -79,18 +79,12 @@ fun insert eq_v (t,v) (id, values, Node (con,tree)) =
             val con = append_sym (symbol_of_term func) con
             val tree = map_child ins (symbol_of_term func,args) tree
           in Node (con, tree) end
-    val eq_t = Term.aconv_untyped
     val values =
-      AList.map_default eq_t (t,[])
+      Termtab.map_default (t,[])
         (fn xs => if AList.defined eq_v xs v
                   then raise INSERT
                   else (v,id) :: xs)
         values
-(* TODO Ordlist! *)
-(* TODO dont use aconv! *)
-(*
-    val values = ((t,v),id) :: values
-*)
   in
   (id + 1, values, ins t (Node(con,tree)))
   end
@@ -106,7 +100,7 @@ exception DELETE;
   Raises DELETE if no value is deleted. Does not collapse the index if possible.
   test is the predicate for deletion on values, term equality is also considered. *)
 
-fun delete test t (id_max, values, Node (con,tree)) =
+fun delete test t ((id_max, values, Node (con,tree)) : 'a T) =
   let
     fun rem ids xs = filter_out (fn (id,_) => member (op =) ids id) xs
 
@@ -119,17 +113,13 @@ fun delete test t (id_max, values, Node (con,tree)) =
             val con = Stab.map_default (symbol_of_term func,[]) (rem ids) con
             val tree = map_child (del ids) (symbol_of_term func, args) tree
           in Node (con, tree) end
-    (*val (values,to_delete) = fold (fn x => fn (td,v) => if test' x then (v, x::td) else (x :: v, td)) values ([],[])*)
 
-    val eq_t = Term.aconv_untyped (* TODO remove *)
-    val (to_delete, values) =
-      AList.map_entry_yield eq_t t
-        (fn xs => ((filter (test o fst) xs), (filter_out (test o fst) xs))) values
+    val to_delete = Termtab.lookup_list values t |> filter (test o fst)
+    val values = Termtab.map_entry t (fn xs => filter_out (test o fst) xs) values
   in
   case to_delete of
-    NONE => raise DELETE (* No value was deleted. *)
-  | SOME [] => raise DELETE (* No value was deleted. *)
-  | SOME xs => (id_max, values, del (map snd xs) t (Node(con,tree)))
+    [] => raise DELETE (* No value was deleted. *)
+  | xs => (id_max, values, del (map snd xs) t (Node(con,tree)))
   end
 
 fun delete_safe eq entry net = delete eq entry net handle DELETE => net;
@@ -152,7 +142,7 @@ fun compute_set term_set = case term_set of
   | Union xs => (*map compute_set xs |> Ord_List.unions ord*) fold (fn x => Ord_List.union ord (compute_set x)) xs []
   | NoConstraint => raise NoConstraint_exn
 
-fun content ((_, values, _) : 'a T) : 'a list = maps (fn (_,vs) => map fst vs) values
+fun content ((_, values, _) : 'a T) : 'a list = Termtab.dest values |> maps snd |> map fst
 
 fun is_empty tree = null (content tree)
 
@@ -213,7 +203,7 @@ fun generalisations tree t = query_wrapper Generalisations t tree
 fun unifiables tree t = query_wrapper Unifiables t tree
 
 fun merge eq index1 (_, values2, _) =
-  fold (insert_safe eq) (maps (fn (t,vs) => map (fn (v,_) => (t,v)) vs) values2) index1
+  fold (insert_safe eq) (Termtab.fold (fn (t,vs) => fn acc => map (fn (v,_) => (t,v)) vs @ acc) values2 []) index1
 
 (* Useful for what exactly?
 fun dot_of_node (node as Node(con,tree)) =
