@@ -52,28 +52,29 @@ fold (fn (name,test) => fn _ => (writeln name; test ())) tests ()
 \<close>
 
 ML \<open>
-val size = 300;
+val size = 1000;
 \<close>
 
 ML \<open>
-val term_gen_single = [
-("", term_with_var 10 5 (2,7))
+
+val depth = 6
+val argr = (0,4)
+
+val test_single = [
+("", term_with_var size 10 depth argr)
 ]
-val term_gens_reuse = [
-(* Reuse of symbols *)
-("LR", term_var_reuse 0.0 5 (2,6)),
-("MR", term_var_reuse 0.3 5 (2,6)),
-("HR", term_var_reuse 0.5 5 (2,6))
-]
-val term_gens_var = [
-("VLV", term_with_var 1 5 (2,6)),
-("LV", term_with_var 10 5 (2,6)),
-("MV", term_with_var 20 5 (2,6)),
-("HV", term_with_var 50 5 (2,6)),
-("TV", term_terminal_var 5 (2,6))
-]
+
+val test_distinct =
+  let fun gen reuse = term_var_reuse (Real.floor (Real.fromInt size * reuse)) depth argr
+  in [("VLR", gen 10.0), ("LR", gen 1.0), ("MR", gen 0.1) , ("HR",gen 0.01)] end
+
+val test_var =
+  let fun gen var = term_with_var size var depth argr
+  in [("NV", gen 0), ("LV", gen 3), ("MV", gen 10), ("HV", gen 30)] end
+
+
 val index_list =
-  term_gen_single
+  test_distinct @ test_var
   |> map (fn (name,gen) => (name,funpow_yield size gen (Random.new ()) |> fst))
   |> map (fn (name,terms) =>
   (name,
@@ -100,10 +101,10 @@ map (fn (name,p,n,t,i) =>
 ML \<open>
 val benchmarks = [
 (*
-*)
-map (fn (name,path,_,_) => ("PI-" ^ name, PathBench.benchmark_basic [path])) index_list,
-map (fn (name,_,net,_) => ("DN-" ^ name, NetBench.benchmark_basic [net])) index_list,
 map (fn (name,_,_,TT) => ("TT-" ^ name, TTBench.benchmark_basic [TT])) index_list,
+*)
+map (fn (name,path,_,_) => ("PI-" ^ name, PathBench.benchmark_basic [path] @ PathBench.benchmark_queries [path])) index_list,
+map (fn (name,_,net,_) => ("DN-" ^ name, NetBench.benchmark_basic [net] @ NetBench.benchmark_queries [net])) index_list,
 
 []] |> flat;
 val names = benchmarks |> hd |> snd |> map fst;
@@ -111,6 +112,14 @@ val (categories,results) = benchmarks |> map (fn (x,y) => (x, map snd y)) |> Lis
 \<close>
 ML \<open>
 compare categories names results
+
+
+(* Expectation:
+More Reuse \<rightarrow> Better DN, Worse PI
+More Vars \<rightarrow> Better PI, Worse DN (for Instance and Unifiables)
+Instance \<rightarrow> PI better than DN
+Generalisations \<rightarrow> DN better than PI
+*)
 \<close>
 (*
    IN-	   TT-	   DN-	   PI-	 
