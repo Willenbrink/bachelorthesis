@@ -52,12 +52,6 @@ Mehr Prosa, mehr Geschichte. Was sind Probleme, wie kann ich die lösen, nicht s
   - in der ersten Node mitabspeichern? Komplex!
 
 ## Tasks - Meeting
-0. Terme zusaetzlich in values rein
-  - mit termtables probieren
-2. Benchmark:
-    a) vor insert in termtable suchen
-    b) vor insert, lookup verwenden
-5. Create benchmarks for Termtabs
 3. Thesis schreiben
 2. Validierung ob Testergebnisse mit Literaturergebnissen zusammenpassen
 
@@ -94,6 +88,9 @@ Mehr Prosa, mehr Geschichte. Was sind Probleme, wie kann ich die lösen, nicht s
   - Prüfer sequenzen
 * basic symbol generator and adding an additional one which represents a recurring symbol whenever a new symbol is generated. That is, the probability for a symbol being reused changes during generation: 0.0  (no symbol generated yet) -> 0.5 -> 0.67 -> 0.75 etc.
   - Quasi implementiert mit def_sym_genS
+  
+## Frage
+Ein Generator pro Test oder eine Mischung an Generatoren?
 
 ## 23.02
 * delete kein value uebergeben
@@ -101,6 +98,12 @@ Mehr Prosa, mehr Geschichte. Was sind Probleme, wie kann ich die lösen, nicht s
 * itemtab selbe signatur? Auch vergleichen!
   - Nein, Itemtab braucht von Anfang an alle Terme
 * termtabs vergleichen auf lookup
+* Terme zusaetzlich in values rein
+  - mit termtables probieren
+* Benchmark:
+    a) vor insert in termtable suchen
+    b) vor insert, lookup verwenden
+* Create benchmarks for Termtabs
 
 ## 16.02
 * Fix insert and delete in PI

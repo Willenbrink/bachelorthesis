@@ -4,6 +4,7 @@ begin
 ML_file "term_index.ML"
 ML_file "net.ML"
 ML_file "path.ML"
+ML_file "path_termtab.ML"
 ML_file "termtab.ML"
 ML_file "pprinter.ML"
 ML_file "term_gen.ML"
@@ -19,12 +20,15 @@ ML \<open>
 val eq = Term.aconv_untyped
 structure N = Net
 structure P = Path
+structure PTT = PathTT
 structure TT = TT_Index
 structure NetTest = Tester(N);
 structure PathTest = Tester(P);
+structure PathTTTest = Tester(PTT);
 structure TTTest = Tester(TT);
-structure NetBench = Benchmark(N);
-structure PathBench = Benchmark(P);
+structure NBench = Benchmark(N);
+structure PBench = Benchmark(P);
+structure PTTBench = Benchmark(PTT);
 structure TTBench = Benchmark(TT);
 \<close>
 (*
@@ -44,6 +48,7 @@ val tests = [
 (*
 *)
 ("Path", PathTest.test),
+("PathTT", PathTTTest.test),
 ("Net", NetTest.test),
 ("TT", TTTest.test)
 ];
@@ -52,7 +57,7 @@ fold (fn (name,test) => fn _ => (writeln name; test ())) tests ()
 \<close>
 
 ML \<open>
-val size = 1000;
+val size = 10;
 \<close>
 
 ML \<open>
@@ -72,16 +77,17 @@ val test_var =
   let fun gen var = term_with_var size var depth argr
   in [("NV", gen 0), ("LV", gen 3), ("MV", gen 10), ("HV", gen 30)] end
 
-
-val index_list =
+val group_size = (size + 3 - 1) div 3 (* Integer ceiling *)
+val termss =
   test_distinct @ test_var
   |> map (fn (name,gen) => (name,funpow_yield size gen (Random.new ()) |> fst))
-  |> map (fn (name,terms) =>
-  (name,
-   fold (fn t => P.insert_safe eq (t,t)) terms P.empty,
-   fold (fn t => N.insert_safe eq (t,t)) terms N.empty,
-   fold (fn t => TT.insert_safe eq (t,t)) terms TT.empty
-   ))
+\<close>
+ML \<open>
+val names = map fst termss
+fun pi_indices () = map (PBench.create_indices size o snd) termss
+fun pitt_indices () = map (PTTBench.create_indices size o snd) termss
+fun dn_indices () = map (NBench.create_indices size o snd) termss
+fun tt_indices () = map (TTBench.create_indices size o snd) termss
 \<close>
 ML \<open>
 ML_Heap.share_common_data ();
@@ -99,19 +105,23 @@ map (fn (name,p,n,t,i) =>
 \<close>
 *)
 ML \<open>
+val pi_bench = map (fn (name,input) => ("PI-" ^ name, PBench.benchmark_basic input @ PBench.benchmark_queries input)) (ListPair.zip (names, pi_indices ()))
+val pitt_bench = map (fn (name,input) => ("PIT-" ^ name, PTTBench.benchmark_basic input @ PTTBench.benchmark_queries input)) (ListPair.zip (names, pitt_indices ()))
+val dn_bench = map (fn (name,input) => ("DN-" ^ name, NBench.benchmark_basic input @ NBench.benchmark_queries input)) (ListPair.zip (names, dn_indices ()))
+val tt_bench = map (fn (name,input) => ("TT-" ^ name, TTBench.benchmark_basic input)) (ListPair.zip (names, tt_indices ()))
 val benchmarks = [
 (*
-map (fn (name,_,_,TT) => ("TT-" ^ name, TTBench.benchmark_basic [TT])) index_list,
+tt_bench,
 *)
-map (fn (name,path,_,_) => ("PI-" ^ name, PathBench.benchmark_basic [path] @ PathBench.benchmark_queries [path])) index_list,
-map (fn (name,_,net,_) => ("DN-" ^ name, NetBench.benchmark_basic [net] @ NetBench.benchmark_queries [net])) index_list,
-
+pi_bench,
+pitt_bench,
+dn_bench,
 []] |> flat;
-val names = benchmarks |> hd |> snd |> map fst;
+val test_names = benchmarks |> hd |> snd |> map fst;
 val (categories,results) = benchmarks |> map (fn (x,y) => (x, map snd y)) |> ListPair.unzip;
 \<close>
 ML \<open>
-compare categories names results
+compare categories test_names results
 
 
 (* Expectation:
@@ -119,6 +129,7 @@ More Reuse \<rightarrow> Better DN, Worse PI
 More Vars \<rightarrow> Better PI, Worse DN (for Instance and Unifiables)
 Instance \<rightarrow> PI better than DN
 Generalisations \<rightarrow> DN better than PI
+PITT better than PI in everything except memory consumption
 *)
 \<close>
 (*

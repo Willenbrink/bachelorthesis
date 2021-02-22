@@ -147,6 +147,16 @@ timer "unifiables non-existing term"
       (fn (t,n) => map (Index.unifiables n) t)
       (term_not_in_net)*)
 ] end
+
+
+fun create_indices group_size terms =
+  let val termss = chop_groups group_size terms
+  in
+  (* Start with empty index, insert first group of terms. Take copy of index, insert second group, etc.
+    Return a list of indices each with a differing amount of terms in them. *)
+  fold (fn ts => fn (index::indices) => (fold (fn t => Index.insert_safe eq (t,t)) ts index)::index::indices) termss [Index.empty]
+  |> rev |> tl |> rev
+  end
 end
 
 fun print_real real = 
