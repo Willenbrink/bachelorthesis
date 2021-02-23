@@ -31,7 +31,7 @@ fun net_gen num_term term_gen r =
 
 val ctxt = Config.put Spec_Check.examples 1 @{context};
 val ctxt = Config.put Spec_Check.gen_target 100 ctxt;
-fun check_prop gen printer name prop () = Spec_Check.check_gen ctxt name gen printer prop (Random.deterministic_seed 1)
+fun check_prop gen printer name prop () = Spec_Check.check_gen ctxt name gen printer prop (Random.new ())
 fun check gen printer name pred () = check_prop gen printer name (Property.property pred) ()
 
 fun ins t n = Index.insert eq (t,t) n

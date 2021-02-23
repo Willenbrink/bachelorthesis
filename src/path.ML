@@ -65,8 +65,8 @@ fun compute_set term_set = case term_set of
   | Intersection [] => raise Fail "Empty intersect is undefined"
   | Intersection (x::xs) =>
       let fun f x acc = Ord_List.inter ord (compute_set x) acc handle NoConstraint_exn => acc
-      in fold f xs (compute_set x) end
-  | Union xs => (*map compute_set xs |> Ord_List.unions ord*) fold (fn x => Ord_List.union ord (compute_set x)) xs []
+      in fold f xs (compute_set x) handle NoConstraint_exn => compute_set (Intersection xs) end
+  | Union xs => map compute_set xs |> Ord_List.unions ord
   | NoConstraint => raise NoConstraint_exn
 
 fun content ((_, values, _) : 'a T) : 'a list = values |> maps snd |> map fst

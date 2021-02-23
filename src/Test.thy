@@ -1,5 +1,5 @@
 theory "Test"
-  imports Main "../spec_check/src/Spec_Check"
+  imports Pure "../spec_check/src/Spec_Check"
 begin
 ML_file "benchmark_util.ML"
 ML_file "term_index.ML"
@@ -137,7 +137,7 @@ ML \<open>
   (fn Test _ => true | _ => false)
   (fn Index "PI" => true | _ => false)
 ;compare dn_bench "Discrimination Net" (* TODO dn_bench, error! *)
-  (fn Input xs => String.isSubstring  "V" xs | _ => false)
+  (fn Input xs => true | _ => false)
   (fn Test _ => true | _ => false)
   (fn Index xs => String.isSubstring  "DN" xs | _ => false)
 ;compare tt_bench2 "Termtable"

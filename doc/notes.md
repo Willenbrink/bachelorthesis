@@ -20,6 +20,9 @@ Mehr Prosa, mehr Geschichte. Was sind Probleme, wie kann ich die lösen, nicht s
 
 # Tasks
 ## TODO
+intersects
+share seeds, kleine netze
+kein Var oben
 * Net_skip beschreiben?
 * Mit mathe Notation schreiben, evtl andere Syntax
 * Queries Fokus, nicht die Details
@@ -51,33 +54,68 @@ Mehr Prosa, mehr Geschichte. Was sind Probleme, wie kann ich die lösen, nicht s
   - in jeder Node mitabspeichern
   - in der ersten Node mitabspeichern? Komplex!
 
-## Tasks - Meeting
+## Tasks
+
+-4. intersects auf listen
+-2. tests sollten mit dem erwarteten uebereinstimmen zB unifiables bei PT sollte nicht essentiell langsamer sein als PI
+
+-1. delete kein value uebergeben
+0. Terme zusaetzlich in values rein
+  - mit termtables probieren
+5. Create benchmarks for Termtabs
 3. Thesis schreiben
 2. Validierung ob Testergebnisse mit Literaturergebnissen zusammenpassen
 
+
+
 4. Beispiele, wo net.ML Überapproximationen lieftert, ob eta-normalform eta-long normal form sein soll, und ob content = entries
+
 6. Check where `net.ml`, `item_net.ml`, and termtabs are used.
   - Is is it just random?
   - Do people prefer one or the other?
   - Do people seem to even have thought about their choice?
-5.5 was passiert wenn man ergebnisse zurueckgibt, die aber andere typen besitzen?
+7. Discuss: should we provide interfaces that return boolean flags
 
-3. Discuss: should we provide interfaces that return boolean flags
-3. Discuss: shouldn't we include the names of variables? 
-  - It's unclear if it gives any advantages in times of speed due to increased memory consumption. Check out a newer paper
-8. Termstruktur ändern für Indextree? (spine representation)
-9. Implement path indexing and another method
+## Done
+- Discrimination Nets: Ueberapproximation
+- Path indexing mit selber Signatur wie net.ML
+- Reseraching: Generator-based testing in ML-languages: procedure as already given
+- probability based approach for term generation
+- Paper fuer Lambda Term Generators
+- Benchmarks angefangen
+- Implentierung mit Referenzen statt Values
+- Zeit bei quickCheck reinmachen
+- Exception Trace statt reines failen beim Test
+- Generatoren mit State fuer Symbole
+- Generatoren erzeugen lazy neue Testcases anstatt im vorhinein
+- Compiler Type generation klar vom Rest trennen
+- Interface wie besprochen + merge
+- Intersection optimiert
+- Dokumentation
+- Termgenerierung abgeschlossen
+- Doku
 
+## Themenname
+- Techniken zur First-Order Termindizierung in Isabelle/ML
+- Techniques for First-Order Term Indexing in Isabelle/ML
 
-11. Create benchmarks for item_net???
+## Future Work
 
-## Future work
-* Artemis JUnit XML für Quickcheck
+1. Instances: the application of Lemma 5.3.3 to this expression could be avoided
+by treating subterms that only contain variable arguments as if they were constants.
+Moreover, if the term has variable and non-variable arguments,
+it suffices to merely consider the non-variable arguments because the basic term sets introduced
+for the variables will be supersets of the sets introduced for non- variable arguments.
+The definition of the candidate set for instances employs these observations.
+2. One could think about creating a minimal path tree storing only values in leafs
+3. Are we optimising the queries, e.g. returning empty set if intersecting with an empty set?
+4. Discuss: shouldn't we include the names of variables? 
+  - It's unclear if it gives any advantages in times of speed due to increased memory consumption. Check out a newer paper. CF Graf
+5. Type Konsistenz pruefen. Bisher ist alles untyped
+
+* Ant XML für SpecCheck
 * Create benchmarks for item_net???
 * Lehmer RNG überarbeiten: Shortlived seeds und split_seeds/sequence implementieren
-* Occurs Check in PI?
-* Später: term_structure (random) mit disjunkten Variablennamen und später unification / mapping mit Index
-  - TODO: Was genau ist gemeint?
 * Interface-Ideen:
   - Lazy values returnen?
   - Gleich auf Alphaeq, Instanziierung, Generalisations, Unification
@@ -86,11 +124,13 @@ Mehr Prosa, mehr Geschichte. Was sind Probleme, wie kann ich die lösen, nicht s
 * Später: Term generation verbessern
   - Catalan number, Folien ca. 229-237: https://db.in.tum.de/teaching/ws2021/queryopt/slides/chapter3.pdf
   - Prüfer sequenzen
-* basic symbol generator and adding an additional one which represents a recurring symbol whenever a new symbol is generated. That is, the probability for a symbol being reused changes during generation: 0.0  (no symbol generated yet) -> 0.5 -> 0.67 -> 0.75 etc.
-  - Quasi implementiert mit def_sym_genS
   
 ## Frage
 Ein Generator pro Test oder eine Mischung an Generatoren?
+
+## 30.02
+* Bug wenn NoConstraint am Anfang der Liste in intersect
+* Pure statt Main importieren
 
 ## 23.02
 * delete kein value uebergeben
