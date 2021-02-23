@@ -1,6 +1,7 @@
 theory "Test"
   imports Main "../spec_check/src/Spec_Check"
 begin
+ML_file "benchmark_util.ML"
 ML_file "term_index.ML"
 ML_file "net.ML"
 ML_file "path.ML"
@@ -46,18 +47,18 @@ TT.empty
 ML \<open>
 val tests = [
 (*
-*)
 ("Path", PathTest.test),
 ("PathTT", PathTTTest.test),
 ("Net", NetTest.test),
 ("TT", TTTest.test)
+*)
 ];
 
 fold (fn (name,test) => fn _ => (writeln name; test ())) tests ()
 \<close>
 
 ML \<open>
-val size = 10;
+val size = 600;
 \<close>
 
 ML \<open>
@@ -71,7 +72,7 @@ val test_single = [
 
 val test_distinct =
   let fun gen reuse = term_var_reuse (Real.floor (Real.fromInt size * reuse)) depth argr
-  in [("VLR", gen 10.0), ("LR", gen 1.0), ("MR", gen 0.1) , ("HR",gen 0.01)] end
+  in [("LLR", gen 10.0), ("LR", gen 1.0), ("MR", gen 0.1) , ("HR",gen 0.01)] end
 
 val test_var =
   let fun gen var = term_with_var size var depth argr
@@ -88,6 +89,8 @@ fun pi_indices () = map (PBench.create_indices size o snd) termss
 fun pitt_indices () = map (PTTBench.create_indices size o snd) termss
 fun dn_indices () = map (NBench.create_indices size o snd) termss
 fun tt_indices () = map (TTBench.create_indices size o snd) termss
+fun tt_indices2 () = map (TTBench.create_indices size o snd) (test_var
+  |> map (fn (name,gen) => (name,funpow_yield (size*10) gen (Random.new ()) |> fst)))
 \<close>
 ML \<open>
 ML_Heap.share_common_data ();
@@ -105,23 +108,66 @@ map (fn (name,p,n,t,i) =>
 \<close>
 *)
 ML \<open>
-val pi_bench = map (fn (name,input) => ("PI-" ^ name, PBench.benchmark_basic input @ PBench.benchmark_queries input)) (ListPair.zip (names, pi_indices ()))
-val pitt_bench = map (fn (name,input) => ("PIT-" ^ name, PTTBench.benchmark_basic input @ PTTBench.benchmark_queries input)) (ListPair.zip (names, pitt_indices ()))
-val dn_bench = map (fn (name,input) => ("DN-" ^ name, NBench.benchmark_basic input @ NBench.benchmark_queries input)) (ListPair.zip (names, dn_indices ()))
-val tt_bench = map (fn (name,input) => ("TT-" ^ name, TTBench.benchmark_basic input)) (ListPair.zip (names, tt_indices ()))
+fun run_bench tag benchmarks (name, input) =
+  let val benchmarks = map (fn f => f input) benchmarks |> flat
+  in map (fn (n,test) => ([Index tag, Input name, n],test)) benchmarks end
+
+\<close>
+ML \<open>
+val pi_bench = maps (run_bench "PI" [PBench.benchmark_basic, PBench.benchmark_queries]) (ListPair.zip (names, pi_indices ()))
+val pitt_bench = maps (run_bench "PT" [PTTBench.benchmark_basic, PTTBench.benchmark_queries]) (ListPair.zip (names, pitt_indices ()))
+val dn_bench = maps (run_bench "DN" [NBench.benchmark_basic, NBench.benchmark_queries]) (ListPair.zip (names, dn_indices ()))
+val tt_bench = maps (run_bench "TT" [TTBench.benchmark_basic, TTBench.benchmark_lookup]) (ListPair.zip (names, tt_indices ()))
+val tt_bench2 = maps (run_bench "TT" [TTBench.benchmark_basic, TTBench.benchmark_lookup]) (ListPair.zip (names, tt_indices2 ()))
 val benchmarks = [
 (*
-tt_bench,
+val test_names = benchmarks |> hd |> snd |> map fst;
+val (tags,results) = benchmarks |> map (fn (x,y) => (x, map snd y)) |> ListPair.unzip;
+val tags = map (fn ts => fold (curry op ^) ts "") tags
 *)
 pi_bench,
 pitt_bench,
 dn_bench,
+tt_bench,
 []] |> flat;
-val test_names = benchmarks |> hd |> snd |> map fst;
-val (categories,results) = benchmarks |> map (fn (x,y) => (x, map snd y)) |> ListPair.unzip;
 \<close>
 ML \<open>
-compare categories test_names results
+;compare benchmarks "Path Indexing"
+  (fn Input xs => String.isSubstring  "V" xs | _ => false)
+  (fn Test _ => true | _ => false)
+  (fn Index "PI" => true | _ => false)
+;compare dn_bench "Discrimination Net" (* TODO dn_bench, error! *)
+  (fn Input xs => String.isSubstring  "V" xs | _ => false)
+  (fn Test _ => true | _ => false)
+  (fn Index xs => String.isSubstring  "DN" xs | _ => false)
+;compare tt_bench2 "Termtable"
+  (fn Input xs => true | _ => false)
+  (fn Test _ => true | _ => false)
+  (fn _ => true | _ => false)
+;compare benchmarks "Unifiables over Reuse"
+  (fn Input xs => String.isSubstring  "R" xs | _ => false)
+  (fn Index _ => true | _ => false)
+  (fn Test xs => String.isSubstring  "unif" xs | _ => false)
+;compare benchmarks "Unifiables over Vars"
+  (fn Input xs => String.isSubstring  "V" xs | _ => false)
+  (fn Index _ => true | _ => false)
+  (fn Test xs => String.isSubstring  "unif" xs | _ => false)
+;compare benchmarks "Lookup over Vars"
+  (fn Input xs => String.isSubstring  "V" xs | _ => false)
+  (fn Index _ => true | _ => false)
+  (fn Test xs => String.isSubstring  "lookup" xs | _ => false)
+;compare benchmarks "Instances"
+  (fn Input xs => String.isSubstring  "V" xs | _ => false)
+  (fn Index _ => true | _ => false)
+  (fn Test xs => String.isSubstring  "instance" xs | _ => false)
+;compare benchmarks "Generalisations"
+  (fn Input xs => String.isSubstring  "V" xs | _ => false)
+  (fn Index _ => true | _ => false)
+  (fn Test xs => String.isSubstring  "general" xs | _ => false)
+;compare benchmarks "All Indices"
+  (fn Input xs => String.isSubstring  "MV" xs | Index _ => true | _ => false)
+  (fn Test _ => true | _ => false)
+  (fn _ => true | _ => false)
 
 
 (* Expectation:
