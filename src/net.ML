@@ -16,9 +16,6 @@ only wildcards in patterns.  Requires operands to be beta-eta-normal.
 structure Net =
 struct
 
-fun >>= (x,f) = Option.map f x
-infix 1 >>=
-
 datatype key = CombK | VarK | AtomK of string;
 
 (*Keys are preorder lists of symbols -- Combinations, Vars, Atoms.
@@ -202,20 +199,6 @@ fun match_term net t =
 fun unify_term net t =
     extract_leaves (matching true t net []);
 
-fun string_of_term t = case t of
-        Const (n,_) => n
-      | Free (n,_) => n
-      | Bound i => Name.bound i
-      | _ => raise Fail "Invalid use of string_of_term"
-
-(* Start with 2 because f $ x consists of one CombK (stripped before call) and two symbols.
-  Every additional symbol adds one CombK before it's appearance. *)
-fun strip_comb_key i ks = case (i,ks) of
-    (i, (CombK::ks)) => strip_comb_key (i+1) ks
-  | (0,ks) => ks
-  | (i, (_::ks)) => strip_comb_key (i-1) ks
-  | (_,[]) => raise Fail "Invalid strip_comb_key, too many combs"
-
 fun query keys net =
   case net of
     (Leaf xs) => xs
@@ -223,17 +206,15 @@ fun query keys net =
     let
       fun con net = case net of Leaf xs => xs | _ => []
       fun symbols sym = case Symtab.lookup atoms sym of NONE => emptynet | SOME net => net
-      fun handle_var ks = net_skip net [] |> maps (query ks)
-      fun handle_sym ks sym = query ks (symbols sym)
-      fun handle_func ks = query ks comb
     in
       case keys of
         [] => con net
-      | (VarK :: ks) => handle_var ks
-      | (AtomK c :: ks) => handle_sym ks c
-      | (CombK :: ks) => handle_func ks
+      | (VarK :: ks) => net_skip net [] |> maps (query ks)
+      | (AtomK sym :: ks) => query ks (symbols sym)
+      | (CombK :: ks) => query ks comb
     end
 
+(* TODO handle instances in the same function as generalisations and unifiables *)
 (* New implementation, not as exhaustively verified. *)
 fun instances net t = query (key_of_term t) net
 (* Old implementation *)

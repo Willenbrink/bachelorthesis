@@ -1,6 +1,7 @@
 theory "Test"
   imports Pure "../spec_check/src/Spec_Check"
 begin
+ML_file "util.ML"
 ML_file "benchmark_util.ML"
 ML_file "term_index.ML"
 ML_file "net.ML"

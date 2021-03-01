@@ -136,13 +136,22 @@ exception NoConstraint_exn
 fun compute_set term_set = case term_set of
     List xs => xs
   | Intersection [] => raise Fail "Empty intersect is undefined"
-  | Intersection (x::xs) =>
-      let fun f x acc = Ord_List.inter ord (compute_set x) acc handle NoConstraint_exn => acc
-      in fold f xs (compute_set x) handle NoConstraint_exn => compute_set (Intersection xs) end
-  | Union xs => map compute_set xs |> Ord_List.unions ord
+  | Intersection xs =>
+    let val xs = map_filter (fn x => compute_set x |> SOME handle NoConstraint_exn => NONE) xs
+    in
+    case xs of
+      [] => raise NoConstraint_exn
+    | xs => inters ord xs
+    end
+  | Union xs =>
+      map compute_set xs
+      |> Ord_List.unions ord
   | NoConstraint => raise NoConstraint_exn
 
-fun content ((_, values, _) : 'a T) : 'a list = Termtab.dest values |> maps snd |> map fst
+fun content ((_, values, _)) =
+  Termtab.dest values
+  |> maps snd
+  |> map fst
 
 fun is_empty tree = null (content tree)
 
@@ -204,19 +213,6 @@ fun unifiables tree t = query_wrapper Unifiables t tree
 
 fun merge eq index1 (_, values2, _) =
   fold (insert_safe eq) (Termtab.fold (fn (t,vs) => fn acc => map (fn (v,_) => (t,v)) vs @ acc) values2 []) index1
-
-(* Useful for what exactly?
-fun dot_of_node (node as Node(con,tree)) =
-  let
-    fun print_content i con =
-    fun print_node prev_i curr_i (Node(con,tree)) =
-      string_of_int prev_i ^ "->" ^ string_of_int curr_i ^ ";\n" ^
-      fst (fold (fn x => fn (acc,i) => (acc ^ print_node curr_i i x,i+1))
-        (Stab.dest tree |> maps snd) ("",curr_i+1))
-  in
-  "strict graph Pathindexing {" ^ print_node 0 0 node ^ "}"
-  end
-*)
 end;
 
 (* Checks if module is compatible with interface while still exposing internal functions *)
