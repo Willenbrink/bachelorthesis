@@ -1,6 +1,3 @@
-structure Benchmark_Util =
-struct
-
 datatype tag =
     Test of string
   | Input of string
@@ -96,4 +93,3 @@ fun compare (benchmark : (tag list * Timing.timing) list) name
     |> map write_row;
     writeln " "
   end
-end

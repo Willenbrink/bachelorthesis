@@ -1,33 +1,13 @@
 functor Tester (Index : TERM_INDEX) = 
 struct
 structure Gen = Generator
+open Term_Gen
+structure NG = Net_Gen(Index)
+open NG
+val eq = Term.aconv_untyped
 
 val ==> = Property.==>
 infix ==>
-
-val eq = Term.aconv_untyped
-fun def_sym_gen amount args r =
-  Gen.def_sym_gen (3,1,0) amount args r
-fun term_gen n r =
-  let
-    val (num,r) = Gen_Base.range_int (0,n) r (* TODO find better solution for spread *)
-  in
-  Gen.term_fol (def_sym_gen (num div 5)) 5 num r
-  end
-
-fun net_gen num_term term_gen r =
-  let
-    fun aux num_term r =
-      case num_term of
-        0 => (Index.empty,r)
-      | _ =>
-        let val (term,r) = term_gen r
-            val (base,r) = aux (num_term - 1) r
-        in (Index.insert_safe eq (term,term) base,r) end
-  in 
-  Gen_Base.range_int (0,num_term) r
-  |-> aux
-  end
 
 val ctxt = Config.put Configuration.num_counterexamples 1 @{context};
 val ctxt = Config.put Configuration.max_success 100 ctxt;
@@ -44,40 +24,13 @@ fun con n = Index.content n
 fun mem t n = member eq (con n) t
 fun set_eq fst snd = eq_set eq (fst,snd)
 fun con_eq fst snd = set_eq (Index.content fst) (Index.content snd)
-fun replace_subterm sym t r =
-  let val (f,args) = Term.strip_comb t
-      val (index,r) =  Gen_Base.range_int (~1,length args - 1) r
-      (* Generate two random values, pass r1 to rec-call, ignore returned r and return r2 instead.
-         This simply avoids some annoyance with passing values around. *)
-      val (r1,r2) = Random.split r
-  in
-  if index = ~1
-  then (Term.list_comb (sym r1 |> fst, args), r2)
-  else (Term.list_comb (f,nth_map index (fn t => replace_subterm sym t r1 |> fst) args), r2)
-  end
 
-val def_term_gen = term_gen 6
-val def_net_gen = net_gen 100 def_term_gen
-fun term_in_net_gen net_gen r = (* Returns (term,net) where term is guaranteed to be in the net *)
-  let
-    val (net,r) = Gen.filter (fn n => Index.content n <> []) net_gen r
-    val (term,r) = Gen.elementsL (Index.content net) r
-  in
-  ((term,net),r)
-  end
-fun term_instance_gen term_gen r =
-  let val (base_term,r) = term_gen r
-      val (general_term,r) = replace_subterm (Gen.var (~1) 1 |> Gen.lift) base_term r
-  in
-  ((base_term,general_term),r)
-  end
-fun term_unif_gen term_gen r =
-  let val (base_term,r) = term_gen r
-      val (term1,r) = replace_subterm (Gen.var (~1) 1 |> Gen.lift) base_term r
-      val (term2,r) = replace_subterm (Gen.var (~2) 1 |> Gen.lift) base_term r
-  in
-  ((term1,term2),r)
-  end
+val def_term_gen = term_gen_def 6
+val def_net_gen = net_gen 5 def_term_gen
+
+fun term_in_net_gen net_gen r =
+  terms_in_net_gen 1 net_gen r
+  |> (fn ((ts,n),r) => ((if null ts then @{term "x"} else hd ts, n), r))
 
 val test_util = [ (* Tests utilities like empty, is_empty and content *)
 check_base (Gen.unit)
@@ -141,32 +94,32 @@ check_prop_base (term_in_net_gen def_net_gen)
 ]
 
 val test_queries = [
-check @{make_string} (term_in_net_gen def_net_gen)
+check (fn (t,n) => @{make_string} (t, con n)) (term_in_net_gen def_net_gen)
       "variants includes the queried term"
       (fn (t,n) => member eq (Index.lookup n t) t),
 (* variants argument-term being included together with the subset condition implies
  that the other queries include the passed term too *)
-check @{make_string} (term_in_net_gen def_net_gen)
+check (fn (t,n) => @{make_string} (t, con n)) (term_in_net_gen def_net_gen)
       "lookup \<subseteq> generalisations, instances and unifiables"
       (fn (t,n) => subset eq (Index.lookup n t, Index.generalisations n t)
            andalso subset eq (Index.lookup n t, Index.instances n t)
            andalso subset eq (Index.lookup n t, Index.unifiables n t)),
-check @{make_string} (term_in_net_gen def_net_gen)
+check (fn (t,n) => @{make_string} (t, con n)) (term_in_net_gen def_net_gen)
       "generalisation \<subseteq> unifiables"
       (fn (t,n) => subset eq (Index.generalisations n t, Index.unifiables n t)),
-check @{make_string} (term_in_net_gen def_net_gen)
+check (fn (t,n) => @{make_string} (t, con n)) (term_in_net_gen def_net_gen)
       "instances \<subseteq> unifiables"
       (fn (t,n) => subset eq (Index.instances n t, Index.unifiables n t)),
 check (fn ((t,u),n) => @{make_string} (t, u, con (ins' u n |> ins' t)))
-      (Gen.zip (term_instance_gen def_term_gen) def_net_gen)
+      (Gen.zip (Term_Gen.term_instance_gen def_term_gen) def_net_gen)
       "generalisation returns itself and generalisation"
       (fn ((t,u),n) => subset eq ([t,u],Index.generalisations (ins' u n |> ins' t) t)),
 check (fn ((t,u),n) => @{make_string} (t, u, n))
-      (Gen.zip (term_instance_gen def_term_gen) def_net_gen)
+      (Gen.zip (Term_Gen.term_instance_gen def_term_gen) def_net_gen)
       "instances returns itself and instance"
       (fn ((t,u),n) => subset eq ([t,u],Index.instances (ins' t n |> ins' u) u)),
 check (fn ((t,u),n) => @{make_string} (t, u, con (ins' u n |> ins' t)))
-      (Gen.zip (term_unif_gen def_term_gen) def_net_gen)
+      (Gen.zip (Term_Gen.term_unif_gen def_term_gen) def_net_gen)
       "unifiables returns itself and unifiable"
       (fn ((t,u),n) => subset eq ([t,u],Index.unifiables (ins' u n |> ins' t) t))
 ]
@@ -181,7 +134,7 @@ check_base Gen.unit
         end)
 ]
   
-val tests = test_util @ test_modifying @ test_queries @ test_hol
+val tests = test_util @ test_modifying @ test_queries (* @ test_hol *)
 fun test () = fold I tests ()
 
 fun print_distribution term_gen net_gen () = (
