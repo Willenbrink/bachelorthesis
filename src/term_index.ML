@@ -1,4 +1,3 @@
-
 signature TERM_INDEX =
 sig
     type 'a T
@@ -20,5 +19,4 @@ sig
     val unifiables: 'a T -> term -> 'a list
 
     val merge: ('a * 'a -> bool) -> 'a T -> 'a T -> 'a T
-
 end;

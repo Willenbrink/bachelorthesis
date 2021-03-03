@@ -38,22 +38,20 @@ structure TTBench = Benchmark(TT);
 ML \<open>ML_system_pp (fn _ => fn _ => Pretty.to_polyml o raw_pp_typ)\<close>
 *)
 ML \<open>
-val x = @{term "f a"}
-val y = @{term "f b"}
+val n =
+  fold (fn t => P.insert eq (t,t))
+    [Free ("f3_0", Type ("dummy", [])) $ (Var (("v2_0", 0), Type ("dummy", [])))]
+    P.empty
 ;
-TT.empty
-|> TT.insert (op aconv) (x,x)
-|> TT.delete (curry (op aconv) x) (x)
-|> TT.content
 \<close>
 ML \<open>
 val tests = [
 (*
+*)
 ("Path", PathTest.test),
 ("PathTT", PathTTTest.test),
 ("Net", NetTest.test),
 ("TT", TTTest.test)
-*)
 ];
 
 fold (fn (name,test) => fn _ => (writeln name; test ())) tests ()

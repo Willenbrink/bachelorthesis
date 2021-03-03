@@ -3,15 +3,6 @@ fun encode_type (Type (c, Ts)) = Term.list_comb (Const (c, dummyT), map encode_t
     | encode_type (TFree (a, _)) = Free (a, dummyT)
     | encode_type (TVar (a, _)) = Var (a, dummyT);
 
-fun unions ord lists =
-  let
-    fun unios (xs :: ys :: rest) acc = unios rest (Ord_List.union ord xs ys :: acc)
-      | unios [xs] (ys :: acc) = unios (Ord_List.union ord xs ys :: acc) []
-      | unios [xs] [] = xs
-      | unios [] [] = []
-      | unios [] acc = unios acc [];
-  in unios lists [] end;
-
 fun inters _ [] = []
   | inters ord xss  =
   let
@@ -45,6 +36,3 @@ fun inters' _ [] = []
   intersect_each xs xss []
   |> map_filter I
   end
-  
-
-val x = inters int_ord [[1],[3,4],[]]
