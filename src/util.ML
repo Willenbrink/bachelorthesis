@@ -3,6 +3,18 @@ fun encode_type (Type (c, Ts)) = Term.list_comb (Const (c, dummyT), map encode_t
     | encode_type (TFree (a, _)) = Free (a, dummyT)
     | encode_type (TVar (a, _)) = Var (a, dummyT);
 
+fun apply_def f def x = case x of
+    NONE => def
+  | SOME v => f v
+
+fun lookup_all eq list value =
+  filter (curry eq value o fst) list
+  |> map snd
+
+fun print_size name obj =
+  let val size = Real.fromInt (ML_Heap.obj_size obj) / 1000000.0 |> @{make_string}
+  in name ^ ": " ^ size ^ "MB" |> writeln end
+
 fun inters _ [] = []
   | inters ord xss  =
   let
@@ -11,11 +23,11 @@ fun inters _ [] = []
   fold (Ord_List.inter ord) xss xs
   end
 
-(* Traverse shortest list
+(* Traverse first list without sorting.
 Drop items not contained in first list from other lists during traversal *)
 fun inters' _ [] = []
   | inters' _ [xs] = xs
-  | inters' ord xss  =
+  | inters' ord (xs :: xss)  =
   let
     fun discard_irrelevant smallest [] acc = (SOME smallest, acc) (* All lists traversed *)
       | discard_irrelevant _ ([]::_) _ = (NONE, []) (* One list is empty, intersection complete *)
@@ -30,8 +42,10 @@ fun inters' _ [] = []
           (* Check if smallest is contained in all lists while dropping irrelevant items *)
           let val (smallest_maybe, xss) = discard_irrelevant smallest xss []
           in intersect_each xs xss (smallest_maybe :: acc) end
-    (* Sort lists by length so we only traverse the shortest one completely *)
-    val (xs :: xss) = sort (int_ord o apply2 length) xss
+    (* Sort lists by length so we only traverse the shortest one completely
+    val (xs :: xss) = sort (int_ord o apply2 length) (xs :: xss)
+    TODO disabled because sorting is slow.
+*)
   in
   intersect_each xs xss []
   |> map_filter I

@@ -21,8 +21,8 @@ setup "type_pat_setup"
 
 ML \<open>
 val eq = Term.aconv_untyped
-structure N = Net
-structure P = Path
+structure N = NetIndex
+structure P = PathIndex
 structure PTT = PathTT
 structure TT = TT_Index
 structure NetTest = Tester(N);
@@ -56,119 +56,127 @@ val tests = [
 
 fold (fn (name,test) => fn _ => (writeln name; test ())) tests ()
 \<close>
-
 ML \<open>
-val size = 600;
+(*
+val sizes = [(50,50),(50,100),(50,200),(50,500),(50,1000),(5,5000)]
+*)
+val sizes = [(3,50),(3,100),(3,200),(3,500),(3,1000)]
+
+val seed = Random.deterministic_seed 1
+val sizes =
+  fold (fn (repeats,n) => fn (r,acc) =>
+    let val (rs,r) = funpow_yield repeats Random.split r
+    in
+      (r, (n,rs) :: acc)
+    end
+  ) sizes (seed,[])
+  |> snd
 \<close>
-
 ML \<open>
-
 val depth = 6
 val argr = (0,4)
 
-val test_single = [
-("", term_with_var size 10 depth argr)
+fun test_single size = [
+("TestName", term_with_var size 10 depth argr)
 ]
 
-val test_distinct =
-  let fun gen reuse = term_var_reuse (Real.floor (Real.fromInt size * reuse)) depth argr
-  in [("LLR", gen 10.0), ("LR", gen 1.0), ("MR", gen 0.1) , ("HR",gen 0.01)] end
+val gen_distinct =
+  let fun gen reuse size = term_var_reuse (Real.floor (Real.fromInt size * reuse)) depth argr
+  in
+  [("NR", gen 10.0), ("LR", gen 1.0), ("MR", gen 0.1) , ("HR",gen 0.01)]
+  |> map (apfst Gen)
+  end
 
-val test_var =
-  let fun gen var = term_with_var size var depth argr
-  in [("NV", gen 0), ("LV", gen 3), ("MV", gen 10), ("HV", gen 30)] end
+val gen_var =
+  let fun gen var size = term_with_var size var depth argr
+  in
+  [("NV", gen 0), ("LV", gen 3), ("MV", gen 10), ("HV", gen 30)]
+  |> map (apfst Gen)
+  end
 
-val group_size = (size + 3 - 1) div 3 (* Integer ceiling *)
-val termss =
-  test_distinct @ test_var
-  |> map (fn (name,gen) => (name,funpow_yield size gen (Random.new ()) |> fst))
-\<close>
-ML \<open>
-val names = map fst termss
-fun pi_indices () = map (PBench.create_indices size o snd) termss
-fun pitt_indices () = map (PTTBench.create_indices size o snd) termss
-fun dn_indices () = map (NBench.create_indices size o snd) termss
-fun tt_indices () = map (TTBench.create_indices size o snd) termss
-fun tt_indices2 () = map (TTBench.create_indices size o snd) (test_var
-  |> map (fn (name,gen) => (name,funpow_yield (size*10) gen (Random.new ()) |> fst)))
+val gens = gen_distinct @ gen_var
 \<close>
 ML \<open>
 ML_Heap.share_common_data ();
 ML_Heap.gc_now ();
 \<close>
-(*
 ML \<open>
-map (fn (name,p,n,t,i) =>
-      let val path = ML_Heap.obj_size p
-          val net = ML_Heap.obj_size n
-      in (name,
-          "PI: " ^ (Real.fromInt path / 1000000.0 |> @{make_string}) ^ "MB", 
-          "DN: " ^ (Real.fromInt net / 1000000.0 |> @{make_string}) ^ "MB",
-          Real.fromInt path / Real.fromInt net) |> @{make_string} |> writeln end) index_list;
-\<close>
-*)
-ML \<open>
-fun run_bench tag benchmarks (name, input) =
-  let val benchmarks = map (fn f => f input) benchmarks |> flat
-  in map (fn (n,test) => ([Index tag, Input name, n],test)) benchmarks end
+fun cross xs ys =
+  maps (fn x => map (fn y => (x,y)) ys) xs
 
+fun bench gens tag_index (net_gen : int -> term Generator.gen -> 'a Generator.gen) benchmark =
+  cross gens sizes
+  |> maps (fn ((tag_gen,term_gen),(size,seeds)) =>
+      map (fst o net_gen size (term_gen size)) seeds
+       |> benchmark
+       |> map (fn (tag_test, res) => ([
+              tag_test,
+              tag_index,
+              tag_gen,
+              Size ("Size: " ^ @{make_string} size ^ " Runs: " ^ @{make_string} (length seeds))
+            ], res)));
+local
+val r = Random.new ()
+val p = PBench.index_gen 1000 ((hd gens |> snd) 10) r |> fst
+val ptt = PTTBench.index_gen 1000 ((hd gens |> snd) 10) r |> fst
+val x = (hd gens |> snd) 10 r |> fst
+val g = (List.tabulate (10000, K x) |> map Generator.lift)
+in
+val a = PBench.timer "" (P.unifiables p) g;
+val b = PTTBench.timer "" (PTT.unifiables ptt) g;
+end
 \<close>
 ML \<open>
-val pi_bench = maps (run_bench "PI" [PBench.benchmark_basic, PBench.benchmark_queries]) (ListPair.zip (names, pi_indices ()))
-val pitt_bench = maps (run_bench "PT" [PTTBench.benchmark_basic, PTTBench.benchmark_queries]) (ListPair.zip (names, pitt_indices ()))
-val dn_bench = maps (run_bench "DN" [NBench.benchmark_basic, NBench.benchmark_queries]) (ListPair.zip (names, dn_indices ()))
-val tt_bench = maps (run_bench "TT" [TTBench.benchmark_basic, TTBench.benchmark_lookup]) (ListPair.zip (names, tt_indices ()))
-val tt_bench2 = maps (run_bench "TT" [TTBench.benchmark_basic, TTBench.benchmark_lookup]) (ListPair.zip (names, tt_indices2 ()))
+val dn_bench = bench gens (Index "DN") NBench.index_gen (fn ns => NBench.benchmark_basic ns @ NBench.benchmark_queries ns)
+val pi_bench = bench gens (Index "PI_") PBench.index_gen (fn ns => PBench.benchmark_basic ns @ PBench.benchmark_queries ns)
+val pitt_bench = bench gens (Index "PITT") PTTBench.index_gen (fn ns => PTTBench.benchmark_basic ns @ PTTBench.benchmark_queries ns)
+val tt_bench = bench gens (Index "TT_") TTBench.index_gen (fn ns => TTBench.benchmark_basic ns @ TTBench.benchmark_lookup ns)
+
 val benchmarks = [
-(*
-val test_names = benchmarks |> hd |> snd |> map fst;
-val (tags,results) = benchmarks |> map (fn (x,y) => (x, map snd y)) |> ListPair.unzip;
-val tags = map (fn ts => fold (curry op ^) ts "") tags
-*)
 pi_bench,
 pitt_bench,
 dn_bench,
 tt_bench,
-[]] |> flat;
+[]] |> flat
 \<close>
 ML \<open>
-;compare benchmarks "Path Indexing"
-  (fn Input xs => String.isSubstring  "V" xs | _ => false)
-  (fn Test _ => true | _ => false)
-  (fn Index "PI" => true | _ => false)
-;compare dn_bench "Discrimination Net" (* TODO dn_bench, error! *)
-  (fn Input xs => true | _ => false)
-  (fn Test _ => true | _ => false)
-  (fn Index xs => String.isSubstring  "DN" xs | _ => false)
-;compare tt_bench2 "Termtable"
-  (fn Input xs => true | _ => false)
-  (fn Test _ => true | _ => false)
-  (fn _ => true | _ => false)
-;compare benchmarks "Unifiables over Reuse"
-  (fn Input xs => String.isSubstring  "R" xs | _ => false)
-  (fn Index _ => true | _ => false)
-  (fn Test xs => String.isSubstring  "unif" xs | _ => false)
-;compare benchmarks "Unifiables over Vars"
-  (fn Input xs => String.isSubstring  "V" xs | _ => false)
-  (fn Index _ => true | _ => false)
-  (fn Test xs => String.isSubstring  "unif" xs | _ => false)
-;compare benchmarks "Lookup over Vars"
-  (fn Input xs => String.isSubstring  "V" xs | _ => false)
-  (fn Index _ => true | _ => false)
-  (fn Test xs => String.isSubstring  "lookup" xs | _ => false)
-;compare benchmarks "Instances"
-  (fn Input xs => String.isSubstring  "V" xs | _ => false)
-  (fn Index _ => true | _ => false)
-  (fn Test xs => String.isSubstring  "instance" xs | _ => false)
-;compare benchmarks "Generalisations"
-  (fn Input xs => String.isSubstring  "V" xs | _ => false)
-  (fn Index _ => true | _ => false)
-  (fn Test xs => String.isSubstring  "general" xs | _ => false)
-;compare benchmarks "All Indices"
-  (fn Input xs => String.isSubstring  "MV" xs | Index _ => true | _ => false)
-  (fn Test _ => true | _ => false)
-  (fn _ => true | _ => false)
-
+fun print_values filter_tags values =
+  let
+    val filter_tags =
+      if eq_tag (Size "", filter_tags)
+      then filter_tags
+      else (Size "") :: filter_tags
+    val values' =
+      values
+      |> filter (fn (t,_) => forall (fn filter_tag => eq_tag (filter_tag,t)) filter_tags)
+    val () =
+      values'
+      |> map fst
+      |> map (fn val_tags => filter_out (fn vt => exists (fn ft => tag_sub ft vt) filter_tags) val_tags)
+      |> distinct (op =)
+      |> (fn x => if length x > 1 then raise Fail ("Multiple values: " ^ @{make_string} x ^ "\n remaining of: " ^ @{make_string} values) else ())
+  in
+  values'
+  |> map snd
+  |> (fn [] => NONE | list => fold (curry op Time.+) list (Time.zeroTime) |> SOME)
+  |> apply_def (@{make_string}) "N/A"
+  end
+val x = benchmarks
+      |> filter (fn (t,_) => forall (fn filter_tag => eq_tag (filter_tag,t)) [Index "PI", Test "unif", Gen "", Size "1000"])
+fun compare name x_label y_label selection =
+  table benchmarks (print_values selection) name x_label y_label
+\<close>
+ML \<open>
+;compare "All Indices S50" (Index "") (Test "") [Gen "LV", Size "50"]
+;compare "All Indices S1000" (Index "") (Test "") [Gen "LV", Size "1000"]
+;compare "Path Indexing" (Gen "V") (Test "Q:") [Index "PI_"]
+;compare "Discrimination Net" (Gen "") (Test "") [Index "DN"]
+;compare "Termtable" (Gen "") (Test "") [Index "TT_"]
+;compare "Unifiables over Reuse" (Gen "R") (Index "") [Test "unif"]
+;compare "Unifiables over Variables" (Gen "V") (Index "") [Test "unif"]
+;compare "Lookup over Vars" (Gen "V") (Index "") [Test "lookup"]
+;compare "Instances over Vars" (Gen "V") (Index "") [Test "instance"]
+;compare "Generalisations over Vars" (Gen "V") (Index "") [Test "general"]
 
 (* Expectation:
 More Reuse \<rightarrow> Better DN, Worse PI

@@ -1,58 +1,128 @@
 datatype tag =
     Test of string
-  | Input of string
+  | Gen of string
+  | Size of string
   | Index of string
 
 fun string_of_tag x = case x of
     Test x => x
-  | Input x => x
+  | Gen x => x
+  | Size x => x
   | Index x => x
+
+fun tag_sub tag_sub tag_super =
+  (case (tag_sub, tag_super) of
+      (Test sub,Test super) => String.isSubstring sub super
+    | (Gen sub,Gen super) => String.isSubstring sub super
+    | (Index sub,Index super) => String.isSubstring sub super
+    | (Size sub, Size super) => String.isSubstring sub super
+    | (_, _) => false
+  )
+
+fun eq_tag (sub,supers) = exists (tag_sub sub) supers
+
+fun add_timings ({elapsed = elapsed1, cpu = cpu1, gc = gc1} : Timing.timing) {elapsed = elapsed2, cpu = cpu2, gc = gc2} =
+  {elapsed = elapsed1 + elapsed2,
+   cpu = cpu1 + cpu2,
+   gc = gc1 + gc2}
+
+fun sum_timings [] = NONE
+  | sum_timings (t::timings) = fold add_timings timings t |> SOME
 
 fun print_real real = 
   real
   |> Real.fmt (StringCvt.FIX (SOME 3))
   |> StringCvt.padLeft #" " 6
 
-fun compare tags tests (resultss : {cpu: Time.time, elapsed: Time.time, gc: Time.time} list list) =
-    (fold (fn name => fn acc => StringCvt.padLeft #" " 6 name ^ "\t" ^ acc) tags "" |> writeln;
-    map_index
-      (fn (i,name) =>
-        fold (fn timing => fn acc => (#elapsed timing |> Time.toReal |> print_real) ^ "\t" ^ acc)
-          (map (fn el => nth el i) resultss) name)
-      tests |> map writeln)
+fun get_table benchmark (x : tag) (y : tag) =
+  let
+    fun filter_labels tag =
+      benchmark
+      |> map fst
+      |> map (filter (tag_sub tag))
+      |> filter_out null
+      |> distinct (op =)
+    val xlabels : tag list list = filter_labels x
+    val ylabels : tag list list = filter_labels y
+    val matrix =
+      map (fn y =>
+        (y,maps (fn x =>
+          benchmark
+          |> filter (fn (vt,_) => forall (fn t => eq_tag (t,vt)) (x@y))
+          |> map (fn (t,v) => ((x@y), (filter_out (fn t => exists (tag_sub t) (x@y)) t,v)))
+          |> AList.coalesce (eq_set (op =))
+          |> map (fn (_,v) => (x,v))
+          )
+        xlabels))
+      ylabels
+  in
+  (xlabels,ylabels,matrix)
+  end
 
-fun compare (benchmark : (tag list * Timing.timing) list) name
-            (filter_x : tag -> bool) (filter_y : tag -> bool) (filter_v : tag -> bool) =
+fun print_table name show_values ((xlabels, ylabels, table)) =
   let
     fun concat (tag::tags) = fold (fn x => fn y => string_of_tag x ^ "-" ^ y) tags (string_of_tag tag)
-    val xlabels : tag list list =
+    val xlabels' = map concat xlabels
+    val xsize = 8
+    fun pad x = StringCvt.padLeft #" " xsize ("  " ^ x)
+    fun write_cell (xlabel, values) acc = (show_values values |> pad) ^ acc
+    fun write_row (ylabel,row) =
+      fold write_cell row ("\t " ^ concat ylabel)
+      |> writeln
+  in
+  fold_rev (fn tag => fn acc => pad tag ^ acc) xlabels' ("    " ^ name)
+  |> writeln;
+  map write_row table;
+  ()
+  end
+
+fun table benchmark show name x y =
+  get_table benchmark x y
+  |> print_table name show
+
+fun print_timing timing = #elapsed (timing : Timing.timing) |> Time.toReal |> print_real
+
+fun compare (benchmark : (tag list * Timing.timing) list) name
+            (x : tag) (y : tag) (v : tag) =
+  let
+    fun concat (tag::tags) = fold (fn x => fn y => string_of_tag x ^ "-" ^ y) tags (string_of_tag tag)
+    fun filter_labels tag =
       benchmark
       |> map fst
-      |> map (filter filter_x)
-      |> filter (not o null)
+      |> map (filter (tag_sub tag))
+      |> filter_out null
       |> distinct (op =)
-    val ylabels : tag list list =
-      benchmark
-      |> map fst
-      |> map (filter filter_y)
-      |> filter (not o null)
-      |> distinct (op =)
+    val xlabels : tag list list = filter_labels x
+    val ylabels : tag list list = filter_labels y
+    val matrix =
+      maps (fn x =>
+        map (fn y =>
+          (*AList.coalesce (fn (t1,t2) =>
+            subset (uncurry tag_sub) ((x@y),t1)
+            andalso
+            subset (uncurry tag_sub) ((x@y),t2)
+            )*)
+          filter (fn (t,_) => subset (uncurry tag_sub) ((x@y),t)) benchmark
+          |> map (fn (t,v) => ((x@y), (filter_out (fn t => exists (tag_sub t) (x@y)) t,v)))
+          |> AList.coalesce (eq_set (op =))
+          )
+        ylabels)
+      xlabels
     val values : (tag list * Timing.timing option) list =
       benchmark
       (* Split tags for later *)
-      |> map (fn (ts,v) => (filter (fn tag => filter_x tag orelse filter_y tag) ts, (ts,v)))
-      (* Remove any value which is not addressed by both x and y labels *)
-      |> filter_out (fn (ts,_) => null ts)
+      |> map (fn (ts,v) => (ts,(ts,v)))
+      (* Remove any value which is not addressed by some x and some y labels *)
+      |> filter_out (fn (ts,_) => (exists (tag_sub x) andf exists (tag_sub y)) ts)
       (* Coalesce values addressed by same (x,y) pair *)
       |> AList.coalesce (eq_set (op =))
       |> map (apsnd (fn xs => (* (x,y) * (tags,value) list *)
                       (* Check if value is associated with all the tags we want *)
-                      filter (fn (tags,_) => exists filter_x tags andalso exists filter_y tags andalso exists filter_v tags) xs
+                      filter (fn (tags,_) => exists (tag_sub x) tags andalso exists (tag_sub y) tags andalso exists (tag_sub v) tags) xs
                       (* Raise warning if multiple values remain *)
                       |> (fn [] => NONE
                            | [(_,x)] => SOME x
                            | (_,x)::_ => (warning "Values left, taking first"; SOME x))))
-    val matrix = map (fn x => map (fn y => (x,y)) ylabels) xlabels
 
     val xlabels' =
       map concat xlabels |> rev
@@ -88,8 +158,12 @@ fun compare (benchmark : (tag list * Timing.timing) list) name
                        x ("\t " ^ ylabel))
       |> writeln
   in
+    matrix
+    |> @{make_string}
+    |> writeln
+(*;
     ylabels
     |> map concat
     |> map write_row;
-    writeln " "
+    writeln " " *)
   end

@@ -13,7 +13,7 @@ match_term no longer treats abstractions as wildcards; instead they match
 only wildcards in patterns.  Requires operands to be beta-eta-normal.
 *)
 
-structure Net =
+structure NetIndex =
 struct
 
 datatype key = CombK | VarK | AtomK of string;
@@ -243,4 +243,4 @@ fun merge eq net1 net2 =
 end;
 
 (* Checks if module is compatible with interface while still exposing internal functions *)
-structure NetInterfaceCheck = Net : TERM_INDEX;
+(*structure NetInterfaceCheck = Net : TERM_INDEX;*)

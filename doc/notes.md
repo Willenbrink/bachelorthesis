@@ -20,9 +20,6 @@ Mehr Prosa, mehr Geschichte. Was sind Probleme, wie kann ich die lösen, nicht s
 
 # Tasks
 ## TODO
-intersects
-share seeds, kleine netze
-kein Var oben
 * Net_skip beschreiben?
 * Mit mathe Notation schreiben, evtl andere Syntax
 * Queries Fokus, nicht die Details
@@ -124,9 +121,6 @@ The definition of the candidate set for instances employs these observations.
 * Später: Term generation verbessern
   - Catalan number, Folien ca. 229-237: https://db.in.tum.de/teaching/ws2021/queryopt/slides/chapter3.pdf
   - Prüfer sequenzen
-  
-## Frage
-Ein Generator pro Test oder eine Mischung an Generatoren?
 
 ## 30.02
 * Bug wenn NoConstraint am Anfang der Liste in intersect

@@ -216,4 +216,4 @@ fun merge eq index1 (_, values2, _) =
 end;
 
 (* Checks if module is compatible with interface while still exposing internal functions *)
-structure PathInterfaceCheck = PathTT : TERM_INDEX;
+(*structure PathInterfaceCheck = PathTT : TERM_INDEX;*)

@@ -13,7 +13,7 @@ match_term no longer treats abstractions as wildcards; instead they match
 only wildcards in patterns.  Requires operands to be beta-eta-normal.
 *)
 
-structure Path =
+structure PathIndex =
 struct
 
 fun ord ((x,_),(y,_)) = int_ord (x,y)
@@ -221,4 +221,4 @@ fun merge eq index1 (_, values2, _) =
 end;
 
 (* Checks if module is compatible with interface while still exposing internal functions *)
-structure PathInterfaceCheck = Path : TERM_INDEX;
+(*structure PathInterfaceCheck = Path : TERM_INDEX;*)
