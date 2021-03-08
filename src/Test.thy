@@ -21,6 +21,7 @@ setup "type_pat_setup"
 
 ML \<open>
 val eq = Term.aconv_untyped
+structure G = Generator
 structure N = NetIndex
 structure P = PathIndex
 structure PTT = PathTT
@@ -43,6 +44,15 @@ val n =
     [Free ("f3_0", Type ("dummy", [])) $ (Var (("v2_0", 0), Type ("dummy", [])))]
     P.empty
 ;
+
+val sgen = G.list (G.lift 1000) (G.pos 100)
+val ssgen = G.list (G.lift 100000) sgen
+val ss = ssgen (Random.new ()) |> fst |> map (sort (int_ord));
+\<close>
+ML \<open>
+val ordlist = Timing.timing (fn (s::ss) => fold (fn x => fn acc => Ord_List.inter int_ord x acc) ss s) ss
+val inter = Timing.timing (inters (int_ord)) ss
+val inter' = Timing.timing (inters' (int_ord)) ss
 \<close>
 ML \<open>
 val tests = [
@@ -62,7 +72,7 @@ val sizes = [(50,50),(50,100),(50,200),(50,500),(50,1000),(5,5000)]
 *)
 val sizes = [(3,50),(3,100),(3,200),(3,500),(3,1000)]
 
-val seed = Random.deterministic_seed 1
+val seed = Random.new ()
 val sizes =
   fold (fn (repeats,n) => fn (r,acc) =>
     let val (rs,r) = funpow_yield repeats Random.split r
@@ -122,6 +132,8 @@ val ptt = PTTBench.index_gen 1000 ((hd gens |> snd) 10) r |> fst
 val x = (hd gens |> snd) 10 r |> fst
 val g = (List.tabulate (10000, K x) |> map Generator.lift)
 in
+val _ = print_size "Path" p
+val _ = print_size "PathTT" ptt
 val a = PBench.timer "" (P.unifiables p) g;
 val b = PTTBench.timer "" (PTT.unifiables ptt) g;
 end
@@ -142,10 +154,12 @@ tt_bench,
 ML \<open>
 fun print_values filter_tags values =
   let
+(*
     val filter_tags =
       if eq_tag (Size "", filter_tags)
       then filter_tags
       else (Size "") :: filter_tags
+*)
     val values' =
       values
       |> filter (fn (t,_) => forall (fn filter_tag => eq_tag (filter_tag,t)) filter_tags)
