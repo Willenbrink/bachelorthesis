@@ -1,5 +1,7 @@
 theory "Test"
-  imports Pure "../spec_check/src/Spec_Check"
+imports
+  Pure
+  Spec_Check2.Spec_Check
 begin
 ML_file "util.ML"
 ML_file "benchmark_util.ML"
@@ -13,6 +15,7 @@ ML_file "term_gen.ML"
 ML_file "net_gen.ML"
 ML_file "tester.ML"
 ML_file "benchmark.ML"
+
 ML "open Pprinter Term_Gen"
 setup "term_pat_setup"
 setup "type_pat_setup"
@@ -54,18 +57,18 @@ val ordlist = Timing.timing (inters_orig int_ord) ss
 val inter = Timing.timing (inters (int_ord)) ss
 val inter' = Timing.timing (inters' (int_ord)) ss
 \<close>
-ML \<open>
+
+ML_command \<open>
 val tests = [
-(*
-*)
-("Path", PathTest.test),
-("PathTT", PathTTTest.test),
-("Net", NetTest.test),
-("TT", TTTest.test)
+  ("Path", PathTest.test),
+  ("PathTT", PathTTTest.test),
+  ("Net", NetTest.test),
+  ("TT", TTTest.test)
 ];
 
-fold (fn (name,test) => fn _ => (writeln name; test ())) tests ()
+fold (fn (name,test) => fn r => (writeln name; test @{context} r)) tests (Random.new ())
 \<close>
+
 ML \<open>
 (*
 val sizes = [(50,50),(50,100),(50,200),(50,500),(50,1000),(5,5000)]
@@ -76,12 +79,11 @@ val seed = Random.new ()
 val sizes =
   fold (fn (repeats,n) => fn (r,acc) =>
     let val (rs,r) = funpow_yield repeats Random.split r
-    in
-      (r, (n,rs) :: acc)
-    end
+    in (r, (n,rs) :: acc) end
   ) sizes (seed,[])
   |> snd
 \<close>
+
 ML \<open>
 val depth = 6
 val argr = (0,4)
@@ -93,19 +95,20 @@ fun test_single size = [
 val gen_distinct =
   let fun gen reuse size = term_var_reuse (Real.floor (Real.fromInt size * reuse)) depth argr
   in
-  [("NR", gen 10.0), ("LR", gen 1.0), ("MR", gen 0.1) , ("HR",gen 0.01)]
-  |> map (apfst Gen)
+    [("NR", gen 10.0), ("LR", gen 1.0), ("MR", gen 0.1) , ("HR",gen 0.01)]
+    |> map (apfst Gen)
   end
 
 val gen_var =
   let fun gen var size = term_with_var size var depth argr
   in
-  [("NV", gen 0), ("LV", gen 3), ("MV", gen 10), ("HV", gen 30)]
-  |> map (apfst Gen)
+    [("NV", gen 0), ("LV", gen 3), ("MV", gen 10), ("HV", gen 30)]
+    |> map (apfst Gen)
   end
 
 val gens = gen_distinct @ gen_var
 \<close>
+
 ML \<open>
 ML_Heap.share_common_data ();
 ML_Heap.gc_now ();
@@ -138,7 +141,8 @@ val a = PBench.timer "" (P.unifiables p) g;
 val b = PTTBench.timer "" (PTT.unifiables ptt) g;
 end
 \<close>
-ML \<open>
+
+ML\<open>
 val dn_bench = bench gens (Index "DN") NBench.index_gen (fn ns => NBench.benchmark_basic ns @ NBench.benchmark_queries ns)
 val pi_bench = bench gens (Index "PI_") PBench.index_gen (fn ns => PBench.benchmark_basic ns @ PBench.benchmark_queries ns)
 val pitt_bench = bench gens (Index "PITT") PTTBench.index_gen (fn ns => PTTBench.benchmark_basic ns @ PTTBench.benchmark_queries ns)
@@ -151,6 +155,7 @@ dn_bench,
 tt_bench,
 []] |> flat
 \<close>
+
 ML \<open>
 fun print_values filter_tags values =
   let
@@ -170,10 +175,10 @@ fun print_values filter_tags values =
       |> distinct (op =)
       |> (fn x => if length x > 1 then raise Fail ("Multiple values: " ^ @{make_string} x ^ "\n remaining of: " ^ @{make_string} values) else ())
   in
-  values'
-  |> map snd
-  |> (fn [] => NONE | list => fold (curry op Time.+) list (Time.zeroTime) |> SOME)
-  |> apply_def (@{make_string}) "N/A"
+    values'
+    |> map snd
+    |> (fn [] => NONE | list => fold (curry op Time.+) list (Time.zeroTime) |> SOME)
+    |> apply_def (@{make_string}) "N/A"
   end
 val x = benchmarks
       |> filter (fn (t,_) => forall (fn filter_tag => eq_tag (filter_tag,t)) [Index "PI", Test "unif", Gen "", Size "1000"])

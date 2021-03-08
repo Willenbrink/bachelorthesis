@@ -1,0 +1,8 @@
+chapter "Path Indexing"
+
+session Fol_Unif_Hints = "Pure" +
+
+sessions Spec_Check2
+
+theories
+  Test

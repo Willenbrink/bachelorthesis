@@ -1,7 +1,7 @@
 (*encode_type -- for indexing purposes*)
 fun encode_type (Type (c, Ts)) = Term.list_comb (Const (c, dummyT), map encode_type Ts)
-    | encode_type (TFree (a, _)) = Free (a, dummyT)
-    | encode_type (TVar (a, _)) = Var (a, dummyT);
+  | encode_type (TFree (a, _)) = Free (a, dummyT)
+  | encode_type (TVar (a, _)) = Var (a, dummyT);
 
 fun apply_def f def x = case x of
     NONE => def

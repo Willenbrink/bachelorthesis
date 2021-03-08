@@ -21,13 +21,8 @@ fun tag_sub tag_sub tag_super =
 
 fun eq_tag (sub,supers) = exists (tag_sub sub) supers
 
-fun add_timings ({elapsed = elapsed1, cpu = cpu1, gc = gc1} : Timing.timing) {elapsed = elapsed2, cpu = cpu2, gc = gc2} =
-  {elapsed = elapsed1 + elapsed2,
-   cpu = cpu1 + cpu2,
-   gc = gc1 + gc2}
-
 fun sum_timings [] = NONE
-  | sum_timings (t::timings) = fold add_timings timings t |> SOME
+  | sum_timings (t::timings) = fold Spec_Check_Base.add_timing timings t |> SOME
 
 fun print_real real = 
   real
@@ -55,9 +50,7 @@ fun get_table benchmark (x : tag) (y : tag) =
           )
         xlabels))
       ylabels
-  in
-  (xlabels,ylabels,matrix)
-  end
+  in (xlabels,ylabels,matrix) end
 
 fun print_table name show_values ((xlabels, ylabels, table)) =
   let
@@ -70,10 +63,9 @@ fun print_table name show_values ((xlabels, ylabels, table)) =
       fold_rev write_cell row ("\t " ^ concat ylabel)
       |> writeln
   in
-  fold_rev (fn tag => fn acc => pad tag ^ acc) xlabels' ("    " ^ name)
-  |> warning;
-  map write_row table;
-  ()
+    fold_rev (fn tag => fn acc => pad tag ^ acc) xlabels' ("    " ^ name)
+    |> warning;
+    map write_row table
   end
 
 fun table benchmark show name x y =
@@ -81,3 +73,4 @@ fun table benchmark show name x y =
   |> print_table name show
 
 fun print_timing timing = #elapsed (timing : Timing.timing) |> Time.toReal |> print_real
+

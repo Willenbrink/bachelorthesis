@@ -1,6 +1,9 @@
 theory "Scratch"
-imports Main "../spec_check/src/Spec_Check"
+imports
+  Main
+  Spec_Check2.Spec_Check
 begin
+ML_file "util.ML"
 ML_file "term_index.ML"
 ML_file "net.ML"
 ML_file "path.ML"
