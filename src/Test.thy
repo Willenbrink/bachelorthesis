@@ -181,17 +181,18 @@ fun compare name x_label y_label selection =
   table benchmarks (print_values selection) name x_label y_label
 \<close>
 ML \<open>
-;compare "All Indices S50" (Index "") (Test "") [Gen "LV", Size "50"]
-;compare "All Indices S1000" (Index "") (Test "") [Gen "LV", Size "1000"]
-;compare "Path Indexing" (Gen "V") (Test "Q:") [Index "PI_"]
-;compare "Discrimination Net" (Gen "") (Test "") [Index "DN"]
-;compare "Termtable" (Gen "") (Test "") [Index "TT_"]
-;compare "Unifiables over Reuse" (Gen "R") (Index "") [Test "unif"]
-;compare "Unifiables over Variables" (Gen "V") (Index "") [Test "unif"]
-;compare "Lookup over Vars" (Gen "V") (Index "") [Test "lookup"]
-;compare "Instances over Vars" (Gen "V") (Index "") [Test "instance"]
-;compare "Generalisations over Vars" (Gen "V") (Index "") [Test "general"]
-
+;compare "Test" (Index "") (Size "") [Test "unif", Gen "LV"]
+;compare "All Indices Size 100" (Index "") (Test "") [Gen "LV", Size "100 "]
+;compare "All Indices Size 1000" (Index "") (Test "") [Gen "LV", Size "1000"]
+;compare "All Indices sum of all sizes" (Index "") (Test "") [Gen "LV", Size ""]
+;compare "Path Indexing" (Gen "V") (Test "Q:") [Index "PI_", Size ""]
+;compare "Discrimination Net" (Gen "") (Test "") [Index "DN", Size ""]
+;compare "Termtable" (Gen "") (Test "") [Index "TT_", Size ""]
+;compare "Unifiables over Reuse" (Gen "R") (Index "") [Test "unif", Size ""]
+;compare "Unifiables over Variables" (Gen "V") (Index "") [Test "unif", Size ""]
+;compare "Lookup over Vars" (Gen "V") (Index "") [Test "lookup", Size ""]
+;compare "Instances over Vars" (Gen "V") (Index "") [Test "instance", Size ""]
+;compare "Generalisations over Vars" (Gen "V") (Index "") [Test "general", Size ""]
 (* Expectation:
 More Reuse \<rightarrow> Better DN, Worse PI
 More Vars \<rightarrow> Better PI, Worse DN (for Instance and Unifiables)
