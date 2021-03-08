@@ -45,12 +45,12 @@ val n =
     P.empty
 ;
 
-val sgen = G.list (G.lift 1000) (G.pos 100)
-val ssgen = G.list (G.lift 100000) sgen
-val ss = ssgen (Random.new ()) |> fst |> map (sort (int_ord));
+val sgen = G.list (G.range_int (1000,10000)) (G.pos 100)
+val ssgen = G.list (G.lift 10) sgen
+val ss = ssgen (Random.deterministic_seed 1) |> fst |> map (Ord_List.make int_ord);
 \<close>
 ML \<open>
-val ordlist = Timing.timing (fn (s::ss) => fold (fn x => fn acc => Ord_List.inter int_ord x acc) ss s) ss
+val ordlist = Timing.timing (inters_orig int_ord) ss
 val inter = Timing.timing (inters (int_ord)) ss
 val inter' = Timing.timing (inters' (int_ord)) ss
 \<close>

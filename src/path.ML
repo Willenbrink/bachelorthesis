@@ -66,7 +66,7 @@ fun compute_set term_set = case term_set of
     in
     case xs of
       [] => raise NoConstraint_exn
-    | xs => inters ord xs
+    | xs => inters_orig ord xs
     end
   | Union xs =>
       map compute_set xs
