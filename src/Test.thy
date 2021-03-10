@@ -48,14 +48,19 @@ val n =
     P.empty
 ;
 
-val sgen = G.list (G.range_int (1000,10000)) (G.pos 100)
-val ssgen = G.list (G.lift 10) sgen
-val ss = ssgen (Random.deterministic_seed 1) |> fst |> map (Ord_List.make int_ord);
+val sgen = G.list (G.range_int (2,10)) (G.pos 5)
+val ssgen = G.list (G.lift 20) sgen
+val ss =
+ssgen (Random.deterministic_seed 1)
+ |> fst
+ |> map (Ord_List.make int_ord)
+ |> (fn xs => G.shuffle xs (Random.new ()))
+ |> fst;
 \<close>
+declare [[spec_check_num_tests = 1000]]
 ML \<open>
-val ordlist = Timing.timing (inters_orig int_ord) ss
-val inter = Timing.timing (inters (int_ord)) ss
-val inter' = Timing.timing (inters' (int_ord)) ss
+val inter' = Spec_Check.check_base (fn r => ssgen r |-> G.shuffle) "" (Property.prop (fn xs => (inters' (int_ord) xs; true)) )
+ @{context} (Random.new ())
 \<close>
 
 ML_command \<open>
