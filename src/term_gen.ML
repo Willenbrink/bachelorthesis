@@ -34,7 +34,7 @@ fun term_gen freq num_ids cut_off arg_range =
 
 fun term_gen_def size r =                 
   let
-    val (reuse, r) = Random.real r
+    val (reuse, r) = G.range_real (0.0, 1.0) r
     val (size, r) = G.range_int (1, size) r
     val (depth, r) = G.range_int (0, size div 2) r
     val depth = depth + 1 (* Every term has at least one symbol *)
