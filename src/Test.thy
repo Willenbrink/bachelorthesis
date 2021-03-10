@@ -95,7 +95,7 @@ fun test_single size = [
 val gen_distinct =
   let fun gen reuse size = term_var_reuse (Real.floor (Real.fromInt size * reuse)) depth argr
   in
-    [("NR", gen 10.0), ("LR", gen 1.0), ("MR", gen 0.1) , ("HR",gen 0.01)]
+    [("NR", gen 10.0), ("LR", gen 1.0), ("MR", gen 0.1) , ("HR",gen 0.02)]
     |> map (apfst Gen)
   end
 
@@ -140,6 +140,10 @@ val _ = print_size "PathTT" ptt
 val a = PBench.timer "" (P.unifiables p) g;
 val b = PTTBench.timer "" (PTT.unifiables ptt) g;
 end
+\<close>
+
+ML\<open>
+G.basic_name "c" (G.lift 0) (Random.deterministic_seed 1);
 \<close>
 
 ML\<open>
