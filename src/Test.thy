@@ -57,7 +57,7 @@ ssgen (Random.deterministic_seed 1)
  |> (fn xs => G.shuffle xs (Random.new ()))
  |> fst;
 \<close>
-declare [[spec_check_num_tests = 1000]]
+declare [[spec_check_max_success = 1000]]
 ML \<open>
 val inter' = Spec_Check.check_base (fn r => ssgen r |-> G.shuffle) "" (Property.prop (fn xs => (inters' (int_ord) xs; true)) )
  @{context} (Random.new ())
