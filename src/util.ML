@@ -15,6 +15,8 @@ fun print_size name obj =
   let val size = Real.fromInt (ML_Heap.obj_size obj) / 1000000.0 |> @{make_string}
   in name ^ ": " ^ size ^ "MB" |> writeln end
 
+fun check_termination secs f = profile_time (Timeout.apply (Time.fromSeconds secs) f) ()
+
 fun inters_orig _ [] = raise Fail "Empty intersect is undefined"
   | inters_orig ord (xs :: xss) = fold (Ord_List.inter ord) xss xs
 

@@ -20,11 +20,11 @@ fun symbol_gen _ arg_range gen 0 _ r =
   | symbol_gen cut_off arg_range gen height index r =
   let
     val (num_args, r) = G.range_int arg_range r
-    val (symbol, r) = G.map (add_aterm_name_suffix (string_of_int num_args)) (gen num_args) r
+    val (symbol, r) = gen num_args r
   in
     if cut_off (height, index)
-    then ((symbol, 0), r)
-    else ((symbol, num_args), r)
+    then ((add_aterm_name_suffix "0" symbol, 0), r)
+    else ((add_aterm_name_suffix (string_of_int num_args) symbol, num_args), r)
   end
 
 fun aterm num_ids (wc,wf,wv) = G.aterm' (G.lift num_ids) (G.nonneg 3) (wc,wf,wv,0)
