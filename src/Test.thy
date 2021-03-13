@@ -47,23 +47,33 @@ val n =
     [Free ("f3_0", Type ("dummy", [])) $ (Var (("v2_0", 0), Type ("dummy", [])))]
     P.empty
 ;
+N.empty
+|> N.insert (op =) (Var (("x",0), dummyT), 1)
+|> N.insert (op =) (Var (("y",0), dummyT), 2)
+|> N.delete (K true) (Var (("y",0), dummyT))
 
-val sgen = G.list (G.range_int (2,10)) (G.pos 5)
-val ssgen = G.list (G.lift 20) sgen
+|> (fn n => N.lookup n (Var (("x",0), dummyT)))
+;
+
+val sgen = G.list (G.range_int (10,50)) (G.pos 30)
+val ssgen = G.list (G.lift 40) sgen
 val ss =
 ssgen (Random.deterministic_seed 1)
  |> fst
  |> map (Ord_List.make int_ord)
  |> (fn xs => G.shuffle xs (Random.new ()))
  |> fst;
+Spec_Check.check_base (Random.split) "" (Property.prop (fn r => (G.const' (G.lift 10000) r; true))) @{context} (Random.deterministic_seed 1)
 \<close>
-declare [[spec_check_num_tests = 1000]]
+declare [[spec_check_max_success = 10000]]
 ML \<open>
-val inter' = Spec_Check.check_base (fn r => ssgen r |-> G.shuffle) "" (Property.prop (fn xs => (inters' (int_ord) xs; true)) )
- @{context} (Random.new ())
+val inter2 = Spec_Check.check_base (fn r => ssgen r |-> G.shuffle) "" (Property.prop (fn xs => (inters_orig (int_ord) xs; true)) )
+ @{context} (Random.deterministic_seed 1);
+val inter1 = Spec_Check.check_base (fn r => ssgen r |-> G.shuffle) "" (Property.prop (fn xs => (inters' (int_ord) xs; true)) )
+ @{context} (Random.deterministic_seed 1)
 \<close>
 
-ML_command \<open>
+ML \<open>
 val tests = [
   ("Path", PathTest.test),
   ("PathTT", PathTTTest.test),
@@ -80,7 +90,7 @@ val sizes = [(50,50),(50,100),(50,200),(50,500),(50,1000),(5,5000)]
 *)
 val sizes = [(3,50),(3,100),(3,200),(3,500),(3,1000)]
 
-val seed = Random.new ()
+val seed = Random.deterministic_seed 1
 val sizes =
   fold (fn (repeats,n) => fn (r,acc) =>
     let val (rs,r) = funpow_yield repeats Random.split r
@@ -135,10 +145,10 @@ fun bench gens tag_index (net_gen : int -> term Generator.gen -> 'a Generator.ge
             ], res)));
 local
 val r = Random.new ()
-val p = PBench.index_gen 1000 ((hd gens |> snd) 10) r |> fst
-val ptt = PTTBench.index_gen 1000 ((hd gens |> snd) 10) r |> fst
+val p = PBench.index_gen 11 ((hd gens |> snd) 10) r |> fst
+val ptt = PTTBench.index_gen 11 ((hd gens |> snd) 10) r |> fst
 val x = (hd gens |> snd) 10 r |> fst
-val g = (List.tabulate (10000, K x) |> map Generator.lift)
+val g = (List.tabulate (111, K x) |> map Generator.lift)
 in
 val _ = print_size "Path" p
 val _ = print_size "PathTT" ptt
@@ -146,11 +156,21 @@ val a = PBench.timer "" (P.unifiables p) g;
 val b = PTTBench.timer "" (PTT.unifiables ptt) g;
 end
 \<close>
-
+(*
 ML\<open>
-G.basic_name "c" (G.lift 0) (Random.deterministic_seed 1);
+val (size,seed) = hd sizes
+val g = (hd gens |> snd) 500
+val g3 = term_var_reuse (Real.floor (Real.fromInt size * 10.0)) depth argr
 \<close>
-
+ML\<open>
+val gen = G.term_tree (symbol_gen (fn (h,i) => h >= depth) argr (fn _ => aterm 10 (0,100,10)))
+val gen2 = term_gen (0,10,1) (Real.floor (Real.fromInt size * 10.0)) (fn (h,i) => h >= depth) argr
+val gen3 = term_gen (0,10,1) 50 (fn (h,i) => h >= depth) argr
+val gen4 = G.term_tree (symbol_gen (fn (h,i) => h >= depth) argr (fn _ => G.aterm' (G.lift (50)) (G.nonneg 3) (0,10,1,0)))
+fun bench () = NBench.index_gen 500 gen4 (hd seed)
+val x = check_termination 10 (fn _ => G.aterm' (G.lift (50000000)) (G.nonneg 3) (0,10,1,0) (hd seed))
+\<close>
+*)
 ML\<open>
 val dn_bench = bench gens (Index "DN") NBench.index_gen (fn ns => NBench.benchmark_basic ns @ NBench.benchmark_queries ns)
 val pi_bench = bench gens (Index "PI_") PBench.index_gen (fn ns => PBench.benchmark_basic ns @ PBench.benchmark_queries ns)
