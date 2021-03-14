@@ -284,3 +284,5 @@ val index_list = map (fn (name,terms) =>
    Timing.timing (fn () => fold (fn t => N.insert_safe eq (t,t)) terms N.empty) () |> fst |> @{make_string} |> writeln)) termss
 ML \<open>PathTest.print_distribution ()\<close>
 *)
+
+end

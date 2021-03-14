@@ -1,6 +1,6 @@
 chapter "Path Indexing"
 
-session Fol_Unif_Hints = "Pure" +
+session Path_Indexing = "Pure" +
 
 sessions Spec_Check2
 
