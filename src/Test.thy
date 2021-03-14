@@ -157,7 +157,7 @@ val a = PBench.timer "" (P.unifiables p) g;
 val b = PTTBench.timer "" (PTT.unifiables ptt) g;
 end
 \<close>
-(*
+
 ML\<open>
 val (size,seed) = hd sizes
 val g = (hd gens |> snd) 500
@@ -167,11 +167,14 @@ ML\<open>
 val gen = G.term_tree (symbol_gen (fn (h,i) => h >= depth) argr (fn _ => aterm 10 (0,100,10)))
 val gen2 = term_gen (0,10,1) (Real.floor (Real.fromInt size * 10.0)) (fn (h,i) => h >= depth) argr
 val gen3 = term_gen (0,10,1) 50 (fn (h,i) => h >= depth) argr
-val gen4 = G.term_tree (symbol_gen (fn (h,i) => h >= depth) argr (fn _ => G.aterm' (G.lift (50)) (G.nonneg 3) (0,10,1,0)))
+val gen4 = G.term_tree (symbol_gen (fn (h,i) => h >= depth) argr (fn _ => G.aterm' (G.lift (5000)) (G.nonneg 3) (0,10,1,0)))
 fun bench () = NBench.index_gen 500 gen4 (hd seed)
-val x = check_termination 10 (fn _ => G.aterm' (G.lift (50000000)) (G.nonneg 3) (0,10,1,0) (hd seed))
+fun x () = check_termination 10 (fn _ => G.aterm' (G.lift (50000000)) (G.nonneg 3) (0,10,1,0) (hd seed))
+fun y () = check_termination 10 bench
+;
+y ()
 \<close>
-*)
+
 ML\<open>
 val dn_bench = bench gens (Index "DN") NBench.index_gen (fn ns => NBench.benchmark_basic ns @ NBench.benchmark_queries ns)
 val pi_bench = bench gens (Index "PI_") PBench.index_gen (fn ns => PBench.benchmark_basic ns @ PBench.benchmark_queries ns)
