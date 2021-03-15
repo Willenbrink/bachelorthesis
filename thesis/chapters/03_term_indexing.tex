@@ -4,6 +4,67 @@ A term index is used to store a collection of terms for efficient querying. The 
 In the following sections we give an overview of discrimination nets and path indexing, we also take a closer look at some details of their implementation in Isabelle/ML.
 
 \section{Discrimination Nets}
+A discrimination-net index, also known as discrimination-tree index, is a trie\todo{Discrimination net = trie aber nur noch trie wird heutzutage verwendet?} which stores terms at its leaves and symbols at its internal nodes. To determine the leaf at which a term is stored we use the preorder traversal of the term which we obtain by simply reading the written term from left to right.
+
+\begin{defn}
+  $Preorder(t)$ is the sequence of symbols obtained by a preorder traversal of the term $t$. For terminals it is the symbol itself. The preorder traversal of function $f(x_{1},...,x_{n})$ is $<f,Preorder(x_{1}),...,Preorder(x_{n})$.
+\end{defn}
+For example, the preorder traversal of $t = f(c,g(x,y))$ is $<f,c,g,*,*>$\footnote{We ignore variable identity as it introduces significant complexity}.
+
+We store the mapping $Preorder(t) \rightarrow t$ in a trie. Due to prefix sharing among the preorders of the different terms this reduces the memory consumption. The leafs contain the terms while the internal nodes only store the symbol by which they are addressed. A trie storing multiple terms can be seen in \ref{discnet}.
+
+No term is stored in an internal node as, under the assumption of type consistency, it is impossible for $Preorder(t)$ to be a prefix of $Preorder(u)$ if $t \neq u$. If $Preorder(t)$ is a prefix of $Preorder(u)$, $u$ is a combination of $t$ and some other terms. All the functions and their arguments in $t$ are also present in $u$. As a consequence, every function present in $t$ and $u$ is applied to all their arguments in $u$. Thus, $u$ must not consist of any additional terms and therefore be identical to $t$.
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.25]{figures/disc_net.png}
+\caption{Multiple terms stored in a trie and indexed by the sequence obtained from their preorder traversal}
+\label{discnet}
+\end{figure}\todo{Root =/= f, besser auf Beispiele ausgelegt: f(c,x) enthalten, netskip kommt vor etc.}
+
+The queries are implemented as a recursive algorithm on the nodes of the trie and the term. Starting at the root, we traverse the tree by selecting the child node corresponding to the current symbol of the term. We recursively continue at the child node while removing the current symbol from the term. The symbol we remove may have arguments. Therefore, we store the arguments in a list and continue with the first argument.\footnote{We do not use $Preorder(t)$ as the preorder traversal does not retain the arity of functions}
+
+\begin{defn}
+  $slp(N,c)$ is the symbol lookup operation. It returns the child node of $N$ containing the symbol $c$.
+\end{defn}
+
+Retrieving the variants of a term is fairly straightforward. Starting at the root, we traverse the trie according to the term using $slp$. By doing so, we ensure that we only retrieve terms that contain the same symbols (disregarding variable identity) in the same order, i.e. the variants of the term.
+
+For example, we retrieve the variants of the term $t = f(c,x)$ in the discrimintation net \ref{discnet} in the following manner:
+$(root, <f(c,x) \rightarrow (f, <c,x>) \rightarrow (c, <x>) \rightarrow (*,<>)$
+At this point we have reached a leaf containing the term $f(c,x)$, i.e. the only stored variant of the term.
+
+The other queries are more intricate as they may now replace variables by arbitrary terms or symbols by arbitrary terms, with unification combining both. For every constant symbol in the term we form the union of both the query on the node $slp(N,c)$ aswell as $slp(N,*)$. This ensures that indexed terms containing variables are also retrieved.
+
+Likewise, a variable in the query term must also be handled differently. As the variable may be replaced by arbitrary terms we must skip a number of nodes depending on the arity of the symbol.
+\begin{defn}
+  $skip(N)$ returns the set of nodes obtained by skipping a single term starting at $N$. For all symbols $s$ for which $slp(N,s)$ is defined we collect all nodes $arity(n)$ levels below $N$. That is, for a constant $c$ with $arity(c) = 0$ we return $slp(N,c)$ (which is a direct child of $N$). For a unary function $f$ we return all the nodes $slp(slp(N,f),x)$ defined for some $x$.
+\end{defn}
+Using this, we can retrieve all the nodes reached by replacing the variable in the query term with some term. The union of the terms returned by the query on each node represents the result. An overview of all the queries is given in \ref{discnetqueries}. Note that $variants$ is the simplest and most restrictive query, $unifiables$ is the most complex and least restrictive with $instances$ and $generalisations$ being a combination of both.
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.25]{figures/disc_net_queries.png}
+\caption{The definition of the different queries}
+\label{discnetqueries}
+\end{figure}
+
+\todo{$Symbol_t$ seems completely superfluous, why is it introduced in another paper?}
+\begin{defn}
+  $Symbol_{t}(p)$ refers to the symbol associated with the preorder traversal $p$ of the term $t$ upto the symbol.
+\end{defn}
+
+For example, the symbols of the term $t = f(c,g(x,y))$ are described by the following mapping:
+\begin{enumerate}
+\item $Symbol_{t}(<>) = f$
+\item $Symbol_{t}(<f>) = c$
+\item $Symbol_{t}(<f,c>) = g$
+\item $Symbol_{t}(<f,c,g>) = *$
+\item $Symbol_{t}(<f,c,g,*>) = *$
+\end{enumerate}
+
+This mapping can be efficiently stored in a discrimination net or trie by storing one symbol of the preorder traversal in each internal node and storing
+
 
 \section{Path Indexing}
 Instead of storing a term as a tree of functions and their arguments, we can specify the structure and symbols of a tree by combining every symbol of a term with its position, which we call its path.
@@ -16,7 +77,7 @@ The paths always start at the root and end with the index at which the symbol is
 We disregard the identity of variables as they are mostly irrelevant to the queries and simplify both the index and the queries. Consequently, the terms $f(x,y)$ and $f(x,x)$ are both saved as $f(*,*)$. This leads to an overapproximation in some cases, for example $f(c,d)$ would be identified as an instance of $f(x,x)$.
 
 \begin{defn}
-  $Symbol_{t}(p)$ is used to refer to the symbol associated with path $p$ in the term $t$.
+  $Symbol_{t}(p)$ refers to the symbol associated with path $p$ in the term $t$.
 \end{defn}
 
 \begin{figure}[h]
