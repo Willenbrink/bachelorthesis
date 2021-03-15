@@ -41,40 +41,21 @@ structure TTBench = Benchmark(TT);
 (*
 ML \<open>ML_system_pp (fn _ => fn _ => Pretty.to_polyml o raw_pp_typ)\<close>
 *)
-ML \<open>
-val n =
-  fold (fn t => P.insert eq (t,t))
-    [Free ("f3_0", Type ("dummy", [])) $ (Var (("v2_0", 0), Type ("dummy", [])))]
-    P.empty
-;
-N.empty
-|> N.insert (op =) (Var (("x",0), dummyT), 1)
-|> N.insert (op =) (Var (("y",0), dummyT), 2)
-|> N.delete (K true) (Var (("y",0), dummyT))
 
-|> (fn n => N.lookup n (Var (("x",0), dummyT)))
-;
-
+declare [[spec_check_max_success = 1000]]
+ML_command \<open>
+(* Intersection on Lists *)
 val sgen = G.list (G.range_int (10,50)) (G.pos 30)
 val ssgen = G.list (G.lift 40) sgen
-val ss =
-ssgen (Random.deterministic_seed 1)
- |> fst
- |> map (Ord_List.make int_ord)
- |> (fn xs => G.shuffle xs (Random.new ()))
- |> fst;
-Spec_Check.check_base (Random.split) "" (Property.prop (fn r => (G.const' (G.lift 10000) r; true))) @{context} (Random.deterministic_seed 1)
-\<close>
-
-declare [[spec_check_max_success = 10000]]
-ML \<open>
 val inter2 = Spec_Check.check_base (fn r => ssgen r |-> G.shuffle) "" (Property.prop (fn xs => (inters_orig (int_ord) xs; true)) )
  @{context} (Random.deterministic_seed 1);
 val inter1 = Spec_Check.check_base (fn r => ssgen r |-> G.shuffle) "" (Property.prop (fn xs => (inters' (int_ord) xs; true)) )
  @{context} (Random.deterministic_seed 1)
 \<close>
 
-ML \<open>
+declare [[spec_check_max_success = 100]]
+ML_command \<open>
+(* Index tests *)
 val tests = [
   ("Path", PathTest.test),
   ("PathTT", PathTTTest.test),
@@ -86,21 +67,19 @@ fold (fn (name,test) => fn r => (writeln name; test @{context} r)) tests (Random
 \<close>
 
 ML \<open>
-(*
-val sizes = [(50,50),(50,100),(50,200),(50,500),(50,1000),(5,5000)]
-*)
-val sizes = [(3,50),(3,100),(3,200),(3,500),(3,1000)]
-
-val seed = Random.deterministic_seed 1
-val sizes =
+fun gen_seeds seed sizes =
   fold (fn (repeats,n) => fn (r,acc) =>
     let val (rs,r) = funpow_yield repeats Random.split r
     in (r, (n,rs) :: acc) end
   ) sizes (seed,[])
   |> snd
-\<close>
+(*
+val sizes = [(50,50),(50,100),(50,200),(50,500),(50,1000),(5,5000)]
+*)
+val sizes =
+  [(3,50),(3,100),(3,200),(3,500),(3,1000)]
+  |> gen_seeds (Random.deterministic_seed 1)
 
-ML \<open>
 val depth = 6
 val argr = (0,4)
 
@@ -123,17 +102,11 @@ val gen_var =
   end
 
 val gens = gen_distinct @ gen_var
-\<close>
 
-ML \<open>
-ML_Heap.share_common_data ();
-ML_Heap.gc_now ();
-\<close>
-ML \<open>
 fun cross xs ys =
   maps (fn x => map (fn y => (x,y)) ys) xs
 
-fun bench gens tag_index (net_gen : int -> term Generator.gen -> 'a Generator.gen) benchmark =
+fun bench tag_index (net_gen : int -> term Generator.gen -> 'a Generator.gen) benchmark gens sizes =
   cross gens sizes
   |> maps (fn ((tag_gen,term_gen),(size,seeds)) =>
       map (fst o net_gen size (term_gen size)) seeds
@@ -143,53 +116,38 @@ fun bench gens tag_index (net_gen : int -> term Generator.gen -> 'a Generator.ge
               tag_index,
               tag_gen,
               Size ("Size: " ^ @{make_string} size ^ " Runs: " ^ @{make_string} (length seeds))
-            ], res)));
-local
-val r = Random.new ()
-val p = PBench.index_gen 11 ((hd gens |> snd) 10) r |> fst
-val ptt = PTTBench.index_gen 11 ((hd gens |> snd) 10) r |> fst
-val x = (hd gens |> snd) 10 r |> fst
-val g = (List.tabulate (111, K x) |> map Generator.lift)
-in
-val _ = print_size "Path" p
-val _ = print_size "PathTT" ptt
-val a = PBench.timer "" (P.unifiables p) g;
-val b = PTTBench.timer "" (PTT.unifiables ptt) g;
-end
-\<close>
-
-ML\<open>
-val (size,seed) = hd sizes
-val g = (hd gens |> snd) 500
-val g3 = term_var_reuse (Real.floor (Real.fromInt size * 10.0)) depth argr
-\<close>
-ML\<open>
-val gen = G.term_tree (symbol_gen (fn (h,i) => h >= depth) argr (fn _ => aterm 10 (0,100,10)))
-val gen2 = term_gen (0,10,1) (Real.floor (Real.fromInt size * 10.0)) (fn (h,i) => h >= depth) argr
-val gen3 = term_gen (0,10,1) 50 (fn (h,i) => h >= depth) argr
-val gen4 = G.term_tree (symbol_gen (fn (h,i) => h >= depth) argr (fn _ => G.aterm' (G.lift (5000)) (G.nonneg 3) (0,10,1,0)))
-fun bench () = NBench.index_gen 500 gen4 (hd seed)
-fun x () = check_termination 10 (fn _ => G.aterm' (G.lift (50000000)) (G.nonneg 3) (0,10,1,0) (hd seed))
-fun y () = check_termination 10 bench
-;
-y ()
-\<close>
-
-ML\<open>
-val dn_bench = bench gens (Index "DN") NBench.index_gen (fn ns => NBench.benchmark_basic ns @ NBench.benchmark_queries ns)
-val pi_bench = bench gens (Index "PI_") PBench.index_gen (fn ns => PBench.benchmark_basic ns @ PBench.benchmark_queries ns)
-val pitt_bench = bench gens (Index "PITT") PTTBench.index_gen (fn ns => PTTBench.benchmark_basic ns @ PTTBench.benchmark_queries ns)
-val tt_bench = bench gens (Index "TT_") TTBench.index_gen (fn ns => TTBench.benchmark_basic ns @ TTBench.benchmark_lookup ns)
-
-val benchmarks = [
-pi_bench,
-pitt_bench,
-dn_bench,
-tt_bench,
-[]] |> flat
+            ], res)))
 \<close>
 
 ML \<open>
+val dn_bench = bench (Index "DN") NBench.index_gen (fn ns => NBench.benchmark_basic ns @ NBench.benchmark_queries ns)
+val pi_bench = bench (Index "PI_") PBench.index_gen (fn ns => PBench.benchmark_basic ns @ PBench.benchmark_queries ns)
+val pitt_bench = bench (Index "PITT") PTTBench.index_gen (fn ns => PTTBench.benchmark_basic ns @ PTTBench.benchmark_queries ns)
+val tt_bench = bench (Index "TT_") TTBench.index_gen (fn ns => TTBench.benchmark_basic ns @ TTBench.benchmark_lookup ns)
+
+val benches = [
+pi_bench,
+pitt_bench,
+dn_bench,
+tt_bench
+]
+
+val _ =
+  benches
+  |> map (fn b => b gens (gen_seeds (Random.deterministic_seed 1) [(1,1)]))
+  |> flat
+
+val _ =
+  (ML_Heap.share_common_data ();
+  ML_Heap.gc_now ())
+
+val benchmarks =
+  benches
+  |> map (fn b => b gens sizes)
+  |> flat
+\<close>
+
+ML_command \<open>
 fun print_values filter_tags values =
   let
 (*
@@ -217,8 +175,7 @@ val x = benchmarks
       |> filter (fn (t,_) => forall (fn filter_tag => eq_tag (filter_tag,t)) [Index "PI", Test "unif", Gen "", Size "1000"])
 fun compare name x_label y_label selection =
   table benchmarks (print_values selection) name x_label y_label
-\<close>
-ML \<open>
+
 ;compare "Test" (Index "") (Size "") [Test "unif", Gen "LV"]
 ;compare "All Indices Size 100" (Index "") (Test "") [Gen "LV", Size "100 "]
 ;compare "All Indices Size 1000" (Index "") (Test "") [Gen "LV", Size "1000"]
