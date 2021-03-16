@@ -24,11 +24,12 @@ fun timer name f_test inputs =
     |> (fn test => (Test name,test))
   end
 
+val reuse_factor = 1
+
 fun benchmark_basic net_list =
   let
-    val term_in_net = map (fn n => NG.terms_in_net_gen (Int.min (1000, Index.content n |> length))
-      (Gen.lift n)) net_list
-    val term_not_in_net = map (NG.terms_not_in_net_gen 1000 o Gen.lift) net_list
+    val term_in_net = map (fn n => NG.terms_in_net_gen (reuse_factor * (Index.content n |> length)) (Gen.lift n)) net_list
+    val term_not_in_net = map (fn n => NG.terms_in_net_gen (reuse_factor * (Index.content n |> length)) (Gen.lift n)) net_list
   in
     [
       timer "Content of net"
@@ -39,15 +40,14 @@ fun benchmark_basic net_list =
         (term_not_in_net),
       timer "Delete terms"
         (fn (terms,net) => fold (fn t => Index.delete (curry eq t) t) terms net)
-        (term_in_net)
+        (map (fn n => Gen.lift (Index.content n, n)) net_list)
     ]
   end               
 
 fun benchmark_lookup net_list = 
   let
-    val term_in_net = map (fn n => NG.terms_in_net_gen (Int.min (1000, Index.content n |> length))
-      (Gen.lift n)) net_list
-    val term_not_in_net = map (NG.terms_not_in_net_gen 1000 o Gen.lift) net_list
+    val term_in_net = map (fn n => NG.terms_in_net_gen (reuse_factor * (Index.content n |> length)) (Gen.lift n)) net_list
+    val term_not_in_net = map (fn n => NG.terms_in_net_gen (reuse_factor * (Index.content n |> length)) (Gen.lift n)) net_list
   in
     [
       timer "Q: lookup existing term"
@@ -63,9 +63,8 @@ fun benchmark_lookup net_list =
 
 fun benchmark_queries net_list =
   let
-    val term_in_net = map (fn n => NG.terms_in_net_gen (Int.min (1000, Index.content n |> length))
-      (Gen.lift n)) net_list
-    val term_not_in_net = map (NG.terms_not_in_net_gen 1000 o Gen.lift) net_list
+    val term_in_net = map (fn n => NG.terms_in_net_gen (reuse_factor * (Index.content n |> length)) (Gen.lift n)) net_list
+    val term_not_in_net = map (fn n => NG.terms_in_net_gen (reuse_factor * (Index.content n |> length)) (Gen.lift n)) net_list
   in
     [
       timer "Q: lookup existing term"

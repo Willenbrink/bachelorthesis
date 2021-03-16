@@ -77,7 +77,10 @@ fun gen_seeds seed sizes =
 val sizes = [(50,50),(50,100),(50,200),(50,500),(50,1000),(5,5000)]
 *)
 val sizes =
-  [(3,50),(3,100),(3,200),(3,500),(3,1000)]
+  [(1000,10),(1000,30),(1000,50),(1000,100),(100,200),(100,500),(10,1000),(10,5000)]
+  |> map (fn (x,y) => (x div 10, y))
+  (*
+  *) (* For testing runtime before wasting an hour *)
   |> gen_seeds (Random.deterministic_seed 1)
 
 val depth = 6
@@ -109,7 +112,7 @@ fun cross xs ys =
 fun bench tag_index (net_gen : int -> term Generator.gen -> 'a Generator.gen) benchmark gens sizes =
   cross gens sizes
   |> maps (fn ((tag_gen,term_gen),(size,seeds)) =>
-      map (fst o net_gen size (term_gen size)) seeds
+      map (fn r => net_gen size (term_gen size) r |> fst) seeds
        |> benchmark
        |> map (fn (tag_test, res) => ([
               tag_test,
@@ -137,14 +140,14 @@ val _ =
   |> map (fn b => b gens (gen_seeds (Random.deterministic_seed 1) [(1,1)]))
   |> flat
 
-val _ =
-  (ML_Heap.share_common_data ();
-  ML_Heap.gc_now ())
-
+fun gc () = ML_Heap.gc_now ()
+;ML_Heap.share_common_data (); gc ();
 val benchmarks =
-  benches
-  |> map (fn b => b gens sizes)
+  fold (fn b => fn acc => ((*gc ();*) b gens sizes :: acc)) benches []
+  |> rev
   |> flat
+;fold (fn x => fn acc => x ^ "\n" ^ acc) (map (@{make_string}) benchmarks) ""
+|> writeln
 \<close>
 
 ML_command \<open>
@@ -175,10 +178,8 @@ val x = benchmarks
       |> filter (fn (t,_) => forall (fn filter_tag => eq_tag (filter_tag,t)) [Index "PI", Test "unif", Gen "", Size "1000"])
 fun compare name x_label y_label selection =
   table benchmarks (print_values selection) name x_label y_label
-
-;compare "Test" (Index "") (Size "") [Test "unif", Gen "LV"]
-;compare "All Indices Size 100" (Index "") (Test "") [Gen "LV", Size "100 "]
-;compare "All Indices Size 1000" (Index "") (Test "") [Gen "LV", Size "1000"]
+;
+;compare "Unifiables" (Index "") (Size "") [Test "unif", Gen "MV"]
 ;compare "All Indices sum of all sizes" (Index "") (Test "") [Gen "LV", Size ""]
 ;compare "Path Indexing" (Gen "V") (Test "Q:") [Index "PI_", Size ""]
 ;compare "Discrimination Net" (Gen "") (Test "") [Index "DN", Size ""]

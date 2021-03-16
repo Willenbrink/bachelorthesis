@@ -59,13 +59,13 @@ fun print_table name show_values ((xlabels, ylabels, table)) =
     val xsize = 8
     fun pad x = StringCvt.padLeft #" " xsize ("  " ^ x)
     fun write_cell (xlabel, values) acc = (show_values values |> pad) ^ acc
-    fun write_row (ylabel,row) =
-      fold_rev write_cell row ("\t " ^ concat ylabel)
-      |> writeln
+    fun write_row (ylabel,row) acc =
+      acc ^ "\n" ^ (fold_rev write_cell row ("\t " ^ concat ylabel))
+      
   in
     fold_rev (fn tag => fn acc => pad tag ^ acc) xlabels' ("    " ^ name)
-    |> warning;
-    map write_row table
+    |> fold write_row table
+    |> writeln
   end
 
 fun table benchmark show name x y =
