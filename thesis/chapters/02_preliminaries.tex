@@ -1,41 +1,65 @@
 \chapter{Preliminaries}
 \section{First-Order Logic}
-First-order logic is a formal language used to, amongst others, formalise reasoning, including artifical intelligence, logic programming and automated deduction systems. In this thesis we are only interested in terms. Therefore, we disregard formulas, relations and quantifiers.
+First-order logic is a formal language used to, amongst others, formalise reasoning, including artifical intelligence, logic programming and automated deduction systems. In this thesis we are only interested in terms. Therefore, we disregard formulas, relations and quantifiers. A more extensive introduction can be found in \cite{abiteboul_foundations_1995}.
 
-A term in first-order logic is either a variable, a constant or a function applied to some arguments. All symbols have arity $0$. A function $f$ has a fixed arity $a(f) \geq 1$ and is applied to an $a(f)$-tuple of terms. We notate terms with lower-case letters with constants using letters from $a$ to $e$, functions from $f$ to $j$ and variables from $u$ to $z$.
+A symbol is either a variable, a constant or a function. We choose all variables from the infinite set $V = \{x, y, z, x_{1}, x_{2}, ...\}$, all constants from the infinite set $C = \{a, b, c, d, c_{1}, c_{2}, ...\}$ and all functions from the infinite set $F = \{f, g, h, f_{1}, f_{2}, ...\}$. Whenever possible, we use only the first three symbols of each set for better readibility.
 
-\subsection{Unification}
-\todo{}
+The arity of a symbol $arity(s)$ is a positive integer representing the number of arguments this symbol is applied to. All constants have a fixed arity of $0$ while every function $f$ has a fixed arity $arity(f) \geq 1$. A variable $x$ has an arbitrary but fixed arity.
+
+A term in first-order logic is a symbol $s$ applied to $arity(s)$ arguments. We require all symbols $s$ to always be applied to an $arity(s)$-tuple of terms.
+
+\subsection{Generalisation and Unification}
+A substitution is a partial function $\rho : V \rightarrow T$. We denote by $t \rho = u$ the term obtained by applying the substitution $\rho$ to all variables $v$ both in $t$ and the domain of $\rho$. We write $[t_{1}/x_{1},...,t_{n}/x_{n}]$ for the substitution $\{x_{1} \rightarrow t_{1}, ..., x_{n} \rightarrow t_{n}\}$. Note that $\rho$ is applied only once to the original term, that is, $x [y/x, a/y] = y$ even though $y$ would be substituted by $a$ in the original term.
+
+Given two terms $t, u$, we say that $t$ is a generalisation of $u$ and $u$ a instance or specialization of $t$ if and only if there exists a substitution $\rho$ such that $t \rho = u$. Similarly, we call $t$ and $u$ unifiable and $\rho$ a unifier if $t \rho = u \rho$. It can be seen that whenever $t$ is a generalisation of $u$ they are also unifiable.
 
 \section{Isabelle}
-Isabelle is an interactive theorem prover supporting many formal theories, including first-order and higher-order logics. The basic datatype used for terms are a variant of typed \lam -calculus. Therefore, encoding first-order logic terms in the applicative \lam -calculus becomes necessary.\footnote{We disregard types as we assume the user of the index to only store consistent and type-correct terms}
+Isabelle is a generic interactive theorem prover supporting formal theories. By design, it uses a metalogic, called Isabelle/Pure, to embed other logics and provide a deduction framework. To do so, Isabelle/Pure uses a higher-order logic. The very basis of this metalogic are the \lam -terms within which the theorems and inference rules are embedded.
 
-The prover in Isabelle repeatedly uses unification to advance the proof. It starts with a goal, whose validity must be shown, and a list of inference rules, given as horn clauses, i.e. consisting of a conjunction of premises and a conclusion. The prover now continually attempts to unify the goal with the conclusion of one of the inference rules. If successful, it replaces the goal with the premises, each of which represent a subgoal.
+Isabelle is written mostly in Standard ML (SML).
+Isabelle is an interactive theorem prover supporting many formal theories, including first-order and higher-order logics. As an interactive prover one starts with a statement or goal to show and a knowledge base containing known relations, previous proofs and other relevant knowledge. The prover then assists the user by automatically proving simpler subgoals, reducing the tedium of proofs, and, of course, by guaranteeing correctness of the proof.
 
-Upon showing the validity of each subgoal the prover is finished. If no further unification is possible the algorithm backtracks and attempts to continue with a different inference rule. Depending on the number and form of inference rules available the prover will at some point either fail to satisfy the goal or continue searching forever. Tuning the prover to provide a proof while also avoiding both failure states is one of the major challenges in automated theorem proving.\cite{paulson_isabelle_nodate}
+The prover in Isabelle repeatedly uses unification to advance the proof. Starting with a goal, whose validity must be shown, and a list of horn clauses given as an implication consisting of a conjunction of premises and a conclusion. The prover now continually attempts to unify the goal with the conclusion of one of the inference rules. If successful, it replaces the goal with the premises, each of which represent a subgoal.
+
+By repeating this procedure until the validity of each subgoal is shown, the prover finishes the proof. If no further unification is possible the algorithm backtracks and attempts to continue with a different inference rule. Depending on the number and form of inference rules available the prover will at some point either fail to satisfy the goal or continue searching forever. Tuning the prover to provide a proof while also avoiding both failure states is one of the major challenges in automated theorem proving. \cite{paulson_isabelle_nodate}
+
+\subsection{Isabelle/ML}
+Isabelle is extended through the Standard Meta Language (SML). SML is a high-level functional language which, thanks to the Poly/ML compiler, provides implicit parallelism. The environment in which the code is executed is called Isabelle/ML.
+
+The rules and tactics, with which goals are resolved, are written in SML as are the datastructures used by them. The datatype used for most terms is a variant of typed \lam -calculus. Therefore, encoding first-order logic terms in the applicative \lam -calculus becomes necessary.
 
 \subsection{Term Representation in Isabelle}
-
-A \lam -term in Isabelle is defined recursively in an applicate style. The different constructors are:
+A \lam -term in Isabelle is used in many different contexts and forms the basis for both higher-order and first-order logic terms. They are built up recursively in an applicative style and are defined as such:
+\begin{lstlisting}
+type indexname = string * int
+datatype term =
+    Const of string * typ
+  | Free of string * typ
+  | Var of indexname * typ
+  | Bound of int
+  | Abs of string * typ * term
+  | $ of term * term
+\end{lstlisting} %$
 \begin{enumerate}
-  \item Free: Symbols that can not be instantiated.
-  \item Const: Symbols that are instantiated once and therefore are, within a given context, constant.
-  \item Var: Variables that have not been instantiated.
-  \item Abs and Bound: Abstractions, or \lam -expression, instantiate the symbols bound to them with the argument they are applied to. A bound symbol stores a reference to the abstraction it is bound to.
-  \item App: Applications apply their first argument to the second argument. We use \$ as an infix operator.
+  \item \verb!Const! and \verb!Free! both represent a fixed symbol. In the context of term indexing their distinction is irrelevant.
+  \item \verb!Var! represents a variable, i.e. it is a placeholder and can be replaced by an arbitrary term of the same type. The indexname argument of \verb!Var! is an implementation detail to quickly rename variables by changing the int.
+  \item \verb!Bound! is a variable bound by a lambda term encoded as a de Bruijn index.
+  \item \verb!Abs!, short for abstraction, is a lambda term whose variable is given a name for better readability.
+  \item $\textdollar$ represents the application of the first argument to the second one. As there are no tuples in this term representation, all functions are curried by default.
 \end{enumerate}
-For example, the \lam -term $(\lambda x. f(x)) c$ can be encoded as $App(Abs(x,App(Free(f),Bound(x))),Const(c))$.\todo{Draw as tree, too many braces}
 
-Using this datatype, we can embed first-order terms in \lam -terms. A constant $c$ is equivalent to $Const(c)$. Likewise, a variable $x$ is equivalent to $Var(x)$. Functions are written in the applicative form, e.g. $f(x,c)$ is encoded as $Const(f)\ \$\ Var(x)\ \$\ Const(c)$.
+We will ignore the types of terms and simply assume type correctness at all points. The \lam -term $(\lam x.\ x)\ a$ can then be represented as \verb!Abs "x" (Bound 1)) $ Const "a"!. The application is left-associative, i.e. $f\ x\ y$ is written as \verb!Const "f" $ Var "x" $ Var "y"! whereas $f\ (g\ x)$ is written as \verb!Const "f" $ (Const "g" $ Var "x")!.
 
-Obviously, this embedding is not invertible. Nevertheless, it is desirable for term indices to handle higher-order logic terms gracefully. We therefore \todo{}
+%\begin{enumerate}
+  %\item Free: Symbols that can not be instantiated.
+  %\item Const: Symbols that are instantiated once and therefore are, within a given context, constant.
+  %\item Var: Variables that have not been instantiated.
+  %\item Abs and Bound: Abstractions, or \lam -expression, instantiate the symbols bound to them with the argument they are applied to. A bound symbol stores a reference to the abstraction it is bound to.
+  %\item App: Applications apply their first argument to the second argument. We use \$ as an infix operator.
+%\end{enumerate}
 
-\section{Term Indexing}
-\todo{Motivation, move elsewhere?}
-In automated theorem proving there are, generally, many inference rules are available while only few are applicable to the current subgoals. Therefore, we are interested in efficient storage of inference rules, both in regards to memory consumption and fast retrieval of rules with unifiable premises. One category of data structures fit for this purpose are the term indices.
+Using this datatype, we can embed first-order terms in \lam -terms. Variables with an arity of $0$ and constants map directly to \verb!Var! and \verb!Const! respectively. Likewise, the symbol of a function maps to a \verb!Const!. The function as a whole, the symbol and the tuple of terms which are the arguments, is represented by a chain of applications with each component mapped to a \lam -term. The term $f(a,g(x))$ is then represented by \verb!Const "f" \$ Const "a" \$ (Const "g" \$ Var "x")!. Note the braces around $g(x)$ to differentiate this term from $f(a,g,x)$.
 
-A term index efficiently stores terms while also providing efficient operations for the retrieval of instances, generalisations and unifiables of a query term from the term index. Depending on the exact data structure, we can also implement other operations efficiently if desired, e.g. checking if a term is already stored, only inserting a term if no more general term is stored, efficiently merging two indices etc.
+%This embedding will later be useful to map the concepts from first-order logic to the \lam calculus used in Isabelle. In addition we will require an inverse mapping as this will allow us to use term indices for \lam -terms representing higher-order terms.
 
-As it is difficult to predict the use cases of the term indices we only implement the basic query operations. \todo{already implemented for the discrimination nets}
-
-\section{Related work}
+%In first-order logic, we are often interested in determining whether a term is a generalisation of another term. This allows us to, for example, determine superfluous horn clauses. If the conclusion of one horn clause is a generalisation of the conclusion of another and each premise of the first is an instance of a premise of the second we can safely conclude that any model that satisfies the second horn clause also satisfies the first.
