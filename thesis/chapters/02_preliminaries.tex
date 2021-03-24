@@ -13,52 +13,38 @@ A substitution is a partial function $\rho : V \rightarrow T$. We denote by $t \
 
 Given two terms $t, u$, we say that $t$ is a generalisation of $u$ and $u$ a instance or specialization of $t$ if and only if there exists a substitution $\rho$ such that $t \rho = u$. Similarly, we call $t$ and $u$ unifiable and $\rho$ a unifier if $t \rho = u \rho$. It can be seen that whenever $t$ is a generalisation of $u$ they are also unifiable.
 
+\section{Lambda Calculus}
+\todo{Define lambda calculus}
+
 \section{Isabelle}
 Isabelle is a generic interactive theorem prover supporting formal theories. By design, it uses a metalogic, called Isabelle/Pure, to embed other logics and provide a deduction framework. To do so, Isabelle/Pure uses a higher-order logic. The very basis of this metalogic are the \lam -terms within which the theorems and inference rules are embedded.
 
-Isabelle is written mostly in Standard ML (SML).
-Isabelle is an interactive theorem prover supporting many formal theories, including first-order and higher-order logics. As an interactive prover one starts with a statement or goal to show and a knowledge base containing known relations, previous proofs and other relevant knowledge. The prover then assists the user by automatically proving simpler subgoals, reducing the tedium of proofs, and, of course, by guaranteeing correctness of the proof.
-
-The prover in Isabelle repeatedly uses unification to advance the proof. Starting with a goal, whose validity must be shown, and a list of horn clauses given as an implication consisting of a conjunction of premises and a conclusion. The prover now continually attempts to unify the goal with the conclusion of one of the inference rules. If successful, it replaces the goal with the premises, each of which represent a subgoal.
-
-By repeating this procedure until the validity of each subgoal is shown, the prover finishes the proof. If no further unification is possible the algorithm backtracks and attempts to continue with a different inference rule. Depending on the number and form of inference rules available the prover will at some point either fail to satisfy the goal or continue searching forever. Tuning the prover to provide a proof while also avoiding both failure states is one of the major challenges in automated theorem proving. \cite{paulson_isabelle_nodate}
-
-\subsection{Isabelle/ML}
-Isabelle is extended through the Standard Meta Language (SML). SML is a high-level functional language which, thanks to the Poly/ML compiler, provides implicit parallelism. The environment in which the code is executed is called Isabelle/ML.
-
-The rules and tactics, with which goals are resolved, are written in SML as are the datastructures used by them. The datatype used for most terms is a variant of typed \lam -calculus. Therefore, encoding first-order logic terms in the applicative \lam -calculus becomes necessary.
+Isabelle is written for the most part in Standard ML (SML) and can also be extended at runtime. It is divided into a kernel, that has been verified and verifies the correctness of all proofs, and a userspace within which we can implement deduction methods for proofs.
 
 \subsection{Term Representation in Isabelle}
-A \lam -term in Isabelle is used in many different contexts and forms the basis for both higher-order and first-order logic terms. They are built up recursively in an applicative style and are defined as such:
+The \lam -terms in Isabelle/Pure are used in many different contexts and are also used for embedding first-order logic terms. They are a variant of simply typed \lam -calculus and are built up recursively in an applicative style. They are defined, with minor differences for the sake of simplicity, as follows:
 \begin{lstlisting}
-type indexname = string * int
 datatype term =
     Const of string * typ
   | Free of string * typ
-  | Var of indexname * typ
+  | Var of string * typ
   | Bound of int
   | Abs of string * typ * term
   | $ of term * term
 \end{lstlisting} %$
 \begin{enumerate}
-  \item \verb!Const! and \verb!Free! both represent a fixed symbol. In the context of term indexing their distinction is irrelevant.
-  \item \verb!Var! represents a variable, i.e. it is a placeholder and can be replaced by an arbitrary term of the same type. The indexname argument of \verb!Var! is an implementation detail to quickly rename variables by changing the int.
+  \item \verb!Const! and \verb!Free! both represent a fixed symbol. Their distinction is related to the metalogic nature of Isabelle/Pure and is irrelevant in the context of term indexing.
+  \item \verb!Var! represents a variable, i.e. it is a placeholder and can be replaced by an arbitrary term of the same type.
   \item \verb!Bound! is a variable bound by a lambda term encoded as a de Bruijn index.
-  \item \verb!Abs!, short for abstraction, is a lambda term whose variable is given a name for better readability.
-  \item $\textdollar$ represents the application of the first argument to the second one. As there are no tuples in this term representation, all functions are curried by default.
+  \item \verb!Abs! is an abstraction whose variable is given a name for better readability.
+  \item $\textdollar$ represents the application of the first argument to the second one. As there are no tuples in this term representation, all functions are curried by default. $\textdollar$ is written infix.
 \end{enumerate}
 
-We will ignore the types of terms and simply assume type correctness at all points. The \lam -term $(\lam x.\ x)\ a$ can then be represented as \verb!Abs "x" (Bound 1)) $ Const "a"!. The application is left-associative, i.e. $f\ x\ y$ is written as \verb!Const "f" $ Var "x" $ Var "y"! whereas $f\ (g\ x)$ is written as \verb!Const "f" $ (Const "g" $ Var "x")!.
+We will ignore the types of terms and simply assume type correctness at all points. The \lam -term $(\lam x.\ x)\ a$ can then be represented directly as \verb!Abs "x" (Bound 1)) $ Const "a"!. The application is left-associative, i.e. $f\ x\ y$ is written as \verb!Const "f" $ Var "x" $ Var "y"! whereas $f\ (g\ x)$ is written as \verb!Const "f" $ (Const "g" $ Var "x")!.
 
-%\begin{enumerate}
-  %\item Free: Symbols that can not be instantiated.
-  %\item Const: Symbols that are instantiated once and therefore are, within a given context, constant.
-  %\item Var: Variables that have not been instantiated.
-  %\item Abs and Bound: Abstractions, or \lam -expression, instantiate the symbols bound to them with the argument they are applied to. A bound symbol stores a reference to the abstraction it is bound to.
-  %\item App: Applications apply their first argument to the second argument. We use \$ as an infix operator.
-%\end{enumerate}
+We can embed first-order terms in these \lam -terms. While variables with an arity of $0$ and constants map directly to \verb!Var! and \verb!Const! respectively. Likewise, the symbol of a function maps to a \verb!Const!. The function as a whole, the symbol and the tuple of terms which are the arguments, is represented by a chain of applications with each component mapped to a \lam -term. The term $f(a,g(x))$ is then represented by \verb!Const "f" \$ Const "a" \$ (Const "g" \$ Var "x")!. Note the braces around $g(x)$ to differentiate this term from $f(a,g,x)$.
 
-Using this datatype, we can embed first-order terms in \lam -terms. Variables with an arity of $0$ and constants map directly to \verb!Var! and \verb!Const! respectively. Likewise, the symbol of a function maps to a \verb!Const!. The function as a whole, the symbol and the tuple of terms which are the arguments, is represented by a chain of applications with each component mapped to a \lam -term. The term $f(a,g(x))$ is then represented by \verb!Const "f" \$ Const "a" \$ (Const "g" \$ Var "x")!. Note the braces around $g(x)$ to differentiate this term from $f(a,g,x)$.
+We assume every term to consist of only \verb!Const!, \verb!Var! and $textdollar$. This avoids the overhead of distinguishing \verb!Const! and \verb!Free!. \verb!Abs! are not required for first-order terms and dangling \verb!Bounds!, that is, indices pointing to a non-existing abstraction, are excluded, too.
 
 %This embedding will later be useful to map the concepts from first-order logic to the \lam calculus used in Isabelle. In addition we will require an inverse mapping as this will allow us to use term indices for \lam -terms representing higher-order terms.
 

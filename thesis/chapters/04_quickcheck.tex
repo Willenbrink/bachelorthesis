@@ -1,5 +1,33 @@
-\chapter{QuickCheck}
-\section{Was gab es?}
-\section{Änderungen}
-\section{Probleme?}
-\section{Benchmarking (Falls das noch in Quickcheck landet, ansonsten eigenes Kapitel/in Evaluation?)}
+\chapter{Testing in Isabelle/ML}
+\section{Previous Work}
+A testing framework was built which tries to mirror QuickCheck from Haskell. Lack of typeclasses => Either use functors (OCaml, verbose), Compiler directly (Write tests as strings, no editor assistance, somewhat awkward) or explicitly pass generators, shows, shrinks etc.
+
+Last option best because: Default generators can be provided but more complicated tests need custom generators anyway to satisfy preconditions etc., simple to use, simple to extend.
+
+Modularity was relatively bad
+
+\section{Term Generation}
+Approaches: Random or deterministic
+Carry state around? Yes as we want maximum control. Possibly bad for performance as no multithreading this way.
+Use symbol generator to give maximum control over structure.
+Discarded idea: Separate generation into structure and symbols. Too intertwined to be efficiently separated.
+Address symbols by: Level + Index in Level or Path from root to symbol
+Deterministic generator with non-deterministic symbol generator works best => Useful for all cases but also simple to use.
+Symbol generator contains real complexity, term gen relatively basic (basically fold over yet to be generated tree)
+
+\section{Implementation Details}
+\subsection{Overview of Modules}
+Shrinking: Generate simpler test cases from failed tests. Simplify repeatedly until no longer possible. Depth-First with only one level of Backtracking (or rather none and one consistency check before descending into child). Performance sensitive. Unfortunately the shrinking function must be provided. General shrinking is difficult as generator take no size argument. Else, we could simply take each involved generator and shrink their size (i.e. shrinkg listgen (itemgen 3) 10 returns [listgen (itemgen 2) 10, listgen (itemgen 3) 9]). Combinatorial explosion so not possible. Potential solution: Use compiler here as this is not exposed to the user if no shrink is given (by providing default shrinks for each type and applying them to the provided gen. Would require transparent generators where we can determine in retrospect which symbol gen was used for termgen etc.)
+
+Output Style: Multiple output styles possible. No textfile output at the moment
+
+Inputs: Lazy for performance, can take pregenerated lists of generators e.g. read from file. Constant values are also possible (e.g. ensure that previous failures do not fail again <- Not easily possible but with custom output should be doable: Append failed tests to file, rerun them for every test)
+
+Lehman(?)-PRNG implemented, works as expected.
+
+\section{Usage}
+Generators take states. This state is often only a random variable but may contain other values. Generators can take other generators as argument and pass the state around. Deterministic gens dont require random values.
+Examples
+
+\section{Usage in this Thesis}
+What tests were written? What generators used?
