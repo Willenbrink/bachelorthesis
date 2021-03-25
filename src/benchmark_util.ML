@@ -10,7 +10,7 @@ fun string_of_tag x = case x of
   | Size x => x
   | Index x => x
 
-fun tag_sub tag_sub tag_super =
+fun is_subtag tag_sub tag_super =
   (case (tag_sub, tag_super) of
       (Test sub,Test super) => String.isSubstring sub super
     | (Gen sub,Gen super) => String.isSubstring sub super
@@ -19,7 +19,7 @@ fun tag_sub tag_sub tag_super =
     | (_, _) => false
   )
 
-fun eq_tag (sub,supers) = exists (tag_sub sub) supers
+fun exists_supertag (sub,supers) = exists (is_subtag sub) supers
 
 fun sum_timings [] = NONE
   | sum_timings (t::timings) = fold Spec_Check_Base.add_timing timings t |> SOME
@@ -34,7 +34,7 @@ fun get_table benchmark (x : tag) (y : tag) =
     fun filter_labels tag =
       benchmark
       |> map fst
-      |> map (filter (tag_sub tag))
+      |> map (filter (is_subtag tag))
       |> filter_out null
       |> distinct (op =)
     val xlabels : tag list list = filter_labels x
@@ -43,8 +43,8 @@ fun get_table benchmark (x : tag) (y : tag) =
       map (fn y =>
         (y,maps (fn x =>
           benchmark
-          |> filter (fn (vt,_) => forall (fn t => eq_tag (t,vt)) (x@y))
-          |> map (fn (t,v) => ((x@y), (filter_out (fn t => exists (tag_sub t) (x@y)) t,v)))
+          |> filter (fn (vt,_) => forall (fn t => exists_supertag (t,vt)) (x@y))
+          |> map (fn (t,v) => ((x@y), (filter_out (fn t => exists (is_subtag t) (x@y)) t,v)))
           |> AList.coalesce (eq_set (op =))
           |> map (fn (_,v) => (x,v))
           )
@@ -73,3 +73,18 @@ fun table benchmark show name x y =
 
 fun print_timing timing = #elapsed (timing : Timing.timing) |> Time.toReal |> print_real
 
+fun timer name f_test inputs =
+  let val r = Random.new ()
+  in
+    (*writeln (name);*)
+    inputs
+    |> map_index (fn (i,input) => r
+            |> funpow i Random.next
+            |> input
+            |> fst (* Discard returned random value *)
+            |> Timing.timing f_test
+            |> fst)
+    |> map (#cpu)
+    |> (fn list => fold (curry op +) list (Time.fromSeconds 0))
+    |> (fn test => (Test name, test))
+  end

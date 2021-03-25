@@ -1,29 +1,11 @@
 functor Benchmark (Index : TERM_INDEX) =
 struct
 
-local
 structure Gen = Generator
 structure NG = Net_Gen(Index)
+val index_gen = NG.index_gen
 
 val eq = Term.aconv_untyped
-in
-
-fun timer name f_test inputs =
-  let val r = Random.new ()
-  in
-    (*writeln (name);*)
-    inputs
-    |> map_index (fn (i,input) => r
-            |> funpow i Random.next
-            |> input
-            |> fst (* Discard returned random value *)
-            |> Timing.timing f_test
-            |> fst)
-    |> map (#cpu)
-    |> (fn list => fold (curry op +) list (Time.fromSeconds 0))
-    |> (fn test => (Test name, test))
-  end
-
 val reuse_factor = 1
 
 fun benchmark_basic net_list =
@@ -93,21 +75,4 @@ fun benchmark_queries net_list =
         (term_not_in_net)
       ]
   end
-
-val index_gen = NG.index_gen
-
-fun create_indices group_size terms =
-  let
-    val termss = chop_groups group_size terms
-    fun init [] = []
-      | init [_] = []
-      | init (x::xs) = x :: init xs
-  in
-    (* Start with empty index, insert first group of terms. Take copy of index, insert second group, etc.
-      Return a list of indices each with a differing amount of terms in them. *)
-    fold (fn ts => fn (index::indices) => (fold (fn t => Index.insert_safe eq (t,t)) ts index)::index::indices) termss [Index.empty]
-    |> init
-  end
-
-end
 end

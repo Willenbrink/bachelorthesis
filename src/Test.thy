@@ -4,7 +4,6 @@ imports
   Spec_Check2.Spec_Check
 begin
 ML_file "util.ML"
-ML_file "benchmark_util.ML"
 ML_file "term_index.ML"
 ML_file "net.ML"
 ML_file "path.ML"
@@ -14,6 +13,7 @@ ML_file "pprinter.ML"
 ML_file "term_gen.ML"
 ML_file "net_gen.ML"
 ML_file "tester.ML"
+ML_file "benchmark_util.ML"
 ML_file "benchmark.ML"
 
 ML "open Pprinter Term_Gen"
@@ -171,11 +171,11 @@ fun print_values filter_tags values =
 *)
     val values' =
       values
-      |> filter (fn (t,_) => forall (fn filter_tag => eq_tag (filter_tag,t)) filter_tags)
+      |> filter (fn (t,_) => forall (fn filter_tag => exists_supertag (filter_tag,t)) filter_tags)
     val () =
       values'
       |> map fst
-      |> map (fn val_tags => filter_out (fn vt => exists (fn ft => tag_sub ft vt) filter_tags) val_tags)
+      |> map (fn val_tags => filter_out (fn vt => exists (fn ft => is_subtag ft vt) filter_tags) val_tags)
       |> distinct (op =)
       |> (fn x => if length x > 1 then raise Fail ("Multiple values: " ^ @{make_string} x ^ "\n remaining of: " ^ @{make_string} values) else ())
   in
@@ -185,7 +185,7 @@ fun print_values filter_tags values =
     |> apply_def (@{make_string}) "N/A"
   end
 val x = benchmarks
-      |> filter (fn (t,_) => forall (fn filter_tag => eq_tag (filter_tag,t)) [Index "PI", Test "unif", Gen "", Size "1000"])
+      |> filter (fn (t,_) => forall (fn filter_tag => exists_supertag (filter_tag,t)) [Index "PI", Test "unif", Gen "", Size "1000"])
 fun compare name x_label y_label selection =
   table benchmarks (print_values selection) name x_label y_label
 ;
