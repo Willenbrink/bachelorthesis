@@ -42,6 +42,18 @@ structure TTBench = Benchmark(TT);
 ML \<open>ML_system_pp (fn _ => fn _ => Pretty.to_polyml o raw_pp_typ)\<close>
 *)
 
+ML \<open>
+val f = @{term "\<lambda>x. x"}
+val a = @{term "a (b c)"}
+val b = @{term "b"}
+val x = Var (("x",0), TFree ("'a", []))
+val y = Var (("y",0), TFree ("'a", []))
+;N.empty
+|> N.insert (op =) (a,true)
+|> N.insert (op =) (b,true)
+|> N.content
+\<close>
+
 declare [[spec_check_max_success = 1000]]
 ML_command \<open>
 (* Intersection on Lists *)
@@ -73,12 +85,10 @@ fun gen_seeds seed sizes =
     in (r, (n,rs) :: acc) end
   ) sizes (seed,[])
   |> snd
-(*
-val sizes = [(50,50),(50,100),(50,200),(50,500),(50,1000),(5,5000)]
-*)
+
 val sizes =
   [(1000,10),(1000,30),(1000,50),(1000,100),(100,200),(100,500),(10,1000),(10,5000)]
-  |> map (fn (x,y) => (x div 10, y))
+  |> map (fn (x,y) => (x div 100, y))
   (*
   *) (* For testing runtime before wasting an hour *)
   |> gen_seeds (Random.deterministic_seed 1)
@@ -126,7 +136,7 @@ ML \<open>
 val dn_bench = bench (Index "DN") NBench.index_gen (fn ns => NBench.benchmark_basic ns @ NBench.benchmark_queries ns)
 val pi_bench = bench (Index "PI_") PBench.index_gen (fn ns => PBench.benchmark_basic ns @ PBench.benchmark_queries ns)
 val pitt_bench = bench (Index "PITT") PTTBench.index_gen (fn ns => PTTBench.benchmark_basic ns @ PTTBench.benchmark_queries ns)
-val tt_bench = bench (Index "TT_") TTBench.index_gen (fn ns => TTBench.benchmark_basic ns @ TTBench.benchmark_lookup ns)
+val tt_bench = bench (Index "TT_") TTBench.index_gen (fn ns => TTBench.benchmark_basic ns @ TTBench.benchmark_variants ns)
 
 val benches = [
 pi_bench,
@@ -140,10 +150,10 @@ val _ =
   |> map (fn b => b gens (gen_seeds (Random.deterministic_seed 1) [(1,1)]))
   |> flat
 
-fun gc () = ML_Heap.gc_now ()
+fun gc () = ML_Heap.full_gc ()
 ;ML_Heap.share_common_data (); gc ();
 val benchmarks =
-  fold (fn b => fn acc => ((*gc ();*) b gens sizes :: acc)) benches []
+  fold (fn b => fn acc => (gc (); b gens sizes :: acc)) benches []
   |> rev
   |> flat
 ;fold (fn x => fn acc => x ^ "\n" ^ acc) (map (@{make_string}) benchmarks) ""

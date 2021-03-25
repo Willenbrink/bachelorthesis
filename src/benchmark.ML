@@ -21,7 +21,7 @@ fun timer name f_test inputs =
             |> fst)
     |> map (#cpu)
     |> (fn list => fold (curry op +) list (Time.fromSeconds 0))
-    |> (fn test => (Test name,test))
+    |> (fn test => (Test name, test))
   end
 
 val reuse_factor = 1
@@ -44,18 +44,18 @@ fun benchmark_basic net_list =
     ]
   end               
 
-fun benchmark_lookup net_list = 
+fun benchmark_variants net_list = 
   let
     val term_in_net = map (fn n => NG.terms_in_net_gen (reuse_factor * (Index.content n |> length)) (Gen.lift n)) net_list
     val term_not_in_net = map (fn n => NG.terms_in_net_gen (reuse_factor * (Index.content n |> length)) (Gen.lift n)) net_list
   in
     [
-      timer "Q: lookup existing term"
-        (fn (t,n) => map (Index.lookup n) t)
+      timer "Q: variants existing term"
+        (fn (t,n) => map (Index.variants n) t)
         (term_in_net)
       (*
-      timer "Q: lookup non-existing term"
-        (fn (t,n) => map (Index.lookup n) t)
+      timer "Q: variants non-existing term"
+        (fn (t,n) => map (Index.variants n) t)
         (term_not_in_net)
       *)
     ]
@@ -67,8 +67,8 @@ fun benchmark_queries net_list =
     val term_not_in_net = map (fn n => NG.terms_in_net_gen (reuse_factor * (Index.content n |> length)) (Gen.lift n)) net_list
   in
     [
-      timer "Q: lookup existing term"
-        (fn (t,n) => map (Index.lookup n) t)
+      timer "Q: variants existing term"
+        (fn (t,n) => map (Index.variants n) t)
         (term_in_net),
       timer "Q: instances existing term"
         (fn (t,n) => map (Index.instances n) t)
@@ -76,13 +76,12 @@ fun benchmark_queries net_list =
       timer "Q: generalisations existing term"
         (fn (t,n) => map (Index.generalisations n) t)
         (term_in_net),
+      timer "Q: variants non-existing term"
+        (fn (t,n) => map (Index.variants n) t)
+        (term_not_in_net),
       timer "Q: unifiables existing term"
         (fn (t,n) => map (Index.unifiables n) t)
-        (term_in_net)
-      (*,
-      timer "Q: lookup non-existing term"
-        (fn (t,n) => map (Index.lookup n) t)
-        (term_not_in_net),
+        (term_in_net),
       timer "Q: instances non-existing term"
         (fn (t,n) => map (Index.instances n) t)
         (term_not_in_net),
@@ -92,7 +91,6 @@ fun benchmark_queries net_list =
       timer "Q: unifiables non-existing term"
         (fn (t,n) => map (Index.unifiables n) t)
         (term_not_in_net)
-      *)
       ]
   end
 

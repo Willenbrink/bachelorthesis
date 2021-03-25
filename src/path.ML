@@ -51,7 +51,7 @@ val empty = (0, [], empty_node);
 
 
 (*** Retrieval functions ***)
-datatype query_type = Lookup | Generalisations | Instances | Unifiables
+datatype query_type = Variants | Generalisations | Instances | Unifiables
 datatype 'a term_set = List of 'a list
                      | Intersection of 'a term_set list
                      | Union of 'a term_set list
@@ -84,12 +84,12 @@ fun query query_type term (Node (con,tree)) =
   let
     fun symbols sym = Stab.lookup_list con sym |> List
     fun  handle_var () = case query_type of
-        Lookup => symbols VarS
+        Variants => symbols VarS
       | Instances => NoConstraint
       | Generalisations => symbols VarS
       | Unifiables => NoConstraint
     fun handle_sym sym = case query_type of
-        Lookup => symbols sym
+        Variants => symbols sym
       | Instances => symbols sym
       | Generalisations => Union [symbols VarS, symbols sym]
       | Unifiables => Union [symbols VarS, symbols sym]
@@ -105,7 +105,7 @@ fun query query_type term (Node (con,tree)) =
     fun all_args_var args =
 (*      fold (fn x => fn acc => case strip_comb x |> fst of (Var _) => acc | _ => false) args true *) false
     fun handle_func func args = case query_type of
-        Lookup => query_args func args
+        Variants => query_args func args
       | Instances =>
           (* Shortcut if all args are variables *)
           if all_args_var args
@@ -131,7 +131,7 @@ fun query_wrapper query_type t (index as (_, _, node)) =
   |> map snd
   handle NoConstraint_exn => content index
 
-fun lookup tree t = query_wrapper Lookup t tree
+fun variants tree t = query_wrapper Variants t tree
 fun instances tree t = query_wrapper Instances t tree
 fun generalisations tree t = query_wrapper Generalisations t tree
 fun unifiables tree t = query_wrapper Unifiables t tree
@@ -167,7 +167,7 @@ fun insert eq_v (t,v) (index as (id, values, Node (con,tree)) : 'a T) =
             val tree = map_child ins (symbol_of_term func,args) tree
           in Node (con, tree) end
     val values =
-      if member eq_v (lookup index t) v
+      if member eq_v (variants index t) v
       then raise INSERT
       else 
       AList.map_default (Term.aconv_untyped) (t,[])

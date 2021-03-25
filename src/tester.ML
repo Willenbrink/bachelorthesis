@@ -95,14 +95,14 @@ val test_modifying = [ (* Tests functions that modify the net: insert and delete
 val test_queries = [
   check (fn (t,n) => @{make_string} (t, con n) |> Pretty.str) (term_in_net_gen def_net_gen)
     "variants includes the queried term"
-    (fn (t,n) => member eq (Index.lookup n t) t),
+    (fn (t,n) => member eq (Index.variants n t) t),
   (* variants argument-term being included together with the subset condition implies
    that the other queries include the passed term too *)
   check (fn (t,n) => @{make_string} (t, con n) |> Pretty.str) (term_in_net_gen def_net_gen)
     "lookup \<subseteq> generalisations, instances and unifiables"
-    (fn (t,n) => subset eq (Index.lookup n t, Index.generalisations n t)
-         andalso subset eq (Index.lookup n t, Index.instances n t)
-         andalso subset eq (Index.lookup n t, Index.unifiables n t)),
+    (fn (t,n) => subset eq (Index.variants n t, Index.generalisations n t)
+         andalso subset eq (Index.variants n t, Index.instances n t)
+         andalso subset eq (Index.variants n t, Index.unifiables n t)),
   check (fn (t,n) => @{make_string} (t, con n) |> Pretty.str) (term_in_net_gen def_net_gen)
     "generalisation \<subseteq> unifiables"
     (fn (t,n) => subset eq (Index.generalisations n t, Index.unifiables n t)),

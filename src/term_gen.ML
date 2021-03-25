@@ -50,7 +50,7 @@ fun term_gen_def size r =
 fun term_ground num_ids depth argr =
   term_gen (1,0,0) num_ids (fn (h,i) => h >= depth) argr
 fun term_var_reuse num_ids depth argr =
-  term_gen (0,10,1) num_ids (fn (h,i) => h >= depth) argr
+  term_gen (0,100,10) num_ids (fn (h,i) => h >= depth) argr
 fun term_with_var num_ids var depth argr =
   term_gen (0,100,var) num_ids (fn (h,i) => h >= depth) argr
 

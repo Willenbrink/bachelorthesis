@@ -61,7 +61,6 @@ fun print_table name show_values ((xlabels, ylabels, table)) =
     fun write_cell (xlabel, values) acc = (show_values values |> pad) ^ acc
     fun write_row (ylabel,row) acc =
       acc ^ "\n" ^ (fold_rev write_cell row ("\t " ^ concat ylabel))
-      
   in
     fold_rev (fn tag => fn acc => pad tag ^ acc) xlabels' ("    " ^ name)
     |> fold write_row table

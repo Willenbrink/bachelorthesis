@@ -20,7 +20,7 @@ fun delete test (t) table =
   handle TT.UNDEF _ => raise DELETE
 fun delete_safe test (t) table = delete test (t) table handle DELETE => table
 
-fun lookup t x = case TT.lookup t x of NONE => [] | SOME xs => xs
+fun variants t x = case TT.lookup t x of NONE => [] | SOME xs => xs
 fun generalisations t x = raise Fail "UNDEFINED"
 fun instances t x = raise Fail "UNDEFINED"
 fun unifiables t x = raise Fail "UNDEFINED"

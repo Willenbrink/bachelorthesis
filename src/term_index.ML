@@ -12,8 +12,8 @@ sig
     exception DELETE
     val delete: ('a -> bool) -> term -> 'a T -> 'a T
     val delete_safe: ('a -> bool) -> term -> 'a T -> 'a T
-    (* TODO variants *)
-    val lookup: 'a T -> term -> 'a list
+
+    val variants: 'a T -> term -> 'a list
     val generalisations: 'a T -> term -> 'a list
     val instances: 'a T -> term -> 'a list
     val unifiables: 'a T -> term -> 'a list

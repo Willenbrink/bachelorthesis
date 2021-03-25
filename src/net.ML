@@ -126,16 +126,16 @@ fun delete_safe eq entry net = delete eq entry net handle DELETE => net;
 
 (*** Retrieval functions for discrimination nets ***)
 
-fun lookup_aux net keys = case (net,keys) of
+fun variants_aux net keys = case (net,keys) of
     (Leaf xs, []) => xs
   | (Leaf _, (_ :: _)) => [] (*non-empty keys and empty net*)
-  | (Net {comb, ...}, (CombK :: keys)) => lookup_aux comb keys
-  | (Net {var, ...}, (VarK :: keys)) => lookup_aux var keys
+  | (Net {comb, ...}, (CombK :: keys)) => variants_aux comb keys
+  | (Net {var, ...}, (VarK :: keys)) => variants_aux var keys
   | (Net {atoms, ...}, (AtomK a :: keys)) => (case Symtab.lookup atoms a of
-        SOME net => lookup_aux net keys
+        SOME net => variants_aux net keys
         | NONE => [])
 (*Return the list of items at the given node, [] if no such node*)
-fun lookup net t = lookup_aux net (key_of_term t)
+fun variants net t = variants_aux net (key_of_term t)
 
 
 (*Skipping a term in a net.  Recursively skip 2 levels if a combination*)
