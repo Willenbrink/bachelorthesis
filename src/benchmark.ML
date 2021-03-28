@@ -22,7 +22,7 @@ fun benchmark_basic net_list =
         (term_not_in_net),
       timer "Delete terms"
         (fn (terms,net) => fold (fn t => Index.delete (curry eq t) t) terms net)
-        (map (fn n => Gen.lift (Index.content n, n)) net_list)
+        (term_in_net)
     ]
   end               
 
@@ -34,12 +34,10 @@ fun benchmark_variants net_list =
     [
       timer "Q: variants existing term"
         (fn (t,n) => map (Index.variants n) t)
-        (term_in_net)
-      (*
+        (term_in_net),
       timer "Q: variants non-existing term"
         (fn (t,n) => map (Index.variants n) t)
         (term_not_in_net)
-      *)
     ]
   end
 

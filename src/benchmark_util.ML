@@ -65,12 +65,11 @@ fun print_table name show_values ((xlabels, ylabels, table)) =
   let
     val xsize = 8
     fun pad x = StringCvt.padLeft #" " xsize ("  " ^ x)
-    fun write_cell (i,(xlabel, values)) =
-      if nth xlabels i = xlabel (* Sanity check *)
-      then (show_values values |> pad)
-      else raise Fail "Incorrect label order"
+
+    val longest_row = map (snd #> length) table |> sort_distinct int_ord |> rev |> hd
+    fun write_cell row i = (show_values ((nth row i |> snd) handle Subscript => []) |> pad)
     fun write_row (ylabel,row) =
-      fold_rev (curry op ^) (map_index write_cell row) ("\t " ^ string_of_tag ylabel)
+      fold_rev (curry op ^) (map (write_cell row) (0 upto (longest_row - 1))) ("\t " ^ string_of_tag ylabel)
   in
     fold_rev (fn tag => fn acc => pad (string_of_tag tag) ^ acc) xlabels ("    " ^ name)
     |> fold (fn x => fn acc => acc ^ "\n" ^ write_row x) table

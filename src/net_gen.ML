@@ -31,7 +31,7 @@ fun terms_not_in_net_gen amount net_gen r = (* Returns (term,net) where term is 
   let
     val (net,r) = G.filter_bounded 100 (fn n => Index.content n <> []) net_gen r
     val (con,r) = G.shuffle (Index.content net) r
-    val terms = take amount con
+    val terms = take (amount div 2) con
     val net = fold (fn t => Index.delete (curry eq t) t) terms net
   in ((terms,net),r) end
 

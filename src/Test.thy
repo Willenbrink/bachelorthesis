@@ -88,7 +88,7 @@ fun gen_seeds seed sizes =
 
 val sizes =
   [(1000,10),(1000,30),(1000,50),(1000,100),(100,200),(100,500),(10,1000),(10,5000)]
-  |> map (fn (x,y) => (x div 500, y))
+  |> map (fn (x,y) => (x div 100, y))
   (*
   *) (* For testing runtime before wasting an hour *)
   |> gen_seeds (Random.deterministic_seed 1)
@@ -130,29 +130,6 @@ fun bench tag_index (net_gen : int -> term Generator.gen -> 'a Generator.gen) be
 \<close>
 
 ML \<open>
-structure Index = PTT
-structure NG = Net_Gen(Index)
-structure Gen = Generator
-fun benchmark_basic net_list =
-  let
-    
-    fun terms_not_in_net_gen amount net_gen r = (* Returns (term,net) where term is guaranteed to not be in the net *)
-      let
-        val (net,r) = G.filter_bounded 100 (fn n => Index.content n <> []) net_gen r
-        val (con,r) = G.shuffle (Index.content net) r
-        val terms = take amount con
-        val net = fold (fn t => Index.delete (curry eq t) t) terms net
-      in ((terms,net),r) end
-    val term_not_in_net = map (fn n => terms_not_in_net_gen (1 * (Index.content n |> length)) (Gen.lift n)) net_list
-  in
-    timer "Insert terms"
-        (fn (terms,net) => fold (fn term => Index.insert eq (term,term)) terms net)
-        (term_not_in_net)
-end
-val test = benchmark_basic [PTTBench.index_gen 1000 (term_with_var 1000 10 depth argr) (Random.new ()) |> fst]
-\<close>
-
-ML \<open>
 val dn_bench = bench (Index "DN") NBench.index_gen (fn ns => NBench.benchmark_basic ns @ NBench.benchmark_queries ns)
 val pi_bench = bench (Index "PI_") PBench.index_gen (fn ns => PBench.benchmark_basic ns @ PBench.benchmark_queries ns)
 val pitt_bench = bench (Index "PITT") PTTBench.index_gen (fn ns => PTTBench.benchmark_basic ns @ PTTBench.benchmark_queries ns)
@@ -172,15 +149,17 @@ val _ =
 
 fun gc () = ML_Heap.full_gc ()
 ;ML_Heap.share_common_data (); gc ();
-val benchmarks =
+val (timing, benchmarks) = Timing.timing (fn benches =>
   fold (fn b => fn acc => (gc (); b gens sizes :: acc)) benches []
   |> rev
-  |> flat
+  |> flat)
+  benches
 ;fold (fn x => fn acc => x ^ "\n" ^ acc) (map (@{make_string}) benchmarks) ""
 |> writeln
 \<close>
 
 ML \<open>
+val () = writeln (@{make_string} timing)
 val x = benchmarks
       |> filter (fn (t,_) => forall (fn filter_tag => exists_supertag (filter_tag,t)) [Index "PI", Test "unif", Gen "", Size "1000"])
 fun compare name x_label y_label selection =
