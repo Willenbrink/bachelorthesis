@@ -119,13 +119,13 @@ val gens = gen_distinct @ gen_var
 fun bench tag_index (net_gen : int -> term Generator.gen -> 'a Generator.gen) benchmark gens sizes =
   cross gens sizes
   |> maps (fn ((tag_gen,term_gen),(size,seeds)) =>
-      map (fn r => net_gen size (term_gen size) r |> fst) seeds
+      map (fn r => (net_gen size (term_gen size) r |> fst, term_gen size)) seeds
        |> benchmark
        |> map (fn (tag_test, res) => ([
               tag_test,
               tag_index,
               tag_gen,
-              Size ("Size: " ^ @{make_string} size ^ " Runs: " ^ @{make_string} (length seeds))
+              Size ("S " ^ @{make_string} size ^ "-R " ^ @{make_string} (length seeds))
             ], res)))
 \<close>
 
@@ -165,16 +165,40 @@ val x = benchmarks
 fun compare name x_label y_label selection =
   table benchmarks (print_values selection) name x_label y_label
 ;
-;compare "Unifiables" (Index "") (Size "") [Test "unif", Gen "MV"]
+\<close>
+
+ML_command \<open>
+(* Table 1: Queries over Vars *)
+;compare "Variants over Vars" (Index "") (Gen "V") [Test "variants", Size ""]
+;compare "Instances over Vars" (Index "") (Gen "V") [Test "instance", Size ""]
+;compare "Generalisations over Vars" (Index "") (Gen "V") [Test "general", Size ""]
+;compare "Unifiables over Vars" (Index "") (Gen "V") [Test "unif", Size ""]
+\<close>
+
+ML_command \<open>
+(* Table 2: Variants over Reuse *)
+;compare "Variants over Reuse" (Gen "R") (Index "") [Test "variants", Size ""]
+\<close>
+
+ML_command \<open>
+(* Table 3: Queries and Gen MV over Size *)
+;compare "Queries over Size" (Size "") (Index "") [Test "Q:", Gen "MV"]
+(* Table 4: Insert *)
+;compare "Insert over Size" (Size "") (Index "") [Test "Insert", Gen "MV"]
+(* Table 5: Delete *)
+;compare "Delete over Size" (Size "") (Index "") [Test "Delete", Gen "MV"]
+(* Table 6: Content *)
+;compare "Content over Size" (Size "") (Index "") [Test "Content", Gen "MV"]
+(* Table 7: Queries: Contained vs noncontained *)
+;compare "Variants: Contained vs noncontained" (Test "variants") (Index "") [Gen "MV", Size ""]
+;compare "instances: Contained vs noncontained" (Test "instances") (Index "") [Gen "MV", Size ""]
+;compare "general: Contained vs noncontained" (Test "general") (Index "") [Gen "MV", Size ""]
+;compare "unifiab: Contained vs noncontained" (Test "unifiab") (Index "") [Gen "MV", Size ""]
+(* Table 8:  *)
 ;compare "All Indices sum of all sizes" (Index "") (Test "") [Gen "LV", Size ""]
 ;compare "Path Indexing" (Gen "V") (Test "Q:") [Index "PI_", Size ""]
 ;compare "Discrimination Net" (Gen "") (Test "") [Index "DN", Size ""]
 ;compare "Termtable" (Gen "") (Test "") [Index "TT_", Size ""]
-;compare "Unifiables over Reuse" (Gen "R") (Index "") [Test "unif", Size ""]
-;compare "Unifiables over Variables" (Gen "V") (Index "") [Test "unif", Size ""]
-;compare "Lookup over Vars" (Gen "V") (Index "") [Test "lookup", Size ""]
-;compare "Instances over Vars" (Gen "V") (Index "") [Test "instance", Size ""]
-;compare "Generalisations over Vars" (Gen "V") (Index "") [Test "general", Size ""]
 (* Expectation:
 More Reuse \<rightarrow> Better DN, Worse PI
 More Vars \<rightarrow> Better PI, Worse DN (for Instance and Unifiables)

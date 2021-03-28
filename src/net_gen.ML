@@ -27,12 +27,11 @@ fun index_gen num_term term_gen r =
         in (Index.insert_safe eq (term,term) base,r) end
   in  aux num_term r end
 
-fun terms_not_in_net_gen amount net_gen r = (* Returns (term,net) where term is guaranteed to not be in the net *)
+fun terms_not_in_net_gen t amount net_gen r = (* Returns (term,net) where term is guaranteed to not be in the net *)
   let
-    val (net,r) = G.filter_bounded 100 (fn n => Index.content n <> []) net_gen r
-    val (con,r) = G.shuffle (Index.content net) r
-    val terms = take (amount div 2) con
-    val net = fold (fn t => Index.delete (curry eq t) t) terms net
+    val (net,r) = net_gen r
+    val con = Index.content net
+    val (terms,r) = G.list (G.lift amount) (G.filter (fn t => not (member Term.aconv_untyped con t)) t) r
   in ((terms,net),r) end
 
 fun terms_in_net_gen amount net_gen r = (* Returns (term,net) where term is guaranteed to be in the net *)
