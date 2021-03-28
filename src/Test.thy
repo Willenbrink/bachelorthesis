@@ -69,10 +69,10 @@ declare [[spec_check_max_success = 100]]
 ML_command \<open>
 (* Index tests *)
 val tests = [
-  ("Path", PathTest.test),
-  ("PathTT", PathTTTest.test),
-  ("Net", NetTest.test),
-  ("TT", TTTest.test)
+  ("Path", PathTest.test_all),
+  ("PathTT", PathTTTest.test_all),
+  ("Net", NetTest.test_all),
+  ("TT", TTTest.test (TTTest.test_util @ TTTest.test_modifying))
 ];
 
 fold (fn (name,test) => fn r => (writeln name; test @{context} r)) tests (Random.new ())
@@ -88,7 +88,7 @@ fun gen_seeds seed sizes =
 
 val sizes =
   [(1000,10),(1000,30),(1000,50),(1000,100),(100,200),(100,500),(10,1000),(10,5000)]
-  |> map (fn (x,y) => (x div 100, y))
+  |> map (fn (x,y) => (x div 500, y))
   (*
   *) (* For testing runtime before wasting an hour *)
   |> gen_seeds (Random.deterministic_seed 1)
@@ -116,9 +116,6 @@ val gen_var =
 
 val gens = gen_distinct @ gen_var
 
-fun cross xs ys =
-  maps (fn x => map (fn y => (x,y)) ys) xs
-
 fun bench tag_index (net_gen : int -> term Generator.gen -> 'a Generator.gen) benchmark gens sizes =
   cross gens sizes
   |> maps (fn ((tag_gen,term_gen),(size,seeds)) =>
@@ -130,6 +127,29 @@ fun bench tag_index (net_gen : int -> term Generator.gen -> 'a Generator.gen) be
               tag_gen,
               Size ("Size: " ^ @{make_string} size ^ " Runs: " ^ @{make_string} (length seeds))
             ], res)))
+\<close>
+
+ML \<open>
+structure Index = PTT
+structure NG = Net_Gen(Index)
+structure Gen = Generator
+fun benchmark_basic net_list =
+  let
+    
+    fun terms_not_in_net_gen amount net_gen r = (* Returns (term,net) where term is guaranteed to not be in the net *)
+      let
+        val (net,r) = G.filter_bounded 100 (fn n => Index.content n <> []) net_gen r
+        val (con,r) = G.shuffle (Index.content net) r
+        val terms = take amount con
+        val net = fold (fn t => Index.delete (curry eq t) t) terms net
+      in ((terms,net),r) end
+    val term_not_in_net = map (fn n => terms_not_in_net_gen (1 * (Index.content n |> length)) (Gen.lift n)) net_list
+  in
+    timer "Insert terms"
+        (fn (terms,net) => fold (fn term => Index.insert eq (term,term)) terms net)
+        (term_not_in_net)
+end
+val test = benchmark_basic [PTTBench.index_gen 1000 (term_with_var 1000 10 depth argr) (Random.new ()) |> fst]
 \<close>
 
 ML \<open>
@@ -160,30 +180,7 @@ val benchmarks =
 |> writeln
 \<close>
 
-ML_command \<open>
-fun print_values filter_tags values =
-  let
-(*
-    val filter_tags =
-      if eq_tag (Size "", filter_tags)
-      then filter_tags
-      else (Size "") :: filter_tags
-*)
-    val values' =
-      values
-      |> filter (fn (t,_) => forall (fn filter_tag => exists_supertag (filter_tag,t)) filter_tags)
-    val () =
-      values'
-      |> map fst
-      |> map (fn val_tags => filter_out (fn vt => exists (fn ft => is_subtag ft vt) filter_tags) val_tags)
-      |> distinct (op =)
-      |> (fn x => if length x > 1 then raise Fail ("Multiple values: " ^ @{make_string} x ^ "\n remaining of: " ^ @{make_string} values) else ())
-  in
-    values'
-    |> map snd
-    |> (fn [] => NONE | list => fold (curry op Time.+) list (Time.zeroTime) |> SOME)
-    |> apply_def (@{make_string}) "N/A"
-  end
+ML \<open>
 val x = benchmarks
       |> filter (fn (t,_) => forall (fn filter_tag => exists_supertag (filter_tag,t)) [Index "PI", Test "unif", Gen "", Size "1000"])
 fun compare name x_label y_label selection =

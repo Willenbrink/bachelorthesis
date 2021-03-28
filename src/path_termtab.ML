@@ -168,23 +168,15 @@ fun query query_type term (Node symboltab) =
       | Generalisations => Union [content VarS, content sym]
       | Unifiables => Union [content VarS, content sym]
     fun query_args func args =
-      map2 (query query_type) args (arg_symboltabs func)
-      |> Intersection
-    fun all_args_var args = false
-      (*fold (fn x => fn acc => case strip_comb x |> fst of (Var _) => acc | _ => false) args true *)
+      case arg_symboltabs func of
+        [] => List []
+      | xs => map2 (query query_type) args xs
+              |> Intersection
     fun handle_func func args = case query_type of
         Variants => query_args func args
-      | Instances =>
-          (* Shortcut if all arguments are variables *)
-          if all_args_var args
-          then content func
-          else query_args func args
+      | Instances => query_args func args
       | Generalisations => Union [content VarS, query_args func args]
-      | Unifiables =>
-          (* Shortcut if all args are variables *)
-          if all_args_var args
-          then content func
-          else Union [content VarS, query_args func args]
+      | Unifiables => Union [content VarS, query_args func args]
   in
     case strip_comb term of            
         (Var _,_) => handle_var ()

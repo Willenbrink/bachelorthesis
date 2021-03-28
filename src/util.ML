@@ -7,6 +7,8 @@ fun apply_def f def x = case x of
     NONE => def
   | SOME v => f v
 
+fun cross xs ys = maps (fn x => map (fn y => (x,y)) ys) xs
+
 fun lookup_all eq list value =
   filter (curry eq value o fst) list
   |> map snd

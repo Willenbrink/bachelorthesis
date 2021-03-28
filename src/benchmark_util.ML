@@ -36,40 +36,74 @@ fun get_table benchmark (x : tag) (y : tag) =
       |> map fst
       |> map (filter (is_subtag tag))
       |> filter_out null
+      |> map the_single
       |> distinct (op =)
-    val xlabels : tag list list = filter_labels x
-    val ylabels : tag list list = filter_labels y
-    val matrix =
+    (* Get the list of x/y labels. Each label is a single tag. *)
+    val xlabels : tag list = filter_labels x
+    val ylabels : tag list = filter_labels y
+
+    fun filter_tag tag table = filter (fn (val_tags, _) => exists_supertag (tag, val_tags)) table
+    val table =
       map (fn y =>
-        (y,maps (fn x =>
-          benchmark
-          |> filter (fn (vt,_) => forall (fn t => exists_supertag (t,vt)) (x@y))
-          |> map (fn (t,v) => ((x@y), (filter_out (fn t => exists (is_subtag t) (x@y)) t,v)))
-          |> AList.coalesce (eq_set (op =))
-          |> map (fn (_,v) => (x,v))
-          )
-        xlabels))
+        let val row = maps (fn x =>
+            benchmark
+            |> filter_tag y
+            |> filter_tag x
+            (* Store tests addressed by identical tags in one list *)
+            |> map (fn (val_tags,v) => ([x, y], (filter_out (fn t => exists_supertag (t,[x, y])) val_tags,v)))
+            |> AList.coalesce (eq_set (op =))
+            |> map (fn (_, v) => (x, v))
+            )
+            xlabels
+        in
+        (y, row)
+        end)
       ylabels
-  in (xlabels,ylabels,matrix) end
+  in (xlabels, ylabels, table) end
 
 fun print_table name show_values ((xlabels, ylabels, table)) =
   let
-    fun concat (tag::tags) = fold (fn x => fn y => string_of_tag x ^ "-" ^ y) tags (string_of_tag tag)
-    val xlabels' = map concat xlabels
     val xsize = 8
     fun pad x = StringCvt.padLeft #" " xsize ("  " ^ x)
-    fun write_cell (xlabel, values) acc = (show_values values |> pad) ^ acc
-    fun write_row (ylabel,row) acc =
-      acc ^ "\n" ^ (fold_rev write_cell row ("\t " ^ concat ylabel))
+    fun write_cell (i,(xlabel, values)) =
+      if nth xlabels i = xlabel (* Sanity check *)
+      then (show_values values |> pad)
+      else raise Fail "Incorrect label order"
+    fun write_row (ylabel,row) =
+      fold_rev (curry op ^) (map_index write_cell row) ("\t " ^ string_of_tag ylabel)
   in
-    fold_rev (fn tag => fn acc => pad tag ^ acc) xlabels' ("    " ^ name)
-    |> fold write_row table
+    fold_rev (fn tag => fn acc => pad (string_of_tag tag) ^ acc) xlabels ("    " ^ name)
+    |> fold (fn x => fn acc => acc ^ "\n" ^ write_row x) table
     |> writeln
   end
 
 fun table benchmark show name x y =
   get_table benchmark x y
   |> print_table name show
+
+fun print_values filter_tags values =
+  let
+(*
+    val filter_tags =
+      if eq_tag (Size "", filter_tags)
+      then filter_tags
+      else (Size "") :: filter_tags
+*)
+    val values' =
+      values
+      |> filter (fn (t,_) => forall (fn filter_tag => exists_supertag (filter_tag,t)) filter_tags)
+    val () =
+      values'
+      |> map fst
+      |> map (fn val_tags => filter_out (fn vt => exists (fn ft => is_subtag ft vt) filter_tags) val_tags)
+      |> distinct (op =)
+      |> (fn x => if length x > 1 then raise Fail ("Multiple values: " ^ @{make_string} x ^ "\n remaining of: " ^ @{make_string} values) else ())
+  in
+    values'
+    |> map snd
+    |> (fn [] => NONE | list => fold (curry op Time.+) list (Time.zeroTime) |> SOME)
+    |> apply_def (@{make_string}) "N/A"
+  end
 
 fun print_timing timing = #elapsed (timing : Timing.timing) |> Time.toReal |> print_real
 

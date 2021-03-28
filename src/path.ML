@@ -102,21 +102,11 @@ fun query query_type term (Node (con,tree)) =
       in
       Intersection (map_index arg_to_terms args)
       end
-    fun all_args_var args =
-(*      fold (fn x => fn acc => case strip_comb x |> fst of (Var _) => acc | _ => false) args true *) false
     fun handle_func func args = case query_type of
         Variants => query_args func args
-      | Instances =>
-          (* Shortcut if all args are variables *)
-          if all_args_var args
-          then symbols func
-          else query_args func args
+      | Instances => query_args func args
       | Generalisations => Union [symbols VarS, query_args func args]
-      | Unifiables =>
-          (* Shortcut if all args are variables *)
-          if all_args_var args
-          then symbols func
-          else Union [symbols VarS, query_args func args]
+      | Unifiables => Union [symbols VarS, query_args func args]
   in
   case strip_comb term of
     (Var _,_) => handle_var ()

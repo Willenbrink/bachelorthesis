@@ -30,6 +30,14 @@ fun term_in_net_gen net_gen r =
   terms_in_net_gen 1 net_gen r
   |> (fn ((ts,n),r) => ((if null ts then @{term "x"} else hd ts, n), r))
 
+fun term_not_in_net_gen net_gen r = (* Returns (term,net) where term is guaranteed to not be in the net *)
+  let
+    val (net,r) = Gen.filter_bounded 100 (fn n => Index.content n <> []) net_gen r
+    val (con,r) = Gen.shuffle (Index.content net) r
+    val t = hd con
+    val net = Index.delete (curry eq t) t net
+  in ((t,net),r) end
+
 val test_util = [ (* Tests utilities like empty, is_empty and content *)
   check_base (Gen.unit)
     "Content of empty net is empty list"
@@ -84,12 +92,12 @@ val test_modifying = [ (* Tests functions that modify the net: insert and delete
      end),
   
   (* Combination *)
-  check_prop_base (Gen.zip def_term_gen def_net_gen)
+  check_prop_base (term_not_in_net_gen def_net_gen)
     "Insertion and deletion of new term returns identical net"
     ((fn (t,n) => not (mem t n)) ==> (fn (t,n) => con n = con (ins t n |> del t))),
   check_prop_base (term_in_net_gen def_net_gen)
     "Deletion and insertion of contained term returns identical net"
-    ((fn (t,n) => not (mem t n)) ==> (fn (t,n) => con n = con (ins t n |> del t)))
+    ((fn (t,n) => mem t n) ==> (fn (t,n) => con n = con (del t n |> ins t)))
 ]
 
 val test_queries = [
@@ -123,6 +131,33 @@ val test_queries = [
     (fn ((t,u),n) => subset eq ([t,u],Index.unifiables (ins' u n |> ins' t) t))
 ]
 
+val test_queries_non_existing = [
+  check (fn (t,n) => @{make_string} (t, con n) |> Pretty.str)
+    (term_not_in_net_gen def_net_gen)
+    "variants of nonexisting term succeeds"
+    (fn (t,n) => (
+      Index.variants n t;
+      true)),
+  check (fn (t,n) => @{make_string} (t, con n) |> Pretty.str)
+    (term_not_in_net_gen def_net_gen)
+    "instances of nonexisting term succeeds"
+    (fn (t,n) => (
+      Index.instances n t;
+      true)),
+  check (fn (t,n) => @{make_string} (t, con n) |> Pretty.str)
+    (term_not_in_net_gen def_net_gen)
+    "generalisations of nonexisting term succeeds"
+    (fn (t,n) => (
+      Index.generalisations n t;
+      true)),
+  check (fn (t,n) => @{make_string} (t, con n) |> Pretty.str)
+    (term_not_in_net_gen def_net_gen)
+    "unifiables of nonexisting term succeeds"
+    (fn (t,n) => (
+      Index.unifiables n t;
+      true))
+]
+
 val test_hol = [
   check_base Gen.unit
     "HOL: Distinction between Var x and \\x. f x"
@@ -133,8 +168,9 @@ val test_hol = [
       in Index.generalisations net t = [t] end)
 ]
   
-val tests = test_util @ test_modifying @ test_queries (* @ test_hol *)
-fun test ctxt r = Lecker.test_group ctxt r tests
+val tests = test_util @ test_modifying @ test_queries @ test_queries_non_existing (* @ test_hol *)
+fun test tests ctxt r = Lecker.test_group ctxt r tests
+fun test_all ctxt r = test tests ctxt r
 
 fun print_distribution term_gen net_gen ctxt r = Lecker.test_group ctxt r [
   check_base term_gen

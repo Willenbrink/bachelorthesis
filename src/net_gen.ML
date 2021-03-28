@@ -32,7 +32,7 @@ fun terms_not_in_net_gen amount net_gen r = (* Returns (term,net) where term is 
     val (net,r) = G.filter_bounded 100 (fn n => Index.content n <> []) net_gen r
     val (con,r) = G.shuffle (Index.content net) r
     val terms = take amount con
-    val net = fold (fn t => Index.delete (curry eq t) t) (take (length con div 10) con) net
+    val net = fold (fn t => Index.delete (curry eq t) t) terms net
   in ((terms,net),r) end
 
 fun terms_in_net_gen amount net_gen r = (* Returns (term,net) where term is guaranteed to be in the net *)
