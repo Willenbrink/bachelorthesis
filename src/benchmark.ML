@@ -1,6 +1,7 @@
 functor Benchmark (Index : TERM_INDEX) =
 struct
 
+open Term_Gen
 structure Gen = Generator
 structure NG = Net_Gen(Index)
 val index_gen = NG.index_gen
@@ -34,6 +35,13 @@ fun benchmark_variants net_list =
       timer "Q: variants existing term"
         (fn (t,n) => map (Index.variants n) t)
         (term_in_net),
+      timer "Q: variants of generalised term. Unintersesting"
+        (fn (t,n) => map (Index.variants n) t)
+        (map (fn g => fn r =>
+          let val ((t,n),r) = g r
+              val (t,r) = fold (fn t => fn (acc,r) => replace_subterm (var_gen ~1) t r |>> (fn x => x :: acc)) t ([],r)
+          in ((t,n),r) end ) term_in_net
+        ),
       timer "Q: variants non-ex term"
         (fn (t,n) => map (Index.variants n) t)
         (term_not_in_net)
@@ -58,6 +66,34 @@ fun benchmark_queries net_list =
       timer "Q: unifiables existing term"
         (fn (t,n) => map (Index.unifiables n) t)
         (term_in_net),
+      timer "Q: variants of generalised term. Unintersesting"
+        (fn (t,n) => map (Index.variants n) t)
+        (map (fn g => fn r =>
+          let val ((t,n),r) = g r
+              val (t,r) = fold (fn t => fn (acc,r) => replace_subterm (var_gen ~1) t r |>> (fn x => x :: acc)) t ([],r)
+          in ((t,n),r) end ) term_in_net
+        ),
+      timer "Q: instances of generalised term"
+        (fn (t,n) => map (Index.instances n) t)
+        (map (fn g => fn r =>
+          let val ((t,n),r) = g r
+              val (t,r) = fold (fn t => fn (acc,r) => replace_subterm (var_gen ~1) t r |>> (fn x => x :: acc)) t ([],r)
+          in ((t,n),r) end ) term_in_net
+        ),
+      timer "Q: generalisations of generalised term. Unintersesting"
+        (fn (t,n) => map (Index.generalisations n) t)
+        (map (fn g => fn r =>
+          let val ((t,n),r) = g r
+              val (t,r) = fold (fn t => fn (acc,r) => replace_subterm (var_gen ~1) t r |>> (fn x => x :: acc)) t ([],r)
+          in ((t,n),r) end ) term_in_net
+        ),
+      timer "Q: unifiables of generalised term"
+        (fn (t,n) => map (Index.unifiables n) t)
+        (map (fn g => fn r =>
+          let val ((t,n),r) = g r
+              val (t,r) = fold (fn t => fn (acc,r) => replace_subterm (var_gen ~1) t r |>> (fn x => x :: acc)) t ([],r)
+          in ((t,n),r) end ) term_in_net
+        ),
       timer "Q: variants non-ex term"
         (fn (t,n) => map (Index.variants n) t)
         (term_not_in_net),

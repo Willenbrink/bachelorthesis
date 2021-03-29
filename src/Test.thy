@@ -160,8 +160,6 @@ val (timing, benchmarks) = Timing.timing (fn benches =>
 
 ML \<open>
 val () = writeln (@{make_string} timing)
-val x = benchmarks
-      |> filter (fn (t,_) => forall (fn filter_tag => exists_supertag (filter_tag,t)) [Index "PI", Test "unif", Gen "", Size "1000"])
 fun compare name x_label y_label selection =
   table benchmarks (print_values selection) name x_label y_label
 ;
@@ -171,13 +169,16 @@ ML_command \<open>
 (* Table 1: Queries over Vars *)
 ;compare "Variants over Vars" (Index "") (Gen "V") [Test "variants", Size ""]
 ;compare "Instances over Vars" (Index "") (Gen "V") [Test "instance", Size ""]
-;compare "Generalisations over Vars" (Index "") (Gen "V") [Test "general", Size ""]
-;compare "Unifiables over Vars" (Index "") (Gen "V") [Test "unif", Size ""]
+;compare "Generalisations over Vars" (Index "") (Gen "V") [Test "generalisations", Size ""]
+;compare "Unifiables over Vars" (Index "") (Gen "V") [Test "unifiables", Size ""]
 \<close>
 
 ML_command \<open>
-(* Table 2: Variants over Reuse *)
-;compare "Variants over Reuse" (Gen "R") (Index "") [Test "variants", Size ""]
+(* Table 2: Queries over Reuse *)
+;compare "Variants over Reuse" (Index "") (Gen "R") [Test "variants", Size ""]
+;compare "Instances over Reuse" (Index "") (Gen "R") [Test "instance", Size ""]
+;compare "Generalisations over Reuse" (Index "") (Gen "R") [Test "generalisations", Size ""]
+;compare "Unifiables over Reuse" (Index "") (Gen "R") [Test "unifiables", Size ""]
 \<close>
 
 ML_command \<open>
@@ -189,12 +190,17 @@ ML_command \<open>
 ;compare "Delete over Size" (Size "") (Index "") [Test "Delete", Gen "MV"]
 (* Table 6: Content *)
 ;compare "Content over Size" (Size "") (Index "") [Test "Content", Gen "MV"]
-(* Table 7: Queries: Contained vs noncontained *)
-;compare "Variants: Contained vs noncontained" (Test "variants") (Index "") [Gen "MV", Size ""]
-;compare "instances: Contained vs noncontained" (Test "instances") (Index "") [Gen "MV", Size ""]
-;compare "general: Contained vs noncontained" (Test "general") (Index "") [Gen "MV", Size ""]
-;compare "unifiab: Contained vs noncontained" (Test "unifiab") (Index "") [Gen "MV", Size ""]
-(* Table 8:  *)
+\<close>
+
+ML_command \<open>
+(* Table 7: Queries: Contained, generalised vs noncontained *)
+;compare "Variants: Contained, generalised vs noncontained" (Test "variants") (Index "") [Gen "MV", Size ""]
+;compare "instances: Contained, generalised vs noncontained" (Test "instances") (Index "") [Gen "MV", Size ""]
+;compare "general: Contained, generalised vs noncontained" (Test "generalisations") (Index "") [Gen "MV", Size ""]
+;compare "unifiab: Contained, generalised vs noncontained" (Test "unifiables") (Index "") [Gen "MV", Size ""]
+\<close>
+
+ML_command \<open>
 ;compare "All Indices sum of all sizes" (Index "") (Test "") [Gen "LV", Size ""]
 ;compare "Path Indexing" (Gen "V") (Test "Q:") [Index "PI_", Size ""]
 ;compare "Discrimination Net" (Gen "") (Test "") [Index "DN", Size ""]

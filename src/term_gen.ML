@@ -66,7 +66,7 @@ fun term_with_var num_ids var depth argr =
     end
   in G.term_det sym_gen (([],[],[]), r) ||> snd end*)
 
-fun replace_subterm sym t r =
+fun replace_subterm_aux sym t r =
   let val (f,args) = Term.strip_comb t
       val (index,r) =  G.range_int (~1,length args - 1) r
       (* Generate two random values, pass r1 to rec-call, ignore returned r and return r2 instead.
@@ -75,21 +75,33 @@ fun replace_subterm sym t r =
   in
   if index = ~1
   then (Term.list_comb (sym r1 |> fst, args), r2)
-  else (Term.list_comb (f,nth_map index (fn t => replace_subterm sym t r1 |> fst) args), r2)
+  else (Term.list_comb (f,nth_map index (fn t => replace_subterm_aux sym t r1 |> fst) args), r2)
   end
+
+fun replace_subterm sym t r =
+  let val (f,args) = Term.strip_comb t
+      val (index,r) =  G.range_int (~1,length args - 1) r
+      (* Generate two random values, pass r1 to rec-call, ignore returned r and return r2 instead.
+         This simply avoids some annoyance with passing values around. *)
+      val (r1, r2) = Random.split r
+  in
+  if index = ~1
+  (* Never replace the top-level symbol unless necessary *)
+  then if null args then (Term.list_comb (sym r1 |> fst, args), r2) else replace_subterm sym t r
+  else (Term.list_comb (f,nth_map index (fn t => replace_subterm_aux sym t r1 |> fst) args), r2)
+  end
+
+fun var_gen suffix = G.map (add_aterm_name_suffix (string_of_int suffix)) (aterm 1 (0,0,1))
 
 fun term_instance_gen term_gen r =
   let
     val (base_term,r) = term_gen r
-    val (general_term,r) =
-      let val var_gen = G.map (add_aterm_name_suffix (string_of_int ~1)) (aterm 1 (0,0,1))
-      in replace_subterm var_gen base_term r end
+    val (general_term,r) = replace_subterm (var_gen ~1) base_term r
   in ((base_term, general_term), r) end
 
 fun term_unif_gen term_gen r =
   let
     val (base_term,r) = term_gen r
-    fun var_gen suffix = G.map (add_aterm_name_suffix (string_of_int suffix)) (aterm 1 (0,0,1))
     val (term1,r) = replace_subterm (var_gen ~1) base_term r
     val (term2,r) = replace_subterm (var_gen ~2) base_term r
   in ((term1, term2) ,r) end
