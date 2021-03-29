@@ -14,7 +14,13 @@ A substitution is a partial function $\rho : V \rightarrow T$. We denote by $t \
 Given two terms $t, u$, we say that $t$ is a generalisation of $u$ and $u$ a instance or specialization of $t$ if and only if there exists a substitution $\rho$ such that $t \rho = u$. Similarly, we call $t$ and $u$ unifiable and $\rho$ a unifier if $t \rho = u \rho$. It can be seen that whenever $t$ is a generalisation of $u$ they are also unifiable.
 
 \section{Lambda Calculus}
-\todo{Define lambda calculus}
+The set of terms $T$ of the untyped \lam -calculus is defined as follows:
+\begin{enumerate}
+  \item An infinite set $V$ of variables. Each variable is a term.
+  \item If $t$ is a term and $x$ is a variable, then $\lam x. t$ is a term. This is called an abstraction and represents a function on $x$.
+  \item If $t$ and $u$ are terms, then $t u$ is also a term. This is the application of the first argument to the second one.
+\end{enumerate}
+As we focus mainly on the embedding of first-order terms in \lam -terms, this syntactic definition is sufficient. For a more detailed introduction, see for example \cite{loader_notes_nodate}.
 
 \section{Isabelle}
 Isabelle is a generic interactive theorem prover supporting formal theories. By design, it uses a metalogic, called Isabelle/Pure, to embed other logics and provide a deduction framework. To do so, Isabelle/Pure uses a higher-order logic. The very basis of this metalogic are the \lam -terms within which the theorems and inference rules are embedded.
