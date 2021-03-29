@@ -103,14 +103,14 @@ fun test_single size = [
 val gen_distinct =
   let fun gen reuse size = term_var_reuse (Real.floor (Real.fromInt size * reuse)) depth argr
   in
-    [("NR", gen 10.0), ("LR", gen 1.0), ("MR", gen 0.1) , ("HR",gen 0.02)]
+    [("NR", gen 10.0), ("LR", gen 1.0), ("MR", gen 0.1) , ("HR",gen 0.01)]
     |> map (apfst Gen)
   end
 
 val gen_var =
   let fun gen var size = term_with_var size var depth argr
   in
-    [("NV", gen 0), ("LV", gen 3), ("MV", gen 10), ("HV", gen 30)]
+    [("NV", gen 0), ("LV", gen 1), ("MV", gen 3), ("HV", gen 10)]
     |> map (apfst Gen)
   end
 
@@ -167,43 +167,59 @@ fun compare name x_label y_label selection =
 
 ML_command \<open>
 (* Table 1: Queries over Vars *)
-;compare "Variants over Vars" (Index "") (Gen "V") [Test "variants", Size ""]
-;compare "Instances over Vars" (Index "") (Gen "V") [Test "instance", Size ""]
-;compare "Generalisations over Vars" (Index "") (Gen "V") [Test "generalisations", Size ""]
-;compare "Unifiables over Vars" (Index "") (Gen "V") [Test "unifiables", Size ""]
+;compare "Variants over Vars. Existing" (Index "") (Gen "V") [Test "variants of existing", Size ""]
+;compare "Instances over Vars. Generalised" (Index "") (Gen "V") [Test "instances of generalised", Size ""]
+;compare "Generalisations over Vars. Existing" (Index "") (Gen "V") [Test "generalisations of existing", Size ""]
+;compare "Unifiables over Vars. Generalised" (Index "") (Gen "V") [Test "unifiables of generalised", Size ""]
 \<close>
 
 ML_command \<open>
 (* Table 2: Queries over Reuse *)
-;compare "Variants over Reuse" (Index "") (Gen "R") [Test "variants", Size ""]
-;compare "Instances over Reuse" (Index "") (Gen "R") [Test "instance", Size ""]
-;compare "Generalisations over Reuse" (Index "") (Gen "R") [Test "generalisations", Size ""]
-;compare "Unifiables over Reuse" (Index "") (Gen "R") [Test "unifiables", Size ""]
+;compare "Variants over Reuse. Existing" (Index "") (Gen "R") [Test "variants of existing", Size ""]
+;compare "Instances over Reuse. Generalised" (Index "") (Gen "R") [Test "instances of generalised", Size ""]
+;compare "Generalisations over Reuse. Existing" (Index "") (Gen "R") [Test "generalisations of existing", Size ""]
+;compare "Unifiables over Reuse. Generalised" (Index "") (Gen "R") [Test "unifiables of generalised", Size ""]
 \<close>
 
 ML_command \<open>
-(* Table 3: Queries and Gen MV over Size *)
-;compare "variants over Size" (Size "") (Index "") [Test "variants", Gen "MV"]
-;compare "instance over Size" (Size "") (Index "") [Test "instance", Gen "MV"]
-;compare "generalisations over Size" (Size "") (Index "") [Test "generalisations", Gen "MV"]
-;compare "unifiables over Size" (Size "") (Index "") [Test "unifiables", Gen "MV"]
+(* Table 3.1: Queries and Gen MV over Size *)
+;compare "variants over Size. Existing MV" (Index "") (Size "") [Test "variants of existing", Gen "MV"]
+;compare "instance over Size. Generalised MV" (Index "") (Size "") [Test "instances of generalised", Gen "MV"]
+;compare "generalisations over Size. Existing MV" (Index "") (Size "") [Test "generalisations of existing", Gen "MV"]
+;compare "unifiables over Size. Generalised MV" (Index "") (Size "") [Test "unifiables of generalised", Gen "MV"]
+\<close>
+
+ML_command \<open>
+(* Table 3.2: Queries and Gen LV over Size *)
+;compare "variants over Size. Existing LV" (Index "") (Size "") [Test "variants of existing", Gen "LV"]
+;compare "instance over Size. Generalised LV" (Index "") (Size "") [Test "instances of generalised", Gen "LV"]
+;compare "generalisations over Size. Existing LV" (Index "") (Size "") [Test "generalisations of existing", Gen "LV"]
+;compare "unifiables over Size. Generalised LV" (Index "") (Size "") [Test "unifiables of generalised", Gen "LV"]
+\<close>
+
+ML_command \<open>
+(* Table 3.3: Queries and Gen NV over Size *)
+;compare "variants over Size. Existing NV" (Index "") (Size "") [Test "variants of existing", Gen "NV"]
+;compare "instance over Size. Generalised NV" (Index "") (Size "") [Test "instances of generalised", Gen "NV"]
+;compare "generalisations over Size. Existing NV" (Index "") (Size "") [Test "generalisations of existing", Gen "NV"]
+;compare "unifiables over Size. Generalised NV" (Index "") (Size "") [Test "unifiables of generalised", Gen "NV"]
 \<close>
 
 ML_command \<open>
 (* Table 4: Insert *)
-;compare "Insert over Size" (Size "") (Index "") [Test "Insert", Gen "MV"]
+;compare "Insert over Size" (Index "") (Size "") [Test "Insert", Gen "MV"]
 (* Table 5: Delete *)
-;compare "Delete over Size" (Size "") (Index "") [Test "Delete", Gen "MV"]
+;compare "Delete over Size" (Index "") (Size "") [Test "Delete", Gen "MV"]
 (* Table 6: Content *)
-;compare "Content over Size" (Size "") (Index "") [Test "Content", Gen "MV"]
+;compare "Content over Size" (Index "") (Size "") [Test "Content", Gen "MV"]
 \<close>
 
 ML_command \<open>
 (* Table 7: Queries: Contained, generalised vs noncontained *)
-;compare "Variants: Contained, generalised vs noncontained" (Test "variants") (Index "") [Gen "MV", Size ""]
-;compare "instances: Contained, generalised vs noncontained" (Test "instances") (Index "") [Gen "MV", Size ""]
-;compare "general: Contained, generalised vs noncontained" (Test "generalisations") (Index "") [Gen "MV", Size ""]
-;compare "unifiab: Contained, generalised vs noncontained" (Test "unifiables") (Index "") [Gen "MV", Size ""]
+;compare "Variants: Contained, generalised vs noncontained" (Index "") (Test "variants") [Gen "MV", Size ""]
+;compare "instances: Contained, generalised vs noncontained" (Index "") (Test "instances") [Gen "MV", Size ""]
+;compare "general: Contained, generalised vs noncontained" (Index "") (Test "generalisations") [Gen "MV", Size ""]
+;compare "unifiab: Contained, generalised vs noncontained" (Index "") (Test "unifiables") [Gen "MV", Size ""]
 \<close>
 
 ML_command \<open>
