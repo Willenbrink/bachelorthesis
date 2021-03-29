@@ -183,7 +183,13 @@ ML_command \<open>
 
 ML_command \<open>
 (* Table 3: Queries and Gen MV over Size *)
-;compare "Queries over Size" (Size "") (Index "") [Test "Q:", Gen "MV"]
+;compare "variants over Size" (Size "") (Index "") [Test "variants", Gen "MV"]
+;compare "instance over Size" (Size "") (Index "") [Test "instance", Gen "MV"]
+;compare "generalisations over Size" (Size "") (Index "") [Test "generalisations", Gen "MV"]
+;compare "unifiables over Size" (Size "") (Index "") [Test "unifiables", Gen "MV"]
+\<close>
+
+ML_command \<open>
 (* Table 4: Insert *)
 ;compare "Insert over Size" (Size "") (Index "") [Test "Insert", Gen "MV"]
 (* Table 5: Delete *)
