@@ -88,8 +88,8 @@ fun gen_seeds seed sizes =
 
 val sizes =
   [(1000,10),(1000,30),(1000,50),(1000,100),(100,200),(100,500),(10,1000),(10,5000)]
-  |> map (fn (x,y) => (x div 100, y))
   (*
+  |> map (fn (x,y) => (x div 100, y))
   *) (* For testing runtime before wasting an hour *)
   |> gen_seeds (Random.deterministic_seed 1)
 
