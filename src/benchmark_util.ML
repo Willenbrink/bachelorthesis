@@ -67,7 +67,13 @@ fun print_table name show_values ((xlabels, ylabels, table)) =
     fun pad x = StringCvt.padLeft #" " xsize ("  " ^ x)
 
     val longest_row = map (snd #> length) table |> sort_distinct int_ord |> rev |> hd
-    fun write_cell row i = (show_values ((nth row i |> snd) handle Subscript => []) |> pad)
+    fun write_cell row i =
+      let
+        val xlab = nth xlabels i
+        val cell = find_first (fn (x,v) => is_subtag x xlab) row
+      in
+      show_values (cell |> Option.valOf |> snd handle Option => []) |> pad
+      end
     fun write_row (ylabel,row) =
       fold_rev (curry op ^) (map (write_cell row) (0 upto (longest_row - 1))) ("\t " ^ string_of_tag ylabel)
   in
