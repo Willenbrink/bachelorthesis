@@ -18,6 +18,17 @@ Ersetzen durch TT weil schneller
 Usecase: Resolutionsbeweiser: Literal zu Termlist: Welcher Terme beinhaltet das Literal?
 Mehr Prosa, mehr Geschichte. Was sind Probleme, wie kann ich die lösen, nicht so distanziert. Mehr we. But what about variables? etc.
 
+Preliminaries:
+Was ist Isabelle
+typed lambda
+termgrammatik
+term index auf FOL
+FOL terme
+applikativ encoded $
+unifiables etc. (term = programm/beweis)
+interaktiv prover: Terme -> Values Mapping, häufigkeit von lemmas etc.
+warum lemmas 
+
 # Tasks
 ## TODO
 * Net_skip beschreiben?
@@ -52,26 +63,10 @@ Mehr Prosa, mehr Geschichte. Was sind Probleme, wie kann ich die lösen, nicht s
   - in der ersten Node mitabspeichern? Komplex!
 
 ## Tasks
-
--4. intersects auf listen
 -2. tests sollten mit dem erwarteten uebereinstimmen zB unifiables bei PT sollte nicht essentiell langsamer sein als PI
+  - irgendwelche Tests, die zumindest ~1s echte laufzeit haben
 
--1. delete kein value uebergeben
-0. Terme zusaetzlich in values rein
-  - mit termtables probieren
-5. Create benchmarks for Termtabs
 3. Thesis schreiben
-2. Validierung ob Testergebnisse mit Literaturergebnissen zusammenpassen
-
-
-
-4. Beispiele, wo net.ML Überapproximationen lieftert, ob eta-normalform eta-long normal form sein soll, und ob content = entries
-
-6. Check where `net.ml`, `item_net.ml`, and termtabs are used.
-  - Is is it just random?
-  - Do people prefer one or the other?
-  - Do people seem to even have thought about their choice?
-7. Discuss: should we provide interfaces that return boolean flags
 
 ## Done
 - Discrimination Nets: Ueberapproximation
@@ -107,7 +102,7 @@ The definition of the candidate set for instances employs these observations.
 2. One could think about creating a minimal path tree storing only values in leafs
 3. Are we optimising the queries, e.g. returning empty set if intersecting with an empty set?
 4. Discuss: shouldn't we include the names of variables? 
-  - It's unclear if it gives any advantages in times of speed due to increased memory consumption. Check out a newer paper. CF Graf
+
 5. Type Konsistenz pruefen. Bisher ist alles untyped
 
 * Ant XML für SpecCheck
@@ -121,6 +116,14 @@ The definition of the candidate set for instances employs these observations.
 * Später: Term generation verbessern
   - Catalan number, Folien ca. 229-237: https://db.in.tum.de/teaching/ws2021/queryopt/slides/chapter3.pdf
   - Prüfer sequenzen
+  
+## 10.03
+-4. intersects auf listen
+-2. tests sollten mit dem erwarteten uebereinstimmen zB unifiables bei PT sollte nicht essentiell langsamer sein als PI
+
+-1. delete kein value uebergeben
+0. Terme zusaetzlich in values rein
+  - mit termtables probieren
 
 ## 30.02
 * Bug wenn NoConstraint am Anfang der Liste in intersect
