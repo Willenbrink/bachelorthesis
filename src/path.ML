@@ -28,8 +28,8 @@ fun sym_ord (VarS, VarS) = EQUAL
   | sym_ord ((AtomS n1), (AtomS n2)) = fast_string_ord (n1,n2)
 
 structure Stab = Table(type key = symbol val ord = sym_ord);
-type 'a content = (int * 'a) Ord_List.T Stab.table
-datatype 'a tree = Node of 'a content * 'a tree list Stab.table
+type 'a content = (int * 'a) Ord_List.T
+datatype 'a tree = Node of ('a content * 'a tree list) Stab.table
 type 'a T = int * (term * ('a * int) list) list * 'a tree
 
 fun symbol_of_term t = case t of
@@ -46,7 +46,7 @@ fun symbol_of_term t = case t of
    There is no empty key.
 *)
 
-val empty_node = Node (Stab.empty, Stab.empty)
+val empty_node = Node Stab.empty
 val empty = (0, [], empty_node);
 
 
@@ -80,9 +80,9 @@ fun content ((_, values, _)) =
 
 fun is_empty tree = null (content tree)
 
-fun query query_type term (Node (con,tree)) =
+fun query query_type term (Node tree) =
   let
-    fun symbols sym = Stab.lookup_list con sym |> List
+    fun symbols sym = (Stab.lookup tree sym |> Option.valOf |> fst handle Option => []) |> List
     fun  handle_var () = case query_type of
         Variants => symbols VarS
       | Instances => NoConstraint
@@ -95,7 +95,7 @@ fun query query_type term (Node (con,tree)) =
       | Unifiables => Union [symbols VarS, symbols sym]
     fun query_args func args =
       let
-        val list = Stab.lookup_list tree func
+        val list = Stab.lookup tree func |> Option.valOf |> snd handle Option => []
         fun arg_to_terms (index, arg) =
           query query_type arg (nth list index)
           handle Subscript => List []
@@ -137,25 +137,25 @@ fun map_child f (sym,args) tree =
         | (a :: args, x :: xs) => f a x :: map_list args xs
         | (a :: args, []) => f a empty_node :: map_list args []
   in
-  Stab.map_default (sym,[]) (map_list args) tree
+  Stab.map_default (sym,([],[])) (apsnd (map_list args)) tree
   end
 
 (*Adds item x to the list at the node addressed by the keys.
   Creates node if not already present.
   eq is the equality test for values. Terms must also be equal for INSERT to be raised.
 *)
-fun insert eq_v (t,v) (index as (id, values, Node (con,tree)) : 'a T) =
+fun insert eq_v (t,v) (index as (id, values, Node tree) : 'a T) =
   let
-    fun append_sym sym table = Stab.map_default (sym, []) (Ord_List.insert ord (id,v)) table
-    fun ins t (Node (con, tree)) = case strip_comb t of
-        (Var _,_) => Node (append_sym VarS con, tree)
-      | (Abs _,_) => Node (append_sym VarS con, tree)
-      | (sym,[]) => Node (append_sym (symbol_of_term sym) con, tree)
+    fun append_sym sym table = Stab.map_default (sym, ([],[])) (apfst (Ord_List.insert ord (id,v))) table
+    fun ins t (Node tree) = case strip_comb t of
+        (Var _,_) => Node (append_sym VarS tree)
+      | (Abs _,_) => Node (append_sym VarS tree)
+      | (sym,[]) => Node (append_sym (symbol_of_term sym) tree)
       | (func,args) =>
           let
-            val con = append_sym (symbol_of_term func) con
-            val tree = map_child ins (symbol_of_term func,args) tree
-          in Node (con, tree) end
+            val tree = append_sym (symbol_of_term func) tree
+            val tree = map_child ins (symbol_of_term func, args) tree
+          in Node tree end
     val values =
       if member eq_v (variants index t) v
       then raise INSERT
@@ -165,7 +165,7 @@ fun insert eq_v (t,v) (index as (id, values, Node (con,tree)) : 'a T) =
         values
 
   in
-  (id + 1, values, ins t (Node(con,tree)))
+  (id + 1, values, ins t (Node tree))
   end
 
 fun insert_safe eq entry net = insert eq entry net handle INSERT => net;
@@ -179,19 +179,19 @@ exception DELETE;
   Raises DELETE if no value is deleted. Does not collapse the index if possible.
   test is the predicate for deletion on values, term equality is also considered. *)
 
-fun delete test t ((id_max, values, Node (con,tree)) : 'a T) =
+fun delete test t ((id_max, values, Node tree) : 'a T) =
   let
     fun rem ids xs = filter_out (fn (id,_) => member (op =) ids id) xs
 
-    fun del ids t (Node (con, tree)) = case strip_comb t of
-        (Var _,_) => Node (Stab.map_default (VarS,[]) (rem ids) con, tree)
-      | (Abs _,_) => Node (Stab.map_default (VarS,[]) (rem ids) con, tree)
-      | (sym,[]) => Node (Stab.map_default (symbol_of_term sym,[]) (rem ids) con, tree)
+    fun del ids t (Node tree) = case strip_comb t of
+        (Var _,_) => Node (Stab.map_default (VarS,([],[])) (apfst (rem ids)) tree)
+      | (Abs _,_) => Node (Stab.map_default (VarS,([],[])) (apfst (rem ids)) tree)
+      | (sym,[]) => Node (Stab.map_default (symbol_of_term sym,([],[])) (apfst (rem ids)) tree)
       | (func,args) =>
           let
-            val con = Stab.map_default (symbol_of_term func,[]) (rem ids) con
+            val tree = Stab.map_default (symbol_of_term func,([],[])) (apfst (rem ids)) tree
             val tree = map_child (del ids) (symbol_of_term func, args) tree
-          in Node (con, tree) end
+          in Node tree end
 
     val (to_delete, values) =
       AList.map_entry_yield Term.aconv_untyped t
@@ -201,7 +201,7 @@ fun delete test t ((id_max, values, Node (con,tree)) : 'a T) =
   case to_delete of
     NONE => raise DELETE
   | SOME [] => raise DELETE (* No value was deleted. *)
-  | SOME xs => (id_max, values, del (map snd xs) t (Node(con,tree)))
+  | SOME xs => (id_max, values, del (map snd xs) t (Node tree))
   end
 
 fun delete_safe eq entry net = delete eq entry net handle DELETE => net;
