@@ -87,7 +87,7 @@ fun gen_seeds seed sizes =
   |> snd
 
 val sizes =
-  [(1000,10),(1000,30),(1000,50),(1000,100),(100,200),(100,500),(10,1000),(10,5000)]
+  [(1000,10),(1000,20),(1000,30),(1000,40),(1000,50),(1000,70),(1000,100),(100,200),(100,500),(100,700),(10,1000),(10,3000),(10,5000)]
   (*
   |> map (fn (x,y) => (x div 100, y))
   *) (* For testing runtime before wasting an hour *)
@@ -114,7 +114,7 @@ val gen_var =
     |> map (apfst Gen)
   end
 
-val gens = gen_distinct @ gen_var
+val gens = gen_var
 
 fun bench tag_index (net_gen : int -> term Generator.gen -> 'a Generator.gen) benchmark gens sizes =
   cross gens sizes
@@ -125,15 +125,15 @@ fun bench tag_index (net_gen : int -> term Generator.gen -> 'a Generator.gen) be
               tag_test,
               tag_index,
               tag_gen,
-              Size ("S " ^ @{make_string} size ^ "-R " ^ @{make_string} (length seeds))
+              Size ("Terms:" ^ @{make_string} size ^ "-Runs:" ^ @{make_string} (length seeds))
             ], res)))
 \<close>
 
 ML \<open>
-val dn_bench = bench (Index "DN") NBench.index_gen (fn ns => NBench.benchmark_basic ns @ NBench.benchmark_queries ns)
-val pi_bench = bench (Index "PI_") PBench.index_gen (fn ns => PBench.benchmark_basic ns @ PBench.benchmark_queries ns)
-val pitt_bench = bench (Index "PITT") PTTBench.index_gen (fn ns => PTTBench.benchmark_basic ns @ PTTBench.benchmark_queries ns)
-val tt_bench = bench (Index "TT_") TTBench.index_gen (fn ns => TTBench.benchmark_basic ns @ TTBench.benchmark_variants ns)
+val dn_bench = bench (Index "DN") NBench.index_gen (NBench.benchmark [NBench.benchmark_basic, NBench.benchmark_queries])
+val pi_bench = bench (Index "PI_") PBench.index_gen (PBench.benchmark [PBench.benchmark_basic, PBench.benchmark_queries])
+val pitt_bench = bench (Index "PITT") PTTBench.index_gen (PTTBench.benchmark [PTTBench.benchmark_basic, PTTBench.benchmark_queries])
+val tt_bench = bench (Index "TT_") TTBench.index_gen (TTBench.benchmark [TTBench.benchmark_basic, TTBench.benchmark_variants])
 
 val benches = [
 pi_bench,
@@ -167,18 +167,18 @@ fun compare name x_label y_label selection =
 
 ML_command \<open>
 (* Table 1: Queries over Vars *)
-;compare "Variants over Vars. Existing" (Index "") (Gen "V") [Test "variants of existing", Size ""]
-;compare "Instances over Vars. Generalised" (Index "") (Gen "V") [Test "instances of generalised", Size ""]
-;compare "Generalisations over Vars. Existing" (Index "") (Gen "V") [Test "generalisations of existing", Size ""]
-;compare "Unifiables over Vars. Generalised" (Index "") (Gen "V") [Test "unifiables of generalised", Size ""]
+;compare "Variants over Vars. Existing" (Index "") (Gen "") [Test "variants of existing", Size ""]
+;compare "Instances over Vars. Generalised" (Index "") (Gen "") [Test "instances of generalised", Size ""]
+;compare "Generalisations over Vars. Existing" (Index "") (Gen "") [Test "generalisations of existing", Size ""]
+;compare "Unifiables over Vars. Generalised" (Index "") (Gen "") [Test "unifiables of generalised", Size ""]
 \<close>
 
 ML_command \<open>
-(* Table 2: Queries over Reuse *)
-;compare "Variants over Reuse. Existing" (Index "") (Gen "R") [Test "variants of existing", Size ""]
-;compare "Instances over Reuse. Generalised" (Index "") (Gen "R") [Test "instances of generalised", Size ""]
-;compare "Generalisations over Reuse. Existing" (Index "") (Gen "R") [Test "generalisations of existing", Size ""]
-;compare "Unifiables over Reuse. Generalised" (Index "") (Gen "R") [Test "unifiables of generalised", Size ""]
+(* Table 3.1: Queries and Gen HV over Size *)
+;compare "variants over Size. Existing HV" (Index "") (Size "") [Test "variants of existing", Gen "HV"]
+;compare "instance over Size. Generalised HV" (Index "") (Size "") [Test "instances of generalised", Gen "HV"]
+;compare "generalisations over Size. Existing HV" (Index "") (Size "") [Test "generalisations of existing", Gen "HV"]
+;compare "unifiables over Size. Generalised HV" (Index "") (Size "") [Test "unifiables of generalised", Gen "HV"]
 \<close>
 
 ML_command \<open>
@@ -223,8 +223,8 @@ ML_command \<open>
 \<close>
 
 ML_command \<open>
-;compare "All Indices sum of all sizes" (Index "") (Test "") [Gen "LV", Size ""]
-;compare "Path Indexing" (Gen "V") (Test "Q:") [Index "PI_", Size ""]
+;compare "All Indices sum of all sizes" (Index "") (Test "") [Gen "MV", Size ""]
+;compare "Path Indexing" (Gen "") (Test "Q:") [Index "PI_", Size ""]
 ;compare "Discrimination Net" (Gen "") (Test "") [Index "DN", Size ""]
 ;compare "Termtable" (Gen "") (Test "") [Index "TT_", Size ""]
 (* Expectation:
