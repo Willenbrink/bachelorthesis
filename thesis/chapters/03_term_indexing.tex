@@ -1,42 +1,57 @@
 \chapter{Term Indexing}
-%In automated theorem proving there are, generally, many inference rules available while only a handful few are applicable to the current subgoals. Therefore, we are interested in efficient storage of terms, both in regards to memory consumption and retrieval of generalisations and unifiables of a query term. Term indices are a category of data structures built for this express purpose.
-
-A term index efficiently stores terms while also providing efficient operations for the retrieval of variants\footnote{Identical up to variable identity}, instances, generalisations and unifiables of a query term from the term index. Depending on the exact data structure, we can also implement other operations efficiently if desired, for example checking if a term is already stored, only inserting a term if no more general term is stored and efficiently merging two indices. In this thesis we limit ourselves to these operations as it is difficult to predict the exact use cases.
-
-As generally presented in literature, term indices provide efficient, but overapproximating, queries. We disregard variable identities as it is prohibitively expensive to track the exact substitution while traversing the tree. By disregarding variable identities, we assume that each variable is unique and, as a result, avoid the occurs check. As such, a term index can only be used as a pre-filter whose results must, when necessary, be further filtered. We additionally disregard types as we expect the user of the index to only store consistent and type correct terms. Specifically, we assume that the arity of a function is fixed.
-
 In the following sections we give an overview of path indexing and discrimination trees. We also take a closer look at some details of their implementation in Isabelle/ML as they differ in many places significantly from the approaches chosen in most literature.
 
 \section{Path Indexing}
-Instead of storing a term as a tree of functions and their arguments, we can specify the structure and symbols of a tree by combining every symbol of a term with its position, which we call its path.
+Instead of storing a term as a tree of functions and their arguments, we can specify the structure and symbols of a tree by combining every symbol of a term with its position in the term, which we call its path. For example, the term $f(x,g(a,b))$ can be represented by the set of paths and their associated symbol that can be seen in \cref{termpaths}.
+
 \begin{defn}
   The path is a sequence of $(symbol, index)$ pairs where the index describes the index of the next argument to traverse.\footnote{This is in contrast to coordinate indexing which only uses a sequence of indices.}
 \end{defn}
-For example, the term $f(x,g(a,b))$ can be represented by a set of paths and their associated symbol as can be seen in \cref{termpaths}.
-The paths always start at the root and end with the index at which the symbol is located, e.g. $<(f,2), (g,1)>$ is the path of the symbol $a$. We represent a path by enclosing a sequence of $(symbol, index)$ pairs with $<>$.
 
-We disregard the identity of variables as they are mostly irrelevant to the queries and simplify both the index and the queries. Consequently, the terms $f(x,y)$ and $f(x,x)$ are both saved as $f(*,*)$. This leads to an overapproximation in some cases, for example $f(c,d)$ would be identified as an instance of $f(x,x)$.
+The paths always start at the top symbol and end with the index at which the symbol is located. For example, $\langle (f,2), (g,1) \rangle$ is the path of the symbol $a$. We represent a path by enclosing a sequence of $(symbol, index)$ pairs with $\langle  \rangle$.
+
+\begin{figure}[h]
+\begin{subfigure}[b]{.5\textwidth}
+\centering
+\huge
+\Tree [.f x [.g a b ] ]
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{.5\textwidth}
+\centering
+\begin{itemize}
+  \item $(\langle \rangle, f)$
+  \item $(\langle f \cdot 1 \rangle, *)$
+  \item $(\langle f \cdot 2 \rangle, g)$
+  \item $(\langle f \cdot 2 \cdot g \cdot 1 \rangle, a)$
+  \item $(\langle f \cdot 2 \cdot g \cdot 2 \rangle, b)$
+\end{itemize}
+%\includegraphics[scale=0.25]{figures/term_path.png}
+\end{subfigure}
+
+\caption{A term and its paths together with the symbols associated with them}\label{termpaths}
+\end{figure}\todo{Figure: Write as mapping: $\langle  \rangle \mapsto f$ etc.}
+
+\begin{figure}
+\end{figure}
 
 \begin{defn}
   $Symbol_{t}(p)$ refers to the symbol associated with path $p$ in the term $t$.
 \end{defn}
+\todo{Move elsewhere, unnecessary?}
 
-\begin{figure}[h]
-\centering
-\includegraphics[scale=0.25]{figures/term_path.png}
-\caption{A term and its paths together with the symbols associated with them}
-\label{termpaths}
-\end{figure}\todo{Figure: Write as mapping: $<> \longrightarrow f$ etc.}
+A $(path, symbol)$ pair can be interpreted as a constraint on a term where the path defines the position of $symbol$ in the term. For example, $(\langle (f,1) \rangle, c)$ is only fulfilled by terms of the form $f(c,...)$. A term gives raise to a set of $(path, symbol)$ pairs, which, when interpreted as constraints, uniquely identify this term up to loss of variable identitification.
 
-A $(path, symbol)$ pair can be interpreted as a constraint on a term where the path defines the position of the symbol in the term. For example, $(<(f,1)>, c)$ is only fulfilled by terms of the form $f(c,...)$\footnote{The paths do not explicitly encode any information about the number of arguments.}. A term gives raise to a set of $(path, symbol)$ pairs, which, when interpreted as constraints, uniquely identify this term up to loss of variable identitification.
-
-These constraints allow us to define terms not explicitly by their structure and symbols but rather by imposing constraints on them. This concept is fundamental to path indexing which stores only the constraints. Queries are resolved by combining the constraints to retrieve a set of terms.\todo{Better phrasing}
+These constraints allow us to define terms not explicitly by their structure and symbols but rather by imposing constraints on them. This concept is fundamental to path indexing which stores only the constraints. Queries are resolved by combining the constraints to retrieve a set of terms. For example, a variants query for the term $t = f(x,g(a,b))$ (see \cref{termpaths}) checks all paths $p$ of $t$ and retrieves all terms $u$ for which $Symbol_{t}(p) = Symbol_{u}(p)$.
+\todo{Move elsewhere}
 
 \begin{defn}
   A path index is a function $f: Path \times Symbol \longrightarrow 2^{Term}$, that is, each constraint is mapped to a set of terms, which fulfill these constraints and are stored in the path index. We call this set of terms a path set.\todo{Drop ``path set'' completely?}
 \end{defn}
 
-Storing the path sets such that they can be quickly looked up by a $(path, symbol)$ pair can be achieved in multiple ways. We decided to use a trie-based approach as many of the paths share prefixes. The nodes of the trie contain a function $g: Symbol  \longrightarrow 2^{Term}$. The edges are labelled with $(symbol, index)$ pairs, which correspond to the elements of a path. When we insert a path $p$ of a term $t$ we start at the root and traverse the trie according to $p$. Once we reach the end of $p$ we extend $g$ of the current node by $Symbol_{t}(p) \longrightarrow \{t\}$.\todo{If already existant: Expand set, else extend definition of g to $Symbol_{t}(p)$} To insert a term we simply insert all the paths that describe this term. This requires the insertion of many similar paths which profits from the prefix sharing.
+Storing the path sets such that they can be quickly looked up by a $(path, symbol)$ pair can be achieved in multiple ways. We decided to use a discrimination-tree based approach\footnote{Not to be confused with the discrimination-tree index which is based on the same datastructure.} as many of the paths share prefixes. The nodes of the discrimination-tree contain a function $g: Symbol  \longrightarrow 2^{\T}$. The edges are labelled with $(symbol, index)$ pairs, which correspond to the elements of a path.
+
+When we insert a path $p$ of a term $t$ we start at the root and traverse the trie according to $p$. Once we reach the end of $p$ we extend $g$ of the current node by $Symbol_{t}(p) \longrightarrow \{t\}$.\todo{If already existant: Expand set, else extend definition of g to $Symbol_{t}(p)$} To insert a term we simply insert all the paths that describe this term. This requires the insertion of many similar paths which profits from the prefix sharing.
 
 \Cref{pathindex} shows a path index stored as a trie. The root contains a mapping from the symbol $f$ to both terms as they both share this constraint. In the first argument, reached by the edge $(f,1)$, the symbol $a$ is mapped only to the first term whereas $*$ is mapped to the second term. In the second argument, the terms share the constraint.
 \begin{figure}[h]
@@ -65,32 +80,43 @@ To retrieve the unifiables of a term from the index, we can use some observation
 Using this, we can define an algorithm recursing on the structure of the query term while intersecting and unifying the different path sets of the index. The different query types are quite similar, with the lookup being the most restrictive and the unifiables the least restrictive.
 
 $\mathrm{PathTerms(p)}$ refers to the path set stored at the path $p$. $\mathrm{AllTerms}$ is the collection of all terms stored in the index.
+\newcommand{\PT}{PT}
+\newcommand{\ALL}{AllTerms}
 \begin{figure}[h]
 \centering
 \includegraphics[scale=0.25]{figures/queries.png}
 \caption{The different queries and their definition}
 \end{figure}
 
+\begin{figure}[h]
+\begin{tabular}{ l|l l l }
+  \multirow{2}{4em}{Query Arguments} & $Q(p, x)$ & $Q(p, a)$ & $Q(p, f(t_{1}, ..., t_{n}))$ \\\\
+  \hline
+  $Q = variants$ & $\PT(p \cdot *)$ & $\PT(p \cdot a)$ & $\bigcap_{i} Q(p \cdot f \cdot i, t_{i})$\\
+  $Q = instances$ & $\ALL$ & $\PT(p \cdot a)$ & $\bigcap_{i} Q(p \cdot f \cdot i, t_{i})$\\
+  $Q = generalisations$ & $\PT(p \cdot *)$ & $\PT(p \cdot a) \cup \PT(p \cdot *)$ & $\bigcap_{i} Q(p \cdot f \cdot i, t_{i}) \cup \PT(p \cdot *)$\\
+  $Q = unifiables$ & $\ALL$ & $\PT(p \cdot a) \cup \PT(p \cdot *)$ & $\bigcap_{i} Q(p \cdot f \cdot i, t_{i}) \cup \PT(p \cdot *)$\\
+\end{tabular}
+\caption{The recursive definition of the queries}
+\end{figure}
+
 \section{Discrimination Tree}
-A discrimination tree index, also known as discrimination net index, is a prefix-sharing tree similar to a trie which stores terms at its leaves and symbols at its internal nodes. To determine the leaf at which a term is stored we use the preorder traversal of the term which we obtain by simply reading the written term from left to right.
+A discrimination tree index, also known as discrimination net index, is a prefix-sharing tree, similar to a trie, which stores terms at its leaves and symbols at its internal nodes. To determine the leaf at which a term is stored we use the preorder traversal of the term. It is obtained by simply reading the written term from left to right. For example, the preorder traversal of $t = f(c,g(x,y))$ is $\langle f,c,g,x,y \rangle$. Since we disregard variable identities, this will further be simplified to $\langle f,c,g,*,* \rangle$.
 
 \begin{defn}
-  $Preorder(t)$ is the sequence of symbols obtained by the preorder traversal of the term $t$. For terminals it is the symbol itself. The preorder traversal of function $f(x_{1},...,x_{n})$ is $<f,Preorder(x_{1}),...,Preorder(x_{n})>$. For the sake of simplicity, we flatten the sequence, i.e. $<f,<g,x>>$ becomes $<f,g,x>$.
+  $Preorder(t)$ is the sequence of symbols obtained by the preorder traversal of the term $t$. For symbols $s$ with $\mathrm{arity}(s) = 0$ it is the symbol $s$ itself. The preorder traversal of a function $f(x_{1},...,x_{n})$ is $\langle f,Preorder(x_{1}),...,Preorder(x_{n}) \rangle$ For the sake of simplicity, we flatten the sequence, e.g. $\langle f,\langle g,x \rangle \rangle$ becomes $\langle f,g,x \rangle$.
 \end{defn}
-For example, the preorder traversal of $t = f(c,g(x,y))$ is $<f,c,g,*,*>$\footnote{We ignore variable identity as it introduces significant complexity}.
 
-We store the mapping $Preorder(t) \rightarrow t$ in a trie. Due to prefix sharing among the preorders of the different terms this reduces the memory consumption. The leafs contain the terms while the internal nodes only store the symbol by which they are addressed. A discrimination tree storing multiple terms can be seen in \ref{discnet}.
-
-No term is stored in an internal node as, under the assumption of type consistency, it is impossible for $Preorder(t)$ to be a prefix of $Preorder(u)$ if $t \neq u$. If $Preorder(t)$ is a prefix of $Preorder(u)$, $u$ is a combination of $t$ and some other terms. All the functions and their arguments in $t$ are also present in $u$. By the assumption of type consistency, every function present in $t$ is applied to all its arguments and due to the prefix sharing every function in $t$ is also present in $u$ and applied to all its arguments. Thus, $u$ must not consist of any additional terms and therefore be identical to $t$.
+We store the mapping $Preorder(t) \mapsto t$ in a trie. This way, common prefixes of terms are shared in memory. For example, $Preorder(f(g(x))) = \langle f, g, x \rangle$ shares the first two symbols with $Preorder(f(g(a))) = \langle f, g, a \rangle$. The leafs contain the terms while the internal nodes only store the symbol by which they are addressed. A discrimination tree storing multiple terms can be seen in \cref{discnet}. No term is stored in an internal node as, under the assumption of type consistency, it is impossible for $Preorder(t)$ to be a prefix of $Preorder(u)$ if $t \neq u$.
 
 \begin{figure}[h]
 \centering
 \includegraphics[scale=0.25]{figures/disc_net.png}
-\caption{Multiple terms stored in a trie and indexed by the sequence obtained from their preorder traversal}
+\caption{Discrimination Tree storing the terms TODO}
 \label{discnet}
 \end{figure}\todo{Root =/= f, besser auf Beispiele ausgelegt: f(c,x) enthalten, netskip kommt vor etc.}
 
-The queries are implemented as a recursive algorithm on the nodes of the trie and $Preorder(t)$ of the query term $t$. Starting at the root, we traverse the tree by selecting the child node corresponding to the first symbol of $Preorder(t)$. We recursively continue at the child node while removing the first symbol from the sequence. In some cases, we may also remove the arguments of the symbol. Therefore, we drop either the first symbol $s$ or $1 + arity(s)$ symbols from the sequence.
+The queries are implemented as a recursive algorithm on the nodes of the trie and $Preorder(t)$ of the query term $t$. Starting at the root, we traverse the tree by selecting the child node corresponding to the first symbol of $Preorder(t)$. We recursively continue at the child node while removing the first symbol from the sequence. In some cases, we may also remove the arguments of the symbol. Therefore, we drop either the first symbol $s$ or $1 + \arity(s)$ symbols from the sequence.
 
 \begin{defn}
   $slp(N,c)$ is the symbol lookup operation. It returns the child node of $N$ representing the symbol $c$. If no such node exists, we return the empty node.
@@ -98,17 +124,17 @@ The queries are implemented as a recursive algorithm on the nodes of the trie an
 
 Retrieving the variants of a term is fairly straightforward. Starting at the root, we traverse the trie according to the preorder traversal using $slp$. By doing so, we ensure that we only retrieve terms that contain the same symbols (disregarding variable identity) in the same order, i.e. the variants of the term.
 
-For example, we retrieve the variants of the term $t = f(c,x)$ in the discrimintation tree \ref{discnet} in the following manner, written as $(Node, Preorder(t))$:
-$(root, <f,c,x> \rightarrow (f, <c,x>) \rightarrow (c, <x>) \rightarrow (*,<>)$
+For example, we retrieve the variants of the term $t = f(c,x)$ in the discrimintation tree \cref{discnet} in the following manner, written as $(Node, Preorder(t))$:
+$(root, \langle f,c,x \rangle \mapsto (f, \langle c,x \rangle) \mapsto (c, \langle x \rangle) \mapsto (*,\langle  \rangle)$
 At this point we have reached a leaf containing the term $f(c,x)$, the only stored variant of the term.
 
 The other queries are more intricate as they may now replace variables by arbitrary terms or symbols by arbitrary terms, with unification allowing both. For every constant symbol in the term we form the union of both the query on the node $slp(N,c)$ aswell as $slp(N,*)$. This ensures that indexed terms containing variables are also retrieved.
 
 A variable in the query term must also be handled differently. As the variable may be replaced by arbitrary terms we must skip a number of nodes depending on the arity of the symbol.
 \begin{defn}
-  $skip(N)$ returns the set of nodes obtained by skipping a single term starting at $N$. For all symbols $s$ for which $slp(N,s)$ is defined, we collect all nodes $1 + arity(s)$ levels below $N$. That is, for a constant $c$ with $arity(c) = 0$ we return $slp(N,c)$ (which is a direct child of $N$). For a unary function $f$ we return the nodes $slp(slp(N,f),x)$ of all symbols $s$.
+  $skip(N)$ returns the set of nodes obtained by skipping a single term starting at $N$. For all symbols $s$ for which $slp(N,s)$ is defined, we collect all nodes $1 + \arity(s)$ levels below $N$. That is, for a constant $c$ with $\arity(c) = 0$ we return $slp(N,c)$ (which is a direct child of $N$). For a unary function $f$ we return the nodes $slp(slp(N,f),x)$ of all symbols $s$.
 \end{defn}
-Using this, we can retrieve all the nodes reached by replacing the variable in the query term with some term. The union of the terms returned by the query on each node represents the result. An overview of all the queries is given in \ref{discnetqueries}. Note that $variants$ is the simplest and most restrictive query, $unifiables$ is the most complex and least restrictive with $instances$ and $generalisations$ being a combination of both.
+Using this, we can retrieve all the nodes reached by replacing the variable in the query term with some term. The union of the terms returned by the query on each node represents the result. An overview of all the queries is given in \cref{discnetqueries}. Note that $variants$ is the simplest and most restrictive query, $unifiables$ is the most complex and least restrictive with $instances$ and $generalisations$ being a combination of both.
 
 \begin{figure}[h]
 \centering
@@ -124,11 +150,11 @@ Using this, we can retrieve all the nodes reached by replacing the variable in t
 
 % For example, the symbols of the term $t = f(c,g(x,y))$ are described by the following mapping:
 % \begin{enumerate}
-% \item $Symbol_{t}(<>) = f$
-% \item $Symbol_{t}(<f>) = c$
-% \item $Symbol_{t}(<f,c>) = g$
-% \item $Symbol_{t}(<f,c,g>) = *$
-% \item $Symbol_{t}(<f,c,g,*>) = *$
+% \item $Symbol_{t}(\langle  \rangle) = f$
+% \item $Symbol_{t}(\langle f \rangle) = c$
+% \item $Symbol_{t}(\langle f,c \rangle) = g$
+% \item $Symbol_{t}(\langle f,c,g \rangle) = *$
+% \item $Symbol_{t}(\langle f,c,g,* \rangle) = *$
 % \end{enumerate}
 
 % This mapping can be efficiently stored in a discrimination tree by storing one symbol of the preorder traversal in each internal node and storing
@@ -136,27 +162,29 @@ Using this, we can retrieve all the nodes reached by replacing the variable in t
 \section{Term Indexing in Isabelle/ML}
 As Isabelle has now been used for over 30 years, a number of data structures have already been implemented to store terms. One of the simplest approaches is the \verb!termtable!, a balanced 2-3 tree, storing terms and differentiating them on all attributes, namely their structure, symbols and types. Therefore, this approach is best used when an exact lookup is necessary. On the other hand, \verb!termtables! do not offer any support for the more complex queries.
 
-\subsection{Discrimination Trees}
 The need for efficient retrieval of unifiables and generalisations of a query term is addressed by a discrimination tree implementation. Despite being based on the concept introduced above, the discrimination tree implementation in Isabelle/ML stores arbitrary sets of values indexed by terms. This allows us to, for example, store horn clauses for efficient backward chaining. By storing the premises of a clause in the node addressed by its conclusion, we can later query our knowledge base for unifiables of our current goal. On successful retrieval, we can replace the goal with the set of premises.
+
+\subsection{Signature}
+Before implementing a new term index, we require a unified interface that abstracts the details of the already existing discrimination tree implementation. The result can, with minor omissions, be seen in \cref{discnet_sig}. We see that the term index, \verb!T!, is parameterized over the generic and potentially uncomparable \verb!'a!. There are two functions modifying the index. \verb!insert! works as one would expect. The first argument
 
 \begin{figure}[h]
 \begin{lstlisting}
-  datatype 'a T =
-    Leaf of 'a list
-  | Net of {atoms: 'a T Symboltable.T, comb: 'a T, var: 'a T}
-  val insert: ('a * 'a -> bool) -> term * 'a -> 'a T -> 'a T
-  val content: 'a T -> 'a list
-  val delete: ('a -> bool) -> term -> 'a T -> 'a T
+    type 'a T
+    val empty: 'a T
 
-  val lookup: 'a T -> term -> 'a list
-  val instances: 'a T -> term -> 'a list
-  val generalisations: 'a T -> term -> 'a list
-  val unifiables: 'a T -> term -> 'a list
+    val insert: ('a * 'a -> bool) -> term * 'a -> 'a T -> 'a T
+    val delete: ('a -> bool) -> term -> 'a T -> 'a T
+
+    val content: 'a T -> 'a list
+    val variants: 'a T -> term -> 'a list
+    val generalisations: 'a T -> term -> 'a list
+    val instances: 'a T -> term -> 'a list
+    val unifiables: 'a T -> term -> 'a list
 \end{lstlisting}
-\caption{A subset of the signature of the discrmination tree}
+\caption{The term index signature}
 \end{figure} \label{discnet_sig}
 
-As we can see from the signature in \ref{discnet_sig}, the discrimination tree stores a list of arbitrary values in each leaf node. The internal nodes, named \verb!Net!, store the children separated into three separate trees. \verb!var! stores both variables and abstractions and atoms stores the constant symbols. Due to the applicative nature of the terms, we also need a \todo{continue here}
+As we can see from the signature in \cref{discnet_sig}, the discrimination tree stores a list of arbitrary values in each leaf node. The internal nodes, named \verb!Net!, store the children separated into three separate trees. \verb!var! stores both variables and abstractions and atoms stores the constant symbols. Due to the applicative nature of the terms, we also need a \todo{continue here}
 
 
 
@@ -178,7 +206,7 @@ Nevertheless, this represents significant complexity which, while natural for di
 
 Unfortunately most literature\todo{2 Quellen sicher, noch welche?} on path indexing only covers the storage of terms. The queries of path indexing rely on the intersection and union of the path sets. These in turn rely on the fast comparison of the stored values. For example, storing hash tables in the path index would be extremely slow as they cannot be compared directly\footnote{The structure of the hashtable depends on the insertion order} and comparing the contents requires the collection of all entries. To solve this potential problem we investigated multiple solutions.
 
-Furthermore, the insertion of an identical $(term,value)$ pair raises an exception. We require a comparison function during insertion to determine this.\footnote{The comparison function need not be reflexive, for example the constant $\mathrm{(\lambda x. false)}$ is valid.} As the index only stores the terms in the path sets we have to store $(term,value)$ pairs in the path sets. Assume we store only the values in the path sets. We cannot determine whether, for example, the path index containing $(f(c),1)$ and $(g(d),1)$ has also stored the $(f(d),1)$ as the value $1$ is present in all path sets associated with $f(d)$, namely $(<>,f)$ and $(<f,1>,d)$.
+Furthermore, the insertion of an identical $(term,value)$ pair raises an exception. We require a comparison function during insertion to determine this.\footnote{The comparison function need not be reflexive, for example the constant $\mathrm{(\lambda x. false)}$ is valid.} As the index only stores the terms in the path sets we have to store $(term,value)$ pairs in the path sets. Assume we store only the values in the path sets. We cannot determine whether, for example, the path index containing $(f(c),1)$ and $(g(d),1)$ has also stored the $(f(d),1)$ as the value $1$ is present in all path sets associated with $f(d)$, namely $(\langle  \rangle,f)$ and $(\langle f,1 \rangle,d)$.
 
 The first approach requires a comparison function for the values.\footnote{Either as an argument to every function or by implementing path indexing as a functor on a value module} Using the index becomes more difficult by doing so. A user has to implement a comparison function for values and additionally has to consider the potential performance impact. This can be partially mitigated by using $\mathrm{pointerEq}$, although it can only be used as a shortcut for identical values. The comparison must still be called for differing values since there is no perfect sharing.\todo{Code references}\todo{Remove paragraph? Doesn't work with (term,value) pairs}
 
