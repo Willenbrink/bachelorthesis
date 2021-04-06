@@ -6,11 +6,13 @@ A symbol is either a variable, a constant or a function. We choose all variables
 
 The arity of a symbol $\arity(s)$ is a positive integer representing the number of arguments the symbol is applied to. All constants have a fixed arity of $0$ while every function $f$ has a fixed $\arity(f) \geq 1$. A variable $x$ has an arbitrary but fixed arity depending on its context.
 
-A term in first-order logic, chosen from the infinite set $\T \coloneqq \{t, u, v, t_{1}, t_{2}, ...\}$, is a symbol $s$ applied to $\arity(s)$ arguments, where each argument again is a term. Assume $\arity(f) = 1$ and $\arity(g) = 2$ and, for all other symbols $s$, $\arity(s) = 0$. Then, the terms $f(a)$ and $g(f(x), a)$ are well-formed while the terms $f(a,b)$, $f(g)$ and $a(b)$ are not.
+A term in first-order logic, chosen from the infinite set $\T \coloneqq \{t, u, v, t_{1}, t_{2}, ...\}$, is a symbol $s$ applied to $\arity(s)$ arguments, where each argument again is a term.
+
+\begin{exmpl}
+Assume $\arity(f) = 1$ and $\arity(g) = 2$ and, for all other symbols $s$, $\arity(s) = 0$. Then, the terms $f(a)$ and $g(f(x), a)$ are well-formed while the terms $f(a,b)$, $f(g)$ and $a(b)$ are not.
+\end{exmpl}
 
 \subsection{Generalisation and Unification}
-Given two terms $t = f(x)$ and $u = f(g(a))$, we are interested in determining whether or not the variable $x$ can be assigned such that $t = u$. If this is indeed possible, we know that $t$ is a more general term than $u$. In this case, it is trivial to see that $x = g(a)$ implies $t = u$. For the general case, we require some formalised notion of variable assignment.
-
 \begin{defn}
   A substitution is a partial function $\rho : \V \longrightarrow \T$. We denote by $t \rho$ the term obtained by replacing all variables $v$ in $t$ by $v \rho$ if $v$ is in the domain of $\rho$. We write $[t_{1}/x_{1},...,t_{n}/x_{n}]$ for the substitution $\{x_{1} \mapsto t_{1}, ..., x_{n} \mapsto t_{n}\}$.
 \end{defn}
@@ -18,15 +20,22 @@ Given two terms $t = f(x)$ and $u = f(g(a))$, we are interested in determining w
 When applying the substitution $\rho = [a/x]$ to the term $t = f(x,y)$, we get the term $f(a,y) = t \rho$. As $y$ is not in the domain of $\rho$, it is not modified in the term. Note that $\rho$ is applied only once to the term, that is, $x [y/x, a/y] = y$ even though $y$ would be substituted by $a$ in the original term.
 
 \begin{defn}
-Given two terms $t, u$, we say that $t$ is a generalisation of $u$ and $u$ an instance or specialization of $t$ if and only if there exists a substitution $\rho$ such that $t \rho = u$. Similarly, we call $t$ and $u$ unifiable if and only if there exists a substitution $\rho$ such that $t \rho = u \rho$. In this case, $\rho$ is called a unifier of $t$ and $u$.
+Given two terms $t, u$, we say that $t$ is a \emph{generalisation} of $u$ and $u$ an instance or specialization of $t$ if and only if there exists a substitution $\rho$ such that $t \rho = u$. Similarly, we call $t$ and $u$ unifiable if and only if there exists a substitution $\rho$ such that $t \rho = u \rho$. In this case, $\rho$ is called a unifier of $t$ and $u$.
 \end{defn}
+
+\begin{exmpl}
+  Let $t \coloneqq f(x)$ and $u \coloneqq f(g(a))$. Set $\rho \coloneqq [g(a)/x]$. Then $t \rho = f(g(a)) = u \rho = u$. Hence, $t$ is a generalisation of $u$, $t$ and $u$ are unifiable and $\rho$ is a unifier $t$ and $u$.
+\end{exmpl}
 
 The question of whether term $t$ is a generalisation of term $u$ is also known as the matching problem in the literature. Similarly, determining whether $t$ and $u$ are unifiable is called the unification problem. \cite{mccune_experiments_1992}
 
 \subsection{Variable Identity}\label{var_id}
 When solving a matching or unification problem, we must pay attention to variables occuring multiple times. For example, $f(x,x)$ is not a generalisation of $f(a,b)$ as $x$ cannot be substituted by both $a$ and $b$. Similarly, $t = x$ is a generalisation of $u = f(x)$ using the substitution $\rho = [f(x)/x]$ but they are not unifiable.
 
-Tracking the identities of the variables while solving a matching problem complicates matters substantially. In this thesis, we will ignore the identity of variables. Instead, we replace them by $*$ and treat each $*$ as a unique variable. For example, the terms $f(x,y)$ and $f(z,z)$ are both treated as $f(*,*)$ and are therefore not differentiated.
+Tracking substitutions for variables while solving matching problems in term indices, as is done in this thesis, complicates matters substantially.
+Most work in the literature and practical implementations hence simplify matters by disregarding the identity of variables. That is, they replace them by a placeholder term, which we call $*$. For example, the terms $f(x,y)$ and $f(z,z)$ are both treated as $f(*,*)$ and are therefore not differentiated.
+
+We also employ this simplification in this thesis.
 
 \begin{defn}
   Variants are terms identical up to loss of variable identity.
@@ -53,7 +62,8 @@ The \lam -calculus is a formal language used to express computation based on fun
   \item If $t$ is a term and $x$ is a variable, then $\lam x. t$ is a term. This is called an abstraction and represents a function with parameter $x$.
   \item If $t$ and $u$ are terms, then $t u$ is also a term. This is the application of the first argument to the second one.
 \end{enumerate}
-As we focus mainly on the embedding of first-order terms in \lam -terms, the grammar for terms suffices. For a more detailed introduction, see for example \cite{loader_notes_nodate}.
+
+In this thesis, we are only concerned with the lambda calculus as far as we have to model first-order terms as part of the lambda calculus-based language of Isabelle. We are hence ot be concerned with reduction rules nor types in this thesis. For a more detailed introduction, see for example \cite{loader_notes_1998}.
 
 \section{Isabelle}
 Isabelle is a generic interactive theorem prover. By design, it uses a metalogic, called Isabelle/Pure, to embed other logics and provide a deduction framework. To do so, Isabelle/Pure uses a higher-order logic. The very basis of this metalogic are simply typed \lam -terms within which theorems and inference rules are embedded. \cite{wenzel_isabelleisar_2021}
@@ -63,13 +73,13 @@ Isabelle is written for the most part in Standard ML (SML) and can also be exten
 \subsection{Term Representation in Isabelle}
 The \lam -terms are a variant of simply typed \lam -calculus. They are defined, with minor changes for the sake of simplicity, as follows:
 \begin{lstlisting}
-datatype term =
-    Const of string * typ
-  | Free of string * typ
-  | Var of string * typ
-  | Bound of int
-  | Abs of string * typ * term
-  | $ of term * term
+    datatype term =
+        Const of string * typ
+      | Free of string * typ
+      | Var of string * typ
+      | Bound of int
+      | Abs of string * typ * term
+      | $ of term * term
 \end{lstlisting} %$
 \vspace{-12pt}
 \begin{enumerate}
@@ -94,7 +104,7 @@ We assume for the sake of simplicity that every term consists of only \lstinline
 
 %In automated theorem proving it is often necessary to search through many first-order terms and retrieve only the handful few that are applicable in the current context. We are interested in efficiently solving the matching and unification problem for large sets of terms while also storing them in a memory efficient manner. Term indices are a group of data structures built for this express purpose.
 
-A term index usually shares structures of similar terms to improve its performance. For example, when retrieving unifiable terms from the set $\{f(*), f(a), f(g(a)), g(a)\}$ with the query term $g(x)$, the term index can avoid unifiying $g(x)$ with every term with $f$ as top symbol. By failing to unify $g(*)$ with $f(*)$, it will discard all terms with top symbol $f$ and continue directly with $g(a)$.
+A term index usually shares structures of similar terms to improve its performance. For example, when retrieving unifiable terms from the set $\{f(*), f(a), f(g(a)), g(a)\}$ with the query term $g(x)$ and $f(*)$ fails to unify with $g(x)$, there is no need to also check whether $f(a)$ is a feasible candidate as it is an instance of $f(*)$.
 
 There is a great variety of term indices and their grouping mechanisms. Furthermore, some term indices can also implement other operations efficiently. Some examples, discussed in more depth in \cite{carbonell_comparison_1995}, are the union of two indices and the retrieval of terms unifiable with any term in a query set.
 
@@ -106,4 +116,4 @@ As mentioned in \cref{var_id}, we disregard identity of variables. By doing so, 
   A query returning a superset of the correct answer is called an overapproximating query. Similarly, we call a term index overapproximating if it supports only overapproximating queries.
 \end{defn}
 
-Depending on the context, we may use this overapproximated result either directly or filter the returned overapproximation with some post-processing methods to obtain the exact set of candidates. Handling the identity of variables correctly in the term index often provides only little benefit and is discussed for a variety of term indices in \cite{carbonell_comparison_1995}.
+Depending on the context, we may use this overapproximated result either directly or filter the returned overapproximation with some post-processing methods to obtain the exact set of candidates. Handling the identity of variables correctly in the term index significantly complicates the implementation and sometimes even performs worse than an overapproximative approach \cite{carbonell_comparison_1995}. We hence focus on overapproximative approaches disregarding the identity of variables in this thesis.
