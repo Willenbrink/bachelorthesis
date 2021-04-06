@@ -48,10 +48,10 @@ val a = @{term "a (b c)"}
 val b = @{term "b"}
 val x = Var (("x",0), TFree ("'a", []))
 val y = Var (("y",0), TFree ("'a", []))
-;N.empty
-|> N.insert (op =) (a,true)
-|> N.insert (op =) (b,true)
-|> N.content
+;PTT.empty
+|> PTT.insert (op =) (x,true)
+|> PTT.insert (op =) (y,true)
+|> PTT.content
 \<close>
 
 declare [[spec_check_max_success = 1000]]

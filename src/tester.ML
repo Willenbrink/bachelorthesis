@@ -91,13 +91,20 @@ val test_modifying = [ (* Tests functions that modify the net: insert and delete
                    |> Index.delete (curry eq t) t)
      end),
   
-  (* Combination *)
+  (* Various *)
   check_prop_base (term_not_in_net_gen def_net_gen)
     "Insertion and deletion of new term returns identical net"
     ((fn (t,n) => not (mem t n)) ==> (fn (t,n) => con n = con (ins t n |> del t))),
   check_prop_base (term_in_net_gen def_net_gen)
     "Deletion and insertion of contained term returns identical net"
-    ((fn (t,n) => mem t n) ==> (fn (t,n) => con n = con (del t n |> ins t)))
+    ((fn (t,n) => mem t n) ==> (fn (t,n) => con n = con (del t n |> ins t))),
+  check_base (Gen.unit)
+    "Inserting terms x and y raises INSERT"
+    (fn () => Index.empty
+              |> Index.insert (op =) (Var (("x",0), TFree ("'a", [])), true)
+              |> Index.insert (op =) (Var (("y",0), TFree ("'a", [])), true)
+              |> K false
+              handle Index.INSERT => true)
 ]
 
 val test_queries = [

@@ -17,6 +17,7 @@ fun content_ord ((x,_),(y,_)) = int_ord (x, y)
 (*Each node contains a table mapping symbols to their content and list of recursive trees for their
   arguments.*)
 datatype 'a node = Node of ('a content * ('a node) list) Symboltab.table
+
 (*(max_index, term_to_content_table, path_index)*)
 type 'a T = int * ('a content) Termtab.table * 'a node
 
