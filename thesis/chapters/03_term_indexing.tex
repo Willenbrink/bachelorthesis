@@ -2,7 +2,7 @@
 In the following sections we give an overview of path indexing and discrimination trees. We also take a closer look at some details of their implementation in Isabelle/ML as they differ in many places significantly from the approaches chosen in most literature.
 
 \section{Path Indexing}
-A term can be represented as a tree with all symbols $s$ with $\arity (s) = 0$ as leafs and all functions $f(x_{1}, ..., x_{n})$ as internal nodes with the $x_{i}$ as children. Within this tree, every symbol has a position by the \todo{}
+A term can be represented as a tree with all symbols $s$ with $\arity (s) = 0$ as leafs and all functions $f(x_{1}, \dots, x_{n})$ as internal nodes with the $x_{i}$ as children. Within this tree, every symbol has a position by the \todo{}
 Instead of storing a term as a tree of functions and their arguments, we can specify the structure and symbols of a tree by combining every symbol of a term with its position in the term, which we call its path. The paths start at the top symbol and end with the index at which the symbol is located. For example, $\langle (f,2), (g,1) \rangle$ is the path of the symbol $a$ in $t = f(x,g(a,b))$. \Cref{termpaths} shows all the paths and symbols of $t$. We represent a path by enclosing a sequence of $(symbol, index)$ pairs with $\langle  \rangle$.
 
 \begin{defn}
@@ -23,7 +23,7 @@ Instead of storing a term as a tree of functions and their arguments, we can spe
 \caption{The paths and associated symbols of $t = f(x,g(a,b))$}\label{termpaths}
 \end{figure}
 
-A $(path, symbol)$ pair can be interpreted as a constraint on a term where the path defines the position of $symbol$ in the term. For example, the constraint $(\langle (f,1) \rangle, c)$ is only fulfilled by terms of the form $f(c,...)$. A term gives rise to a set of $(path, symbol)$ pairs, which, when interpreted as constraints, uniquely identify this term up to loss of variable identitification.
+A $(path, symbol)$ pair can be interpreted as a constraint on a term where the path defines the position of $symbol$ in the term. For example, the constraint $(\langle (f,1) \rangle, c)$ is only fulfilled by terms of the form $f(c,\dots)$. A term gives rise to a set of $(path, symbol)$ pairs, which, when interpreted as constraints, uniquely identify this term up to loss of variable identitification.
 
 A term $t$ can either be represented by a set of paths and the $Symbol_{t}$ mapping or by listing each associated symbol explicitly in a set of $(path, symbol)$ pairs where $symbol = Symbol_{t}(path)$. We will choose whichever notation is clearer in the given context.
 
@@ -83,34 +83,34 @@ To retrieve the unifiables of a term from the index, we can use some observation
 \begin{enumerate}
   \item A variable is unifiable with any other term
   \item Constants are unifiable with themselves and variables
-  \item A function $f(x_{1},...,x_{n})$ is unifiable with term $t$ if and only if $t = x$ or $t = f(y_{1},...,y_{n})$ where, for all $i$, $x_{i}$ is unifiable with $y_{i}$.
+  \item A function $f(x_{1},\dots,x_{n})$ is unifiable with term $t$ if and only if $t = x$ or $t = f(y_{1},\dots,y_{n})$ where, for all $i$, $x_{i}$ is unifiable with $y_{i}$.
 \end{enumerate}
 
 \newcommand{\PT}{Terms}
 \newcommand{\ALL}{AllTerms}
 Using this, we can define an algorithm recursing on the structure of the query term while intersecting and unifying the different path sets of the index. \Cref{path_queries} shows the recursive definition for all the queries. As can be seen, the different queries are quite similar, with $\var$ being the most restrictive and $\unif$ the least restrictive. $\ALL$ is the set of all terms stored in the index and represents a wildcard at this path as intersecting $\ALL$ with an arbitrary $\PT$ returns $\PT$.
 
-\begin{figure}[h]
+\begin{table}[h]
   \centering
-  \scalebox{.85}{
-\begin{tabular}{ l|l l l }
-  \multirow{2}{4em}{Arguments Query} & $Q(p, x)$ & $Q(p, a)$ & $Q(p, f(t_{1}, ..., t_{n}))$ \\\\
+\begin{adjustbox}{width=1\textwidth}
+\begin{tabular}{ l|l|l|l }
+  \diagbox{Query}{Arguments} & $Q(p, x)$ & $Q(p, a)$ & $Q(p, f(t_{1}, \dots, t_{n}))$ \\
   \hline
   $Q = \var$ & $\PT(p \cdot *)$ & $\PT(p \cdot a)$ & $\bigcap_{i} Q(p \cdot f \cdot i, t_{i})$\\
   $Q = \ins$ & $\ALL$ & $\PT(p \cdot a)$ & $\bigcap_{i} Q(p \cdot f \cdot i, t_{i})$\\
   $Q = \gen$ & $\PT(p \cdot *)$ & $\PT(p \cdot a) \cup \PT(p \cdot *)$ & $\bigcap_{i} Q(p \cdot f \cdot i, t_{i}) \cup \PT(p \cdot *)$\\
   $Q = \unif$ & $\ALL$ & $\PT(p \cdot a) \cup \PT(p \cdot *)$ & $\bigcap_{i} Q(p \cdot f \cdot i, t_{i}) \cup \PT(p \cdot *)$\\
 \end{tabular}
-}
+\end{adjustbox}
 \caption{The recursive definition of the queries}
 \label{path_queries}
-\end{figure}
+\end{table}
 
 \section{Discrimination Tree}
 A discrimination tree index, also known as discrimination net index, is a prefix-sharing tree, similar to a trie, which stores the indexed terms. To determine the leaf at which a term is stored we use the preorder traversal of the term. It is obtained by simply reading the written term from left to right. For example, the preorder traversal of $t = f(c,g(x,y))$ is $\langle f,c,g,x,y \rangle$. Since we disregard variable identities, this will further be simplified to $\langle f,c,g,*,* \rangle$.
 
 \begin{defn}
-  $Preorder(t)$ is the sequence of symbols obtained by the preorder traversal of the term $t$. For symbols $s$ with $\mathrm{arity}(s) = 0$ it is the symbol $s$ itself. The preorder traversal of a function $f(x_{1},...,x_{n})$ is $\langle f,Preorder(x_{1}),...,Preorder(x_{n}) \rangle$ For the sake of simplicity, we flatten the sequence, e.g. $\langle f,\langle g,x \rangle \rangle$ becomes $\langle f,g,x \rangle$.
+  $Preorder(t)$ is the sequence of symbols obtained by the preorder traversal of the term $t$. For symbols $s$ with $\mathrm{arity}(s) = 0$ it is the symbol $s$ itself. The preorder traversal of a function $f(x_{1},\dots,x_{n})$ is $\langle f,Preorder(x_{1}),\dots,Preorder(x_{n}) \rangle$ For the sake of simplicity, we flatten the sequence, e.g. $\langle f,\langle g,x \rangle \rangle$ becomes $\langle f,g,x \rangle$.
 \end{defn}
 
 \subsection{Structure}
@@ -174,10 +174,10 @@ For every constant symbol in the term of a $\gen$ or $\unif$ query, we form the 
 
 A variable in the $\ins$ or $\unif$ query term must also be handled differently. As the variable can be substituted arbitrarily, we continue the query at every child of the current node, taking the union of the retrieved terms. For example, all the terms stored in \cref{discnet} are $\ins$ of $f(*,b)$. We notice that at the node $M = slp(root,f)$, we must continue in every branch.
 
-But what about functions? The variable may be replaced by terms with an arbitrary number of arguments. We must skip the nodes corresponding not only to $g$ but also each argument $x_{1}, ..., x_{n}$ of $g(x_{1},...,x_{n})$. When continuing in the $g$ branch, we must not continue at $slp(M,g)$, but at $slp(M,\ang{g,a})$, as the variable is substituted by $g(a)$.
+But what about functions? The variable may be replaced by terms with an arbitrary number of arguments. We must skip the nodes corresponding not only to $g$ but also each argument $x_{1}, \dots, x_{n}$ of $g(x_{1},\dots,x_{n})$. When continuing in the $g$ branch, we must not continue at $slp(M,g)$, but at $slp(M,\ang{g,a})$, as the variable is substituted by $g(a)$.
 
 \begin{defn}
-  $skip(N)$ returns the set of nodes obtained by skipping a single term starting at $N$. That is, for a constant $c$ with $\arity(c) = 0$ we return $slp(N,c)$ (which is a direct child of $N$). For a function $f(x_{1},...,x_{n})$, we return the nodes $skip^n(slp(N,f))$. If for all $x_{i}$ $arity(x_{i}) = 0$, $skip^n$ retrieve the nodes $1 + n$ levels below $N$.
+  $skip(N)$ returns the set of nodes obtained by skipping a single term starting at $N$. That is, for a constant $c$ with $\arity(c) = 0$ we return $slp(N,c)$ (which is a direct child of $N$). For a function $f(x_{1},\dots,x_{n})$, we return the nodes $skip^n(slp(N,f))$. If for all $x_{i}$ $arity(x_{i}) = 0$, $skip^n$ retrieve the nodes $1 + n$ levels below $N$.
 \end{defn}
 
 \begin{figure}[h]
@@ -220,34 +220,40 @@ But what about functions? The variable may be replaced by terms with an arbitrar
 
 Using this, we can retrieve all the nodes reached by replacing the variable in the query term with some term. The union of the terms returned by the query on each node represents the result. An overview of all the queries is given in \cref{discnetqueries}. The base case of $Q(N,\ang{}) = terms(N)$ is identical for all queries and not included in the table. Note that $\var$ is the simplest and most restrictive query, $\unif$ is the most complex and least restrictive with $\ins$ and $\gen$ being a combination of both.
 
-\begin{figure}[h]
+\begin{table}[h]
   \centering
-  \scalebox{.7}{
+\begin{adjustbox}{width=1\textwidth}
 \setlength{\tabcolsep}{10pt} % Default value: 6pt
 \renewcommand{\arraystretch}{1.4} % Default value: 1
-\begin{tabular}{ l|l l l }
-  \multirow{2}{4em}{Arguments Query} & $Q(N, \angt{x})$ & $Q(N, \angt{a})$ & $Q(N, \angt{f(x_{1}, ..., x_{n})})$ \\\\
+\begin{tabular}{ l|l|l|l }
+  \diagbox{Query}{Arguments} & $Q(N, \angt{x})$ & $Q(N, \angt{a})$ & $Q(N, \angt{f(x_{1}, \dots, x_{n})})$ \\
   \hline
-  $Q = \var$ & $Q(slp(N, *), \angtn )$ & $Q(slp(N,a),\angtn )$ & $Q(slp(N,f), \angt{x_{1}, ..., x_{n}})$\\
-  $Q = \ins$ & $\underset{M \in Skip(N)}{\bigcup}Q(M, \angtn )$ & $Q(slp(N,a),\angtn )$ & $Q(slp(N,f), \angt{x_{1}, ..., x_{n}})$\\
-  $Q = \gen$ & $Q(slp(N, *), \angtn )$ & \multirow{2}{4em}{$Q(slp(N,a),\angtn )$ $\cup\ Q(slp(N,*), \angtn )$} & \multirow{2}{4em}{$Q(slp(N,f), \angt{x_{1}, ..., x_{n}})$ $\cup\ Q(slp(N,*), \angtn )$}\\\\
-  $Q = \unif$ & $\underset{M \in Skip(N)}{\bigcup}Q(M, \angtn )$ & \multirow{2}{4em}{$Q(slp(N,a),\angtn )$ $\cup\ Q(slp(N,*), \angtn )$} & \multirow{2}{4em}{$Q(slp(N,f), \angt{x_{1}, ..., x_{n}})$ $\cup\ Q(slp(N,*), \angtn )$}\\
+  $Q = \var$ & $Q(slp(N, *), \angtn )$ & $Q(slp(N,a),\angtn )$ & $Q(slp(N,f), \angt{x_{1}, \dots, x_{n}})$\\
+  \hline
+  $Q = \ins$ & $\underset{M \in Skip(N)}{\bigcup}Q(M, \angtn )$ & $Q(slp(N,a),\angtn )$ & $Q(slp(N,f), \angt{x_{1}, \dots, x_{n}})$\\
+  \hline
+  $Q = \gen$ & $Q(slp(N, *), \angtn )$ & \multirow{2}{4em}{$Q(slp(N,a),\angtn )$ $\cup\ Q(slp(N,*), \angtn )$} & \multirow{2}{4em}{$Q(slp(N,f), \angt{x_{1}, \dots, x_{n}})$ $\cup\ Q(slp(N,*), \angtn )$}\\
+   & & &\\
+  \hline
+  $Q = \unif$ & $\underset{M \in Skip(N)}{\bigcup}Q(M, \angtn )$ & \multirow{2}{4em}{$Q(slp(N,a),\angtn )$ $\cup\ Q(slp(N,*), \angtn )$} & \multirow{2}{4em}{$Q(slp(N,f), \angt{x_{1}, \dots, x_{n}})$ $\cup\ Q(slp(N,*), \angtn )$}\\
+  & & &\\
 \end{tabular}
-}
+\end{adjustbox}
 \caption{The recursive definition of the queries}
 \label{discnetqueries}
-\end{figure}
+\end{table}
+\todo{Revisit query table. Looks odd, especially at the bottom}
 
 %\begin{figure}[h]
   %\centering
   %\scalebox{.8}{
 %\begin{tabular}{ l|l l l }
-  %\multirow{2}{4em}{Arguments Query} & $Q(N, \angt{x})$ & $Q(N, \angt{a})$ & $Q(N, \angt{f(x_{i}, ...)})$ \\\\
+  %\multirow{2}{4em}{Arguments Query} & $Q(N, \angt{x})$ & $Q(N, \angt{a})$ & $Q(N, \angt{f(x_{i}, \dots)})$ \\\\
   %\hline
-  %$Q = variants$ & $Q(slp(N, *), \angtn )$ & $Q(slp(N,a),\angtn )$ & $Q(slp(N,f), \angt{x_{i}, ...})$\\\\
-  %$Q = instances$ & $\underset{M \in Skip(N)}{\bigcup}Q(M, \angtn )$ & $Q(slp(N,a),\angtn )$ & $Q(slp(N,f), \angt{x_{i}, ...})$\\\\
-  %$Q = generalisations$ & $Q(slp(N, *), \angtn )$ & \multirow{2}{4em}{$Q(slp(N,a),\angtn )$ $\cup\ Q(slp(N,*), \angtn )$} & \multirow{2}{4em}{$Q(slp(N,f), \angt{x_{i}, ...})$ $\cup\ Q(slp(N,*), \angtn )$}\\\\\\
-  %$Q = unifiables$ & $\underset{M \in Skip(N)}{\bigcup}Q(M, \angtn )$ & \multirow{2}{4em}{$Q(slp(N,a),\angtn )$ $\cup\ Q(slp(N,*), \angtn )$} & \multirow{2}{4em}{$Q(slp(N,f), \angt{x_{i}, ...})$ $\cup\ Q(slp(N,*), \angtn )$}\\\\
+  %$Q = variants$ & $Q(slp(N, *), \angtn )$ & $Q(slp(N,a),\angtn )$ & $Q(slp(N,f), \angt{x_{i}, \dots})$\\\\
+  %$Q = instances$ & $\underset{M \in Skip(N)}{\bigcup}Q(M, \angtn )$ & $Q(slp(N,a),\angtn )$ & $Q(slp(N,f), \angt{x_{i}, \dots})$\\\\
+  %$Q = generalisations$ & $Q(slp(N, *), \angtn )$ & \multirow{2}{4em}{$Q(slp(N,a),\angtn )$ $\cup\ Q(slp(N,*), \angtn )$} & \multirow{2}{4em}{$Q(slp(N,f), \angt{x_{i}, \dots})$ $\cup\ Q(slp(N,*), \angtn )$}\\\\\\
+  %$Q = unifiables$ & $\underset{M \in Skip(N)}{\bigcup}Q(M, \angtn )$ & \multirow{2}{4em}{$Q(slp(N,a),\angtn )$ $\cup\ Q(slp(N,*), \angtn )$} & \multirow{2}{4em}{$Q(slp(N,f), \angt{x_{i}, \dots})$ $\cup\ Q(slp(N,*), \angtn )$}\\\\
 %\end{tabular}
 %}
 %\caption{The recursive definition of the queries}

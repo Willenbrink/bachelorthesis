@@ -1,7 +1,49 @@
 \chapter{Evaluation}
-\section{Testweise}
-\section{Vergleich von Queries, mit DN, Itemnets}
-\section{Vergleich von Insert, Delete, (Merge); mit DN, Itemnets, Termtabs}
-\section{Wann PI hernehmen statt dem Rest?}
+Is PI better than DT? Theory and randomly tested
+
+\section{Expectations}
+Theoretical analysis, ref to comparison paper.
+In what cases is what approach superior?
+Prefix sharing
+
+\section{Approach}
+Randomly generated. Generation difficult, details on generator
+Focus on variable appearance as prefix sharing is even more difficult to reproduce
+
+\section{Comparison of PITT and DT}
+
+\subsection{Variants}
+PI a bit better
+
+\subsection{Instances}
+PI significantly better
+
+\subsection{Generalisations}
+DT significantly better
+
+\subsection{Unifiables}
+PI significantly better
+
+\subsection{Maintenance Operations}
+PITT ca equal at insert, sig better at delete
+
+\subsection{Performance over Variable Frequency}
+At what point is break-even.
+Move perhaps as subsubsection into every query above.
+
+\subsection{Performance over Size}
+PITT scales better perhaps?
+
+\section{Comparison of PITT and PI}
+PITT significantly better
+\subsection{Insert}
+\subsection{Delete}
+
+\section{Recommendation}
+PI never
+PITT whenever: exact lookup, many vars, many unifs, many instances
+DN whenever, few vars, many gens
+
 \section{Shortcomings}
-\section{Future Work}
+Generators do not represent real applications
+Tests are noisy due to ?. PolyML?

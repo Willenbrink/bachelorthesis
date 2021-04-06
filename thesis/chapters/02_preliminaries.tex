@@ -2,11 +2,11 @@
 \section{First-Order Logic}
 First-order logic is a formal language used to, amongst others, formalise reasoning, including artifical intelligence, logic programming and automated deduction systems. In this thesis we are only interested in terms. Therefore, we disregard formulas, relations and quantifiers. A more extensive introduction can be found in \cite{abiteboul_foundations_1995}.
 
-A symbol is either a variable, a constant or a function. We choose all variables from the infinite set $\V \coloneqq \{x, y, z, x_{1}, x_{2}, ...\}$, all constants from the infinite set $\C \coloneqq \{a, b, c, c_{1}, c_{2}, ...\}$ and all functions from the infinite set $\F \coloneqq \{f, g, h, f_{1}, f_{2}, ...\}$. Whenever possible, we use only the first three symbols of each set for better readibility.
+A symbol is either a variable, a constant or a function. We choose all variables from the infinite set $\V \coloneqq \{x, y, z, x_{1}, x_{2}, \dots\}$, all constants from the infinite set $\C \coloneqq \{a, b, c, c_{1}, c_{2}, \dots\}$ and all functions from the infinite set $\F \coloneqq \{f, g, h, f_{1}, f_{2}, \dots\}$. Whenever possible, we use only the first three symbols of each set for better readibility.
 
 The arity of a symbol $\arity(s)$ is a positive integer representing the number of arguments the symbol is applied to. All constants have a fixed arity of $0$ while every function $f$ has a fixed $\arity(f) \geq 1$. A variable $x$ has an arbitrary but fixed arity depending on its context.
 
-A term in first-order logic, chosen from the infinite set $\T \coloneqq \{t, u, v, t_{1}, t_{2}, ...\}$, is a symbol $s$ applied to $\arity(s)$ arguments, where each argument again is a term.
+A term in first-order logic, chosen from the infinite set $\T \coloneqq \{t, u, v, t_{1}, t_{2}, \dots\}$, is a symbol $s$ applied to $\arity(s)$ arguments, where each argument again is a term.
 
 \begin{exmpl}
 Assume $\arity(f) = 1$ and $\arity(g) = 2$ and, for all other symbols $s$, $\arity(s) = 0$. Then, the terms $f(a)$ and $g(f(x), a)$ are well-formed while the terms $f(a,b)$, $f(g)$ and $a(b)$ are not.
@@ -14,7 +14,7 @@ Assume $\arity(f) = 1$ and $\arity(g) = 2$ and, for all other symbols $s$, $\ari
 
 \subsection{Generalisation and Unification}
 \begin{defn}
-  A substitution is a partial function $\rho : \V \longrightarrow \T$. We denote by $t \rho$ the term obtained by replacing all variables $v$ in $t$ by $v \rho$ if $v$ is in the domain of $\rho$. We write $[t_{1}/x_{1},...,t_{n}/x_{n}]$ for the substitution $\{x_{1} \mapsto t_{1}, ..., x_{n} \mapsto t_{n}\}$.
+  A substitution is a partial function $\rho : \V \longrightarrow \T$. We denote by $t \rho$ the term obtained by replacing all variables $v$ in $t$ by $v \rho$ if $v$ is in the domain of $\rho$. We write $[t_{1}/x_{1},\dots,t_{n}/x_{n}]$ for the substitution $\{x_{1} \mapsto t_{1}, \dots, x_{n} \mapsto t_{n}\}$.
 \end{defn}
 
 When applying the substitution $\rho = [a/x]$ to the term $t = f(x,y)$, we get the term $f(a,y) = t \rho$. As $y$ is not in the domain of $\rho$, it is not modified in the term. Note that $\rho$ is applied only once to the term, that is, $x [y/x, a/y] = y$ even though $y$ would be substituted by $a$ in the original term.
