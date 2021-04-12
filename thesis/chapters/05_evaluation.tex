@@ -16,13 +16,12 @@ Each term consists of many symbols, thereby ensuring that most symbols occur mul
 
 While the terms generated in this way do not accurately represent terms of real applications, they allow us to efficiently stress-test the term indices. As they are randomly generated we can generate term sets of arbitrary size and test each size multiple times with different seeds to average the impact of any single term on the performance.
 
-For the benchmarks, we generated term sets with sizes ranging from 10 to 5000. The smaller sets were tested more often to obtain test runtimes significantly larger than time measurement errors. For the sizes $s \leq 100$ we generated 5000 different term sets. For the sizes $100 < s < 1000$ 500 sets were generated. To restrict the runtime of the benchmarks, only 50 sets were generated for the sizes $s \geq 1000$.
+For the benchmarks, we generated term sets with sizes ranging from 10 to 5000. The smaller sets were tested more often to obtain test runtimes significantly larger than time measurement errors. For sizes $s \leq 100$, we generated 5000 different term sets. For sizes $100 < s < 1000$, we generated 500 sets. To restrict the runtime of the benchmarks, only 50 sets were generated for the sizes $s \geq 1000$.
 
 %TODO Combinatorial explosion of parameters. Fixed term-size and reuse
 
 \section{Comparison of PITT and PI}
-\todo{Delete this section as Insert is unfair comparison?}
-In the previous chapter, we discussed the repeated comparisons necessary during insertion and deletion. By introducing unique identifiers for each $(term,value)$ pair we hope to reduce the time spent onf comparisons. ...
+In the previous chapter, we discussed the repeated comparisons necessary during insertion and deletion. By introducing unique identifiers for each $(term,value)$ pair in conjunction with termtables we hope to reduce the time spent on comparisons, both for insertion and deletion.
 
 PI: insert uses variants, !NOT! only the top symbol
 
@@ -34,7 +33,7 @@ PI: insert uses variants, !NOT! only the top symbol
     xmode=log
     ,ymode=log
     ,xlabel={Indexed Terms}
-    ,ylabel={Insertion Time [ms]}
+    ,ylabel={Insertion Time [s]}
     ,xmajorgrids=true
     ,ymajorgrids=true
     ,legend pos=north west
@@ -46,8 +45,8 @@ PI: insert uses variants, !NOT! only the top symbol
   \end{axis}
 \end{tikzpicture}
 \end{adjustbox}
-\caption{Insertion speed}
-\label{TODOGraph}
+\caption{Insertion Performance}
+\label{pi_insert}
 \end{subfigure}
 \begin{subfigure}{0.1\textwidth}
 \end{subfigure}
@@ -58,7 +57,7 @@ PI: insert uses variants, !NOT! only the top symbol
     xmode=log
     ,ymode=log
     ,xlabel={Indexed Terms}
-    ,ylabel={Deletion Time [ms]}
+    ,ylabel={Deletion Time [s]}
     ,xmajorgrids=true
     ,ymajorgrids=true
     ,legend pos=north west
@@ -70,8 +69,8 @@ PI: insert uses variants, !NOT! only the top symbol
   \end{axis}
 \end{tikzpicture}
 \end{adjustbox}
-\caption{Delete}
-\label{TODOGraph}
+\caption{Deletion Performance}
+\label{pi_delete}
 \end{subfigure}
 \end{figure}
 
@@ -94,7 +93,7 @@ Although we can generate an instance of $t$ to more accurately represent a gener
     ,xticklabels from table={figures/queries.csv}{Queries}
     ,x tick label style={rotate=-45}
     ,xlabel={Indexed Terms}
-    ,ylabel={Query Time [ms]}
+    ,ylabel={Query Time [s]}
     ]
     \addplot table[x expr=\coordindex,y=PITT]{figures/queries.csv};
     \addplot table[x expr=\coordindex,y=DN]{figures/queries.csv};
@@ -123,7 +122,7 @@ Evaluating this function is slow as it must both traverse every child of the cur
 
 \begin{exmpl}
   Let the set of indexed terms $\T = \{t_{1} = f(a,x), t_{2} = f(b,x), t_{3} = f(c,x), t_{4} = f(g(a,b),x)\}$ and the query term $u = f(x,y)$.
-  The instances query will first lookup $f$ and reach node $N = slp(root,f)$. As the next symbol of $preorder(u)$ is $*$, we compute $skip(N)$. As every indexed term shares the prefix $f$ with $u$, we retrieve the set of nodes $\{slp(N,a), slp(N,b), slp(N,c), slp(slp(slp(N,g),a),b)\}$. Each of these nodes is evaluated recursively.
+  The instances query will first lookup $f$ and reach node $N = \slp(root,f)$. As the next symbol of $preorder(u)$ is $*$, we compute $skip(N)$. As every indexed term shares the prefix $f$ with $u$, we retrieve the set of nodes $\{\slp(N,a), \slp(N,b), \slp(N,c), \slp(\slp(\slp(N,g),a),b)\}$. Each of these nodes is evaluated recursively.
   If more terms shared some prefix with $u$ or the subterms were larger, this evaluation will be even slower.
 \end{exmpl}
 
@@ -144,7 +143,7 @@ Note that the variants query of path indexing can be supplemented by the exact l
     xmode=log
     ,ymode=log
     ,xlabel={Indexed Terms}
-    ,ylabel={Query Time [ms]}
+    ,ylabel={Query Time [s]}
     ,xmajorgrids=true
     ,ymajorgrids=true
     ,legend pos=north west
@@ -173,7 +172,7 @@ As already shown in the overview, the performance difference of the queries for 
     xmode=log
     ,ymode=log
     ,xlabel={Indexed Terms}
-    ,ylabel={Query Time [ms]}
+    ,ylabel={Query Time [s]}
     ,xmajorgrids=true
     ,ymajorgrids=true
     ,legend pos=north west
@@ -196,7 +195,7 @@ As already shown in the overview, the performance difference of the queries for 
     xmode=log
     ,ymode=log
     ,xlabel={Indexed Terms}
-    ,ylabel={Query Time [ms]}
+    ,ylabel={Query Time [s]}
     ,xmajorgrids=true
     ,ymajorgrids=true
     ,legend pos=north west
@@ -229,7 +228,7 @@ Due to the variables replacing not only constants but also functions and both in
     xmode=log
     ,ymode=log
     ,xlabel={Indexed Terms}
-    ,ylabel={Query Time [ms]}
+    ,ylabel={Query Time [s]}
     ,xmajorgrids=true
     ,ymajorgrids=true
     ,legend pos=north west
@@ -250,7 +249,7 @@ Due to the variables replacing not only constants but also functions and both in
 \begin{tikzpicture}
   \begin{axis}[
     xlabel={Variable Frequency}
-    ,ylabel={Query Time [ms]}
+    ,ylabel={Query Time [s]}
     %,xmajorgrids=true
     %,ymajorgrids=true
     ]
@@ -281,7 +280,7 @@ The difference is even more pronounced for deletion, as can be seen in \cref{del
     xmode=log
     ,ymode=log
     ,xlabel={Indexed Terms}
-    ,ylabel={Query Time [ms]}
+    ,ylabel={Insertion Time [s]}
     ,ymajorgrids=true
     ,legend pos=north west
     ]
@@ -291,7 +290,7 @@ The difference is even more pronounced for deletion, as can be seen in \cref{del
   \end{axis}
 \end{tikzpicture}
 \end{adjustbox}
-\caption{Insert}
+\caption{Insertion Performance}
 \label{insert}
 \end{subfigure}
 \begin{subfigure}{0.1\textwidth}
@@ -303,7 +302,7 @@ The difference is even more pronounced for deletion, as can be seen in \cref{del
     xmode=log
     ,ymode=log
     ,xlabel={Indexed Terms}
-    ,ylabel={Query Time [ms]}
+    ,ylabel={Deletion Time [s]}
     ,ymajorgrids=true
     ,legend pos=north west
     ]
@@ -313,7 +312,7 @@ The difference is even more pronounced for deletion, as can be seen in \cref{del
   \end{axis}
 \end{tikzpicture}
 \end{adjustbox}
-\caption{Delete}
+\caption{Deletion Performance}
 \label{delete}
 \end{subfigure}
 \end{figure}
