@@ -2,8 +2,7 @@
 In the following sections we give an overview of path indexing and discrimination trees. We also take a closer look at some details of their implementation in Isabelle/ML as they differ in many places significantly from the approaches chosen in most literature.
 
 \section{Path Indexing}
-A term can be represented as a tree with all symbols $s$ with $\arity (s) = 0$ as leafs and all functions $f(x_{1}, \dots, x_{n})$ as internal nodes with the $x_{i}$ as children. Within this tree, every symbol has a position by the \todo{}
-Instead of storing a term as a tree of functions and their arguments, we can specify the structure and symbols of a tree by combining every symbol of a term with its position in the term, which we call its path. The paths start at the top symbol and end with the index at which the symbol is located. For example, $\langle (f,2), (g,1) \rangle$ is the path of the symbol $a$ in $t = f(x,g(a,b))$. \Cref{termpaths} shows all the paths and symbols of $t$. We represent a path by enclosing a sequence of $(symbol, index)$ pairs with $\langle  \rangle$.
+A term can be represented as a tree with all symbols $s$ with $\arity (s) = 0$ as leafs and all functions $f(x_{1}, \dots, x_{n})$ as internal nodes with the $x_{i}$ as children. Within this tree, every symbol has a position determined by the nodes traversed to reach this symbol. We represent this as a sequence of $(symbol, index)$ pairs with the index describing which argument of a function is traversed. We call this sequence a path. The path of a symbol $s$ begins with the top symbol and ends with the index at which $s$ is located. For example, $\langle (f,2), (g,1) \rangle$ is the path of the symbol $a$ in $t = f(x,g(a,b))$. \Cref{termpaths} shows all the paths and symbols of $t$. We represent a path by enclosing the sequence of $(symbol, index)$ pairs with $\langle  \rangle$.
 
 \begin{defn}
   A path is a sequence of $(symbol, index)$ pairs where the index describes the index of the next argument to traverse.\footnote{This is in contrast to coordinate indexing which only uses a sequence of indices.} $Symbol_{t}(p)$ refers to the symbol associated with path $p$ in the term $t$.
@@ -23,7 +22,7 @@ Instead of storing a term as a tree of functions and their arguments, we can spe
 \caption{The paths and associated symbols of $t = f(x,g(a,b))$}\label{termpaths}
 \end{figure}
 
-A $(path, symbol)$ pair can be interpreted as a constraint on a term where the path defines the position of $symbol$ in the term. For example, the constraint $(\langle (f,1) \rangle, c)$ is only fulfilled by terms of the form $f(c,\dots)$. A term gives rise to a set of $(path, symbol)$ pairs, which, when interpreted as constraints, uniquely identify this term up to loss of variable identitification.
+A $(path, symbol)$ pair can be interpreted as a constraint on a term where at path $path$ there must be the symbol $symbol$. For example, the constraint $(\langle (f,1) \rangle, c)$ is only fulfilled by terms of the form $f(c,\dots)$. A term gives rise to a set of $(path, symbol)$ pairs, which, when interpreted as constraints, uniquely identify this term up to loss of variable identitification.
 
 A term $t$ can either be represented by a set of paths and the $Symbol_{t}$ mapping or by listing each associated symbol explicitly in a set of $(path, symbol)$ pairs where $symbol = Symbol_{t}(path)$. We will choose whichever notation is clearer in the given context.
 
