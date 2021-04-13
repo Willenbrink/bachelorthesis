@@ -1,4 +1,4 @@
-\chapter{Evaluation}
+\chapter{Evaluation} \label{evaluation}
 The path index implemented as part of this thesis competes directly with the discrimination tree implementation already present in Isabelle/ML. Furthermore, the combination of path indexing with termtables increases complexity and overhead. In this chapter, we will evaluate the impact of the termtables and compare the performance of the discrimination tree with the path index.
 
 \section{Approach} \label{approach}
@@ -20,10 +20,25 @@ For the benchmarks, we generated term sets with sizes ranging from 10 to 5000. T
 
 %TODO Combinatorial explosion of parameters. Fixed term-size and reuse
 
-\section{Comparison of PITT and PI}
+\section{Combining Path Indexing and Termtables} \label{pathindex_termtab}
 In the previous chapter, we discussed the repeated comparisons necessary during insertion and deletion. By introducing unique identifiers for each $(term,value)$ pair in conjunction with termtables we hope to reduce the time spent on comparisons, both for insertion and deletion.
 
-PI: insert uses variants, !NOT! only the top symbol
+To evaluate the performance of the insert operation for a term set $\T$, we generate a term set $\mathcal{U}$ containing an identical number of new terms, that is, $|\T| = |\mathcal{U}|$ and $\T \cap \mathcal{U} = \emptyset$. After creating a term index for $\T$, we start the time measurement and insert every term $u \in \mathcal{U}$ into $\T$, effectively doubling the size of $\T$. To evaluate the deletion, we also create a term index for $\T$ but instead delete every term $t \in \T$, effectively removing every indexed term.
+
+While this approach does not accurately evaluate the performance of insertion and deletion at a given index size, it enables us to measure a long-running operation without interruptions. Instead of discarding an index after inserting a small number of terms and reusing the unmodified index, we opt to consecutively insert all terms into the same index. This ensures that infrequent but expensive operations, like the rebalancing of the 2-3 tree used by the termtables, are amortised correctly.
+
+Despite this, we encounter some outliers in \cref{pi_insert,pi_delete} as well as most other graphs, predominantly at the index sizes 100 and 700. We discuss potential causes in \cref{shortcomings}.
+
+As mentionend in the previous chapter, we require a $(term,value)$ to $id$ mapping to speed up deletion. Upon deleting a $(term,value)$ pair, we need to remove it from the term sets of every path of $term$. Comparing the terms and values repeatedly is prohibitevily expensive. Therefore, we compare two variants using identifiers.
+
+The first, basic path indexing (Basic PI) uses a linked list to associate each $(term,value)$ pair with an $id$. To detect duplicates, we use a variants query on the tree as this avoids an expensive linear search in the list. For deletion, we cannot avoid searching the list to retrieve the identifiers that must be deleted. The second variant, path indexing with termtables (PI with TT), uses a termtable to store $(term,value) \mapsto id$. We also use this termtable to detect duplicates and retrieve the identifiers that are deleted.
+
+In \cref{pi_insert}, we can see a comparison of the respective insertion performance. Basic path indexing uses a variants query to detect duplicates of a $(term,value)$ pair. Note that this traverses all the paths of $term$ and is therefore relatively inefficient. Despite this, it can be used as a baseline for the path indexing with termtables.
+
+It appears that combining path indexing with termtables does not significantly increase the runtime of insertion despite inserting every pair into both the termtable and the path index. While it is faster when compared with basic path indexing, we can expect that duplication detection using only the top symbol is significantly more performant. Unfortunately, this is not an option for us as the path index only stores $(id,value)$ pairs and we require the mapping of $(term,value)$ to $id$.
+
+For deletion, we can see in \cref{pi_delete} that using a termtable is consistently and significantly faster.
+\todo{Finish}
 
 \begin{figure}[h]
   \begin{subfigure}{0.45\textwidth}
@@ -74,7 +89,7 @@ PI: insert uses variants, !NOT! only the top symbol
 \end{subfigure}
 \end{figure}
 
-\section{Comparison of PITT and DT}
+\section{Path Indexing and Discrimination Trees} \label{pi_dt}
 To test the queries for a term set $\T$, we create both term indices $PI$ and $DT$ for the set $\T$. We execute one query for each term stored in the index. This ensures that each indexed term is retrieved at least once.
 
 As the queries are used for different purposes, we use $t \in \T$ directly as the query term for the variants and generalisations query.
@@ -317,20 +332,7 @@ The difference is even more pronounced for deletion, as can be seen in \cref{del
 \end{subfigure}
 \end{figure}
 
-\section{Recommendation}
-\begin{table}
-  \centering
-\begin{tabular} { c c }
-  Insertion & Test \\
-\end{tabular}
-\caption{Overview of performance}
-\end{table}
-\todo{Add table}
-PITT whenever: exact lookup, many vars, many unifs, many instances,
-
-DN whenever: few vars, many gens, many modifications + shortlived indices, small indices
-
-\section{Shortcomings}
+\section{Shortcomings} \label{shortcomings}
 In the evaluation of the term indices, two problems became apparent. Firstly, the term generators do not accurately represent terms of real applications. Therefore, the results shown here must be taken with a grain of salt and verified for every context that is reliant on good performance. Nevertheless, the results shown are mostly identical to the expectations and should therefore be representative enough for the recommendations in the previous section to hold.
 
 Secondly, the results from the tests show some significant and consistent outliers. These occur almost exclusively at the tests with a index size of 100 and 700. We recall from \cref{approach} that we repeat the smaller sized tests more often to avoid measuring short time intervals. For the sizes up to 100, we repeat the tests 5000 times and, for the sizes up to 700, 500 times. These values were chosen in pretests to limit the runtime of the benchmark while still testing each size an appropriate number of times.
