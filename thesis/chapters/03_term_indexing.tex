@@ -285,7 +285,7 @@ The interface of the discrimination tree is mostly identical to the one introduc
 
 %This allows us to, for example, store horn clauses for efficient backward chaining. By storing the premises of a clause in the node addressed by its conclusion, we can later query our knowledge base for unifiables of our current goal. On successful retrieval, we can replace the goal with the set of premises.
 
-\subsection{Caveats of current Implementation}
+\subsection{Caveats of current Implementation} \label{caveats}
 The generalisation of storing terms to storing arbitrary values is relatively simple for discrimination trees. Each leaf is addressed by only one preorder traversal and therefore stores only variants of one term. As such, we can simply replace this set of terms with a set of arbitrary values.
 
 Insertion and deletion uses key-value pairs with the $Preorder(t)$ being the key. This results in some potentially surprising behaviour. We illustrate this with some examples. We write $(t, v)$ for key-value pair stored and $DT$ for the (initially) empty discrimination tree.
