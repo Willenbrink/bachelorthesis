@@ -5,13 +5,13 @@ In the following sections we give an overview of path indexing and discriminatio
 A term can be represented as a tree with all symbols $s$ with $\arity (s) = 0$ as leafs and all functions $f(x_{1}, \dots, x_{n})$ as internal nodes with the $x_{i}$ as children. Within this tree, every symbol has a position determined by the nodes traversed to reach this symbol. We represent this as a sequence of $(symbol, index)$ pairs with the index describing which argument of a function is traversed. We call this sequence a path. The path of a symbol $s$ begins with the top symbol and ends with the index at which $s$ is located. For example, $\langle (f,2), (g,1) \rangle$ is the path of the symbol $a$ in $t = f(x,g(a,b))$. \Cref{termpaths} shows all the paths and symbols of $t$. We represent a path by enclosing the sequence of $(symbol, index)$ pairs with $\langle  \rangle$.
 
 \begin{defn}
-  A path is a sequence of $(symbol, index)$ pairs where the index describes the index of the next argument to traverse.\footnote{This is in contrast to coordinate indexing which only uses a sequence of indices \cite{stickel_path-indexing_1989}.} $Symbol_{t}(p)$ refers to the symbol associated with path $p$ in the term $t$.
+  A \emph{path} is a sequence of $(symbol, index)$ pairs where the index describes the index of the next argument to traverse.\footnote{This is in contrast to coordinate indexing which only uses a sequence of indices \cite{stickel_path-indexing_1989}.} $symbol_{t}(p)$ refers to the symbol associated with path $p$ in the term $t$.
 \end{defn}
 
 \begin{figure}[h]
 \centering
 \begin{tabular}{ c|l|l }
-  Tree Representation & Path $p$ & $Symbol_t(p)$ \\
+  Tree Representation & Path $p$ & $symbol_t(p)$ \\
   \hline
 \multirow{5}{4em}{\Tree [.f x [.g a b ] ]} & $\langle \rangle$ & $f$ \\
    & $\langle (f, 1) \rangle$ & $*$ \\
@@ -24,17 +24,17 @@ A term can be represented as a tree with all symbols $s$ with $\arity (s) = 0$ a
 
 A $(path, symbol)$ pair can be interpreted as a constraint on a term where at path $path$ there must be the symbol $symbol$. For example, the constraint $(\langle (f,1) \rangle, c)$ is only fulfilled by terms of the form $f(c,\dots)$. A term gives rise to a set of $(path, symbol)$ pairs, which, when interpreted as constraints, uniquely identify this term up to loss of variable identitification.
 
-A term $t$ can either be represented by a set of paths and the $Symbol_{t}$ mapping or by listing each associated symbol explicitly in a set of $(path, symbol)$ pairs where $symbol = Symbol_{t}(path)$. We will choose whichever notation is clearer in the given context.
+A term $t$ can either be represented by a set of paths and the $symbol_{t}$ mapping or by listing each associated symbol explicitly in a set of $(path, symbol)$ pairs where $symbol = symbol_{t}(path)$. We will choose whichever notation is clearer in the given context.
 
 \subsection{Structure}
 %The aforementioned constraints allow us to define terms not explicitly by their structure and symbols but rather by imposing constraints on them. This concept is fundamental to path indexing which stores only the constraints.
 A path index builds on this idea of constraints and associates each $(path, symbol)$ pair with a set of terms that fulfill this constraint. For example, a path index storing the terms $\{f(x), f(a), g(a)\}$ will associate $(\langle \rangle, f)$ with the two terms $f(x)$ and $f(a)$.
 
 \begin{defn}
-  A path index is a function $index: Path \times Symbol \longrightarrow 2^{Term}$ that maps a constraint $(path,symbol)$ to the set of terms that fulfill this constraint and are stored in the path index.
+  A path index is a function $index: Path \times symbol \longrightarrow 2^{Term}$ that maps a \emph{constraint} $(path,symbol)$ to the set of terms that fulfill this constraint and are stored in the path index.
 \end{defn}
 
-Storing the terms of $index$ such that it can be quickly evaluated for a $(path, symbol)$ pair can be achieved in multiple ways. We decided to use a prefix-sharing tree based approach as many of the paths share prefixes. The nodes of the tree contain a function $Terms_{p}: Symbol  \longrightarrow 2^{\T}$ where $p$ is the path from the root to the node. The edges are labelled with $(symbol, index)$ pairs, which correspond to the elements of a path.
+Storing the terms of $index$ such that it can be quickly evaluated for a $(path, symbol)$ pair can be achieved in multiple ways. We decided to use a prefix-sharing tree based approach as many of the paths share prefixes. The nodes of the tree contain a function $terms_{p}: symbol  \longrightarrow 2^{\T}$ where $p$ is the path from the root to the node. The edges are labelled with $(symbol, index)$ pairs, which correspond to the elements of a path.
 
 \Cref{pathindex} shows a path index stored as a prefix-sharing tree. Note that we only use numbers to represent terms for better readability. The root contains a mapping from the symbol $f$ to all three terms as they all share this path. In the first argument, reached by the edge $(f,1)$, the symbol $a$ is mapped only to the first term whereas $*$ is mapped to the other two terms.
 
@@ -72,8 +72,8 @@ procedes as follows:
 
 \begin{enumerate}
   \item Compute the set of $(path, symbol)$ pairs describing the term.
-  \item Retrieve the corresponding $Terms_{p}(s)$ from the index.
-  \item Intersect the $Terms_{p}(s)$ to retrieve only the terms $u$ containing the same symbols at identical paths as the query term, that is, $Symbol_{t}(p) = Symbol_{u}(p)$
+  \item Retrieve the corresponding $terms_{p}(s)$ from the index.
+  \item Intersect the $terms_{p}(s)$ to retrieve only the terms $u$ containing the same symbols at identical paths as the query term, that is, $symbol_{t}(p) = symbol_{u}(p)$
 \end{enumerate}
 
 Under the assumption of consistent typing, we retrieve only terms of identical structure as the query term. Due to the loss of variable identity we also retrieve variants of the query term in addition to the query term itself (if it is stored in the index).
@@ -109,12 +109,16 @@ Using this, we can define an algorithm recursing on the structure of the query t
 A discrimination tree index, also known as discrimination net index, is a prefix-sharing tree, similar to a trie, which stores the indexed terms. To determine the leaf at which a term is stored we use the preorder traversal of the term. It is obtained by simply reading the written term from left to right. For example, the preorder traversal of $t = f(c,g(x,y))$ is $\langle f,c,g,x,y \rangle$. Since we disregard variable identities, this will further be simplified to $\langle f,c,g,*,* \rangle$.
 
 \begin{defn}
-  $Preorder(t)$ is the sequence of symbols obtained by the preorder traversal of the term $t$. For symbols $s$ with $\mathrm{arity}(s) = 0$ it is the symbol $s$ itself. The preorder traversal of a function $f(x_{1},\dots,x_{n})$ is $\langle f,Preorder(x_{1}),\dots,Preorder(x_{n}) \rangle$ For the sake of simplicity, we flatten the sequence, e.g. $\langle f,\langle g,x \rangle \rangle$ becomes $\langle f,g,x \rangle$.
+  $preorder(t)$ is the sequence of symbols obtained by the preorder traversal of the term $t$.
+  For symbols $s$ with $\mathrm{arity}(s) = 0$ it is the symbol $s$ itself.
+  The preorder traversal of a function $f(x_{1},\dots,x_{n})$ is $\langle f,preorder(x_{1}),\dots,preorder(x_{n}) \rangle$ For the sake of simplicity, we flatten the sequence, e.g. $\langle f,\langle g,x \rangle \rangle$ becomes $\langle f,g,x \rangle$.
 \end{defn}
 
 \subsection{Structure}
-We store the mapping $Preorder(t) \mapsto t$ in the prefix-sharing tree. The symbols in the $Preorder(t)$ sequence are the labels of the edges leading to a leaf where $t$ is stored. Internal nodes store no information.
-$Preorder(t)$ always addresses a leaf as, under the assumption of type consistency, it is impossible for $Preorder(t)$ to be a prefix of $Preorder(u)$ if $t \neq u$.
+We store the mapping $preorder(t) \mapsto t$ in the prefix-sharing tree.
+The symbols in the $preorder(t)$ sequence are the labels of the edges leading to a leaf where $t$ is stored.
+Internal nodes store no information.
+$preorder(t)$ always addresses a leaf as, under the assumption of type consistency, it is impossible for $preorder(t)$ to be a prefix of $preorder(u)$ if $t \neq u$.
 A discrimination tree storing multiple terms can be seen in \cref{discnet}. As can be seen, the common prefix $f$ of all terms is shared in memory. On the other hand, the common postfix $b$ is not shared.
 
 \begin{figure}[h]
@@ -153,10 +157,10 @@ A discrimination tree storing multiple terms can be seen in \cref{discnet}. As c
   \caption{A discrimination tree index storing three terms} \label{discnet}
 \end{figure}
 
-Insertion and deletion are straightforward in discrimination tree indexing. When inserting a term $t$, we traverse the tree according to $Preorder(t)$, reaching a leaf, and insert $t$ into the set at the leaf. Deletion works identically, except we remove the term from the set.
+Insertion and deletion are straightforward in discrimination tree indexing. When inserting a term $t$, we traverse the tree according to $preorder(t)$, reaching a leaf, and insert $t$ into the set at the leaf. Deletion works identically, except we remove the term from the set.
 
 \subsection{Queries}
-The queries are implemented as a recursive algorithm on the nodes of the tree and $Preorder(t)$ of the query term $t$. Starting at the root, we traverse the tree by selecting the child node corresponding to the first symbol of $Preorder(t)$. We recursively continue at the child node while removing the first symbol from the sequence. For example, a $\var$ query for $f(y,b)$ on the index in \cref{discnet} would traverse the tree by following the edges $\ang{f,*,b}$, retrieving the term $f(x,b)$
+The queries are implemented as a recursive algorithm on the nodes of the tree and $preorder(t)$ of the query term $t$. Starting at the root, we traverse the tree by selecting the child node corresponding to the first symbol of $preorder(t)$. We recursively continue at the child node while removing the first symbol from the sequence. For example, a $\var$ query for $f(y,b)$ on the index in \cref{discnet} would traverse the tree by following the edges $\ang{f,*,b}$, retrieving the term $f(x,b)$
 
 \newcommand{\slp}{\mathrm{slp}}
 \begin{defn}
@@ -261,18 +265,18 @@ Using this, we can retrieve all the nodes reached by replacing the variable in t
 %\label{discnetqueries}
 %\end{figure}
 
-% \todo{$Symbol_t$ seems completely superfluous, why is it introduced in another paper?}
+% \todo{$symbol_t$ seems completely superfluous, why is it introduced in another paper?}
 % \begin{defn}
-%   $Symbol_{t}(p)$ refers to the symbol associated with the preorder traversal $p$ of the term $t$ upto the symbol.
+%   $symbol_{t}(p)$ refers to the symbol associated with the preorder traversal $p$ of the term $t$ upto the symbol.
 % \end{defn}
 
 % For example, the symbols of the term $t = f(c,g(x,y))$ are described by the following mapping:
 % \begin{enumerate}
-% \item $Symbol_{t}(\langle  \rangle) = f$
-% \item $Symbol_{t}(\langle f \rangle) = c$
-% \item $Symbol_{t}(\langle f,c \rangle) = g$
-% \item $Symbol_{t}(\langle f,c,g \rangle) = *$
-% \item $Symbol_{t}(\langle f,c,g,* \rangle) = *$
+% \item $symbol_{t}(\langle  \rangle) = f$
+% \item $symbol_{t}(\langle f \rangle) = c$
+% \item $symbol_{t}(\langle f,c \rangle) = g$
+% \item $symbol_{t}(\langle f,c,g \rangle) = *$
+% \item $symbol_{t}(\langle f,c,g,* \rangle) = *$
 % \end{enumerate}
 
 % This mapping can be efficiently stored in a discrimination tree by storing one symbol of the preorder traversal in each internal node and storing
@@ -307,7 +311,7 @@ The lack of deduplication in queries is necessary as the insertion of an identic
 Unfortunately, most literature \cite{stickel_path-indexing_1989,mccune_experiments_1992, carbonell_set-based_1995} on path indexing only covers the storage of terms. Reproducing the behaviour of the discrimination tree implementation correctly and efficiently takes some effort. The queries on a path index rely primarily on the intersection of sets of terms as every function results in a number of intersections.
 
 We recall that a term is never explicitly stored in path indexing. Instead we represent a term by a collection of paths, each storing the set of terms containing this path. Naively replacing this set of terms by a set of values does not work as we can no longer detect duplicates and handle deletions correctly.
-For example, a path index storing the key-value pairs $(f(a,*), true)$ and $(f(*,b), true)$ has the value $true$ stored at the $(p, Symbol_{t}(p))$ pairs $(\ang{}, f)$, $(\ang{(f,1)}, a)$ and $(\ang{(f,2)}, b)$, amongst others. When inserting $(f(a,b), true)$, it is impossible to determine whether this key-value pair has already been inserted before.
+For example, a path index storing the key-value pairs $(f(a,*), true)$ and $(f(*,b), true)$ has the value $true$ stored at the $(p, symbol_{t}(p))$ pairs $(\ang{}, f)$, $(\ang{(f,1)}, a)$ and $(\ang{(f,2)}, b)$, amongst others. When inserting $(f(a,b), true)$, it is impossible to determine whether this key-value pair has already been inserted before.
 
 Therefore, we must also store the key of a value at each path. Doing so allows us to reproduce the behaviour of the discrimination tree in the path index. Note that we need only check if one path, for example the top symbol, stores the same term-value pair on insertion. If one path does not contain the same key-value pair, no other path will. Nevertheless, some optimisations can still be made.
 

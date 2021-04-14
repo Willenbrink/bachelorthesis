@@ -2,11 +2,11 @@
 \section{First-Order Logic}
 First-order logic is a formal language used to, amongst others, formalise reasoning, including artifical intelligence, logic programming and automated deduction systems. In this thesis we are only interested in terms. Therefore, we disregard formulas, relations and quantifiers. A more extensive introduction can be found in \cite{abiteboul_foundations_1995}.
 
-A symbol is either a variable, a constant or a function. We choose all variables from the infinite set $\V \coloneqq \{x, y, z, x_{1}, x_{2}, \dots\}$, all constants from the infinite set $\C \coloneqq \{a, b, c, c_{1}, c_{2}, \dots\}$ and all functions from the infinite set $\F \coloneqq \{f, g, h, f_{1}, f_{2}, \dots\}$. Whenever possible, we use only the first three symbols of each set for better readibility.
+A symbol is either a variable, a constant or a function. We choose all variables from the infinite set $\V = \{x, y, z, x_{1}, x_{2}, \dots\}$, all constants from the infinite set $\C = \{a, b, c, c_{1}, c_{2}, \dots\}$ and all functions from the infinite set $\F = \{f, g, h, f_{1}, f_{2}, \dots\}$. Whenever possible, we use only the first three symbols of each set for better readibility.
 
 The arity of a symbol $\arity(s)$ is a positive integer representing the number of arguments the symbol is applied to. All constants have a fixed arity of $0$ while every function $f$ has a fixed $\arity(f) \geq 1$. A variable $x$ has an arbitrary but fixed arity depending on its context.
 
-A term in first-order logic, chosen from the infinite set $\T \coloneqq \{t, u, v, t_{1}, t_{2}, \dots\}$, is a symbol $s$ applied to $\arity(s)$ arguments, where each argument again is a term.
+A term in first-order logic, chosen from the infinite set $\T = \{t, u, v, t_{1}, t_{2}, \dots\}$, is a symbol $s$ applied to $\arity(s)$ arguments, where each argument again is a term.
 
 \begin{exmpl}
 Assume $\arity(f) = 1$ and $\arity(g) = 2$ and, for all other symbols $s$, $\arity(s) = 0$. Then, the terms $f(a)$ and $g(f(x), a)$ are well-formed while the terms $f(a,b)$, $f(g)$ and $a(b)$ are not.
@@ -14,17 +14,17 @@ Assume $\arity(f) = 1$ and $\arity(g) = 2$ and, for all other symbols $s$, $\ari
 
 \subsection{Generalisation and Unification}
 \begin{defn}
-  A substitution is a partial function $\rho : \V \longrightarrow \T$. We denote by $t \rho$ the term obtained by replacing all variables $v$ in $t$ by $v \rho$ if $v$ is in the domain of $\rho$. We write $[t_{1}/x_{1},\dots,t_{n}/x_{n}]$ for the substitution $\{x_{1} \mapsto t_{1}, \dots, x_{n} \mapsto t_{n}\}$.
+  A \emph{substitution} is a partial function $\rho : \V \longrightarrow \T$. We denote by $t \rho$ the term obtained by replacing all variables $v$ in $t$ by $v \rho$ if $v$ is in the domain of $\rho$. We write $[t_{1}/x_{1},\dots,t_{n}/x_{n}]$ for the substitution $\{x_{1} \mapsto t_{1}, \dots, x_{n} \mapsto t_{n}\}$.
 \end{defn}
 
 When applying the substitution $\rho = [a/x]$ to the term $t = f(x,y)$, we get the term $f(a,y) = t \rho$. As $y$ is not in the domain of $\rho$, it is not modified in the term. Note that $\rho$ is applied only once to the term, that is, $x [y/x, a/y] = y$ even though $y$ would be substituted by $a$ in the original term.
 
 \begin{defn}
-Given two terms $t, u$, we say that $t$ is a \emph{generalisation} of $u$ and $u$ an instance or specialization of $t$ if and only if there exists a substitution $\rho$ such that $t \rho = u$. Similarly, we call $t$ and $u$ unifiable if and only if there exists a substitution $\rho$ such that $t \rho = u \rho$. In this case, $\rho$ is called a unifier of $t$ and $u$.
+Given two terms $t, u$, we say that $t$ is a \emph{generalisation} of $u$ and $u$ an \emph{instance} or \emph{specialization} of $t$ if and only if there exists a substitution $\rho$ such that $t \rho = u$. Similarly, we call $t$ and $u$ \emph{unifiable} if and only if there exists a substitution $\rho$ such that $t \rho = u \rho$. In this case, $\rho$ is called a \emph{unifier} of $t$ and $u$.
 \end{defn}
 
 \begin{exmpl}
-  Let $t \coloneqq f(x)$ and $u \coloneqq f(g(a))$. Set $\rho \coloneqq [g(a)/x]$. Then $t \rho = f(g(a)) = u \rho = u$. Hence, $t$ is a generalisation of $u$, $t$ and $u$ are unifiable and $\rho$ is a unifier $t$ and $u$.
+  Let $t = f(x)$ and $u = f(g(a))$. Set $\rho = [g(a)/x]$. Then $t \rho = f(g(a)) = u \rho = u$. Hence, $t$ is a generalisation of $u$, $t$ and $u$ are unifiable and $\rho$ is a unifier $t$ and $u$.
 \end{exmpl}
 
 The question of whether term $t$ is a generalisation of term $u$ is also known as the matching problem in the literature. Similarly, determining whether $t$ and $u$ are unifiable is called the unification problem. \cite{mccune_experiments_1992}
@@ -38,7 +38,7 @@ Most work in the literature and practical implementations hence simplify matters
 We also employ this simplification in this thesis.
 
 \begin{defn}
-  Variants are terms identical up to loss of variable identity.
+  \emph{Variants} are terms identical up to loss of variable identity.
 \end{defn}
 
 Each $*$ is treated as a unique placeholder and, while solving a matching problem, we assign each $*$ a unique index. For example, the terms $f(*_{1}, a)$ and $f(b, *_{2})$ are unifiable with unifier $\rho = [b/*_{1}, a/*_{2}]$.
@@ -90,7 +90,10 @@ The \lam -terms are a variant of simply typed \lam -calculus. They are defined, 
   \item \lstinline{$} represents the application of the first argument to the second one.
 \end{enumerate} %$
 
-We will ignore the types of terms and simply assume type correctness of all given terms. For example, the \lam -term $(\lam x.\;x)\ a$ can then be represented directly as \lstinline{Abs x (Bound 1)   $ Const a}. The application \lstinline{$} is written infix and is left-associative, i.e. $f\;x\;y$ is written as \lstinline{Const f $ Var x $ Var y} whereas $f\ (g\ x)$ is written as \lstinline{Const f $ (Const g $ Var x)}. As there are no tuples in this term representation, all functions are curried by default. That is, \lstinline{Abs x (Abs y (Const f $ Bound 2 $ Bound 1))} represents the \lam -term $(\lam x\;y.\;f\;x\;y)$.
+Note that we will ignore the types of terms and simply assume type correctness of all given terms.
+The application \lstinline{$} is written infix and is left-associative, i.e. $f\;x\;y$ is written as \lstinline{Const f $ Var x $ Var y} whereas $f\ (g\ x)$ is written as \lstinline{Const f $ (Const g $ Var x)}.
+The \lam -term $(\lam x.\;x)\ a$ can be represented as \lstinline{Abs x (Bound 1)   $ Const a}.
+As there are no tuples in this term representation, all functions are curried by default. That is, \lstinline{Abs x (Abs y (Const f $ Bound 2 $ Bound 1))} represents the \lam -term $(\lam x\;y.\;f\;x\;y)$.
 
 We can embed first-order terms in these \lam -terms. Variables with an arity of $0$ and constants map directly to \lstinline{Var} and \lstinline{Const} respectively. Likewise, a function symbol can be represented using \lstinline{Const}. Terms involving functions are represented by a chain of applications of the constituent subterms. For example, the term $f(a,g(x))$ is represented by \lstinline{Const f $ Const a $ (Const g $ Var x)}. Note the parentheses around $g(x)$ to differentiate this term from $f(a,g,x)$.
 
@@ -99,7 +102,7 @@ We assume for the sake of simplicity that every term consists of only \lstinline
 \section{Term Indexing} \label{termindex}
   A term index is a data structure that allows us to efficiently store and query a set of terms. It provides, for example, a $unifiables$ query that takes a term index and a term $t$ and retrieves all terms from the term index that are unifiable with $t$.
 \begin{defn}
-  A term index is an indexed set of terms $\I$ together with the querie operations $\var (t)$, $\ins (t)$, $\gen (t)$ and $\unif (t)$ that return the the variants, instancesn, generalisations and unifiable terms with respect to $t$ stored in $\I$, respectively. Moreover, it provides two operations $\inse (t)$ and $\del (t)$ to insert and remove a term $t$ from the indexed set of terms.
+  A \emph{term index} is an indexed set of terms $\I$ together with the query operations $\var (t)$, $\ins (t)$, $\gen (t)$ and $\unif (t)$ that return the variants, instances, generalisations and unifiable terms with respect to $t$ stored in $\I$, respectively. Moreover, it provides two operations $\inse (t)$ and $\del (t)$ to insert and remove a term $t$ from the indexed set of terms.
 \end{defn}
 
 %In automated theorem proving it is often necessary to search through many first-order terms and retrieve only the handful few that are applicable in the current context. We are interested in efficiently solving the matching and unification problem for large sets of terms while also storing them in a memory efficient manner. Term indices are a group of data structures built for this express purpose.
@@ -113,7 +116,7 @@ Many specialised operations can be implemented but, alas, we cannot predict whic
 As mentioned in \cref{var_id}, we disregard identity of variables. By doing so, we simplify the implementation significantly but obviously obtain incorrect results when retrieving terms. To be precise, the queries will potentially return incorrect terms in addition to the correct terms.
 
 \begin{defn}
-  A query returning a superset of the correct answer is called an overapproximating query. Similarly, we call a term index overapproximating if it supports only overapproximating queries.
+  A query returning a superset of the correct answer is called an \emph{overapproximating query}. Similarly, we call a term index overapproximating if it supports only overapproximating queries.
 \end{defn}
 
 Depending on the context, we may use this overapproximated result either directly or filter the returned overapproximation with some post-processing methods to obtain the exact set of candidates. Handling the identity of variables correctly in the term index significantly complicates the implementation and sometimes even performs worse than an overapproximative approach \cite{carbonell_comparison_1995}. We hence focus on overapproximative approaches disregarding the identity of variables in this thesis.
