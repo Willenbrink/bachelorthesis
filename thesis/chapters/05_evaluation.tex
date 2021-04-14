@@ -112,11 +112,11 @@ Although we can generate an instance of $t$ to more accurately represent a gener
     %,y tick label style={rotate=60}
     ,xlabel={Execution Time [s]}
     % Remove for color
-    ,cycle list =
-    {
-      {fill=gray!90,draw=gray!100},
-      {fill=gray!40,draw=gray!50}
-      }
+    %,cycle list =
+    %{
+      %{fill=gray!90,draw=gray!100},
+      %{fill=gray!40,draw=gray!50}
+      %}
     ]
     \addplot table[y expr=\coordindex,x=PITT]{figures/queries.csv};
     \addplot table[y expr=\coordindex,x=DN]{figures/queries.csv};
