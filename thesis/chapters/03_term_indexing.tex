@@ -5,7 +5,7 @@ In the following sections we give an overview of path indexing and discriminatio
 A term can be represented as a tree with all symbols $s$ with $\arity (s) = 0$ as leafs and all functions $f(x_{1}, \dots, x_{n})$ as internal nodes with the $x_{i}$ as children. Within this tree, every symbol has a position determined by the nodes traversed to reach this symbol. We represent this as a sequence of $(symbol, index)$ pairs with the index describing which argument of a function is traversed. We call this sequence a path. The path of a symbol $s$ begins with the top symbol and ends with the index at which $s$ is located. For example, $\langle (f,2), (g,1) \rangle$ is the path of the symbol $a$ in $t = f(x,g(a,b))$. \Cref{termpaths} shows all the paths and symbols of $t$. We represent a path by enclosing the sequence of $(symbol, index)$ pairs with $\langle  \rangle$.
 
 \begin{defn}
-  A path is a sequence of $(symbol, index)$ pairs where the index describes the index of the next argument to traverse.\footnote{This is in contrast to coordinate indexing which only uses a sequence of indices \cite{noauthor_path-indexing_nodate}.} $Symbol_{t}(p)$ refers to the symbol associated with path $p$ in the term $t$.
+  A path is a sequence of $(symbol, index)$ pairs where the index describes the index of the next argument to traverse.\footnote{This is in contrast to coordinate indexing which only uses a sequence of indices \cite{stickel_path-indexing_1989}.} $Symbol_{t}(p)$ refers to the symbol associated with path $p$ in the term $t$.
 \end{defn}
 
 \begin{figure}[h]
@@ -174,7 +174,7 @@ For every constant symbol in the term of a $\gen$ or $\unif$ query, we form the 
 
 A variable in the $\ins$ or $\unif$ query term must also be handled differently. As the variable can be substituted arbitrarily, we continue the query at every child of the current node, taking the union of the retrieved terms. For example, all the terms stored in \cref{discnet} are $\ins$ of $f(*,b)$. We notice that at the node $M = \slp(root,f)$, we must continue in every branch.
 
-But what about functions? The variable may be replaced by terms with an arbitrary number of arguments. We must skip the nodes corresponding not only to $g$ but also each argument $x_{1}, \dots, x_{n}$ of $g(x_{1},\dots,x_{n})$. When continuing in the $g$ branch, we must not continue at $\slp(M,g)$, but at $\slp(M,\ang{g,a})$, that is, we need to \emph{skip} not only $g$ but $\ang{g, a}$ as the variable is substituted by $g(a)$.
+But what about functions? The variable may be replaced by terms with an arbitrary number of arguments. We must skip the nodes corresponding not only to $g$ but also each argument $x_{1}, \dots, x_{n}$ of $g(x_{1},\dots,x_{n})$. When continuing in the $g$ branch, we must not continue at $\slp(M,g)$, but at $\slp(M,\ang{g,a})$, that is, we need to \emph{skip} not only $g$ but $\ang{g, a}$ as the variable is substituted by $g(a)$. \Cref{discnetskip} shows the nodes reached by skipping a subterm after reaching the node $slp(root,f)$, i.e. $skip(slp(root,f))$
 
 \begin{defn}
   $skip(N)$ returns the set of nodes obtained by skipping a single term starting at $N$. That is, for a constant $c$ with $\arity(c) = 0$ we return $\slp(N,c)$ (which is a direct child of $N$). For a function $f(x_{1},\dots,x_{n})$, we return the nodes $skip^n(\slp(N,f))$. If for all $x_{i}$ $arity(x_{i}) = 0$, $skip^n$ retrieve the nodes $1 + n$ levels below $N$.
@@ -188,15 +188,15 @@ But what about functions? The variable may be replaced by terms with an arbitrar
 \Tree
 [.{root}
     \edge node[auto=left,pos=.6] {$f$};
-[.{}
+[.\node(f){};
     \edge node[auto=left,pos=.6] {$a$};
-    [.{}
+    [.\node(fab){};
     \edge node[auto=left,pos=.6] {$b$};
     [.{$\{f(a,b)\}$}
     ]
     ]
     \edge node[auto=left,pos=.6] {$*$};
-    [.{}
+    [.\node(fxb){};
     \edge node[auto=left,pos=.6] {$b$};
     [.{$\{f(x,b)\}$}
     ]
@@ -204,19 +204,20 @@ But what about functions? The variable may be replaced by terms with an arbitrar
     \edge node[auto=left,pos=.6] {$g$};
     [.{}
     \edge node[auto=left,pos=.6] {$a$};
-    [.{}
+    [.\node(fgab){};
     \edge node[auto=left,pos=.6] {$b$};
     [.{$\{f(g(a),b)\}$}
     ]
     ]
-    ]
-]
-]
-\end{tikzpicture}
-  \caption{Skipping in the discrimination tree index} \label{discnetskip}
-\end{figure}
+    ]]]
+%\draw (f) -- fab);
+\draw[semithick,->] (f)..controls +(west:1)..(fab);
+\draw[semithick,->] (f)..controls +(south west:1)..(fxb);
+\draw[semithick,->] (f)..controls +(south east:1)..(fgab);
 
-\todo{Draw arrows for skips}
+\end{tikzpicture}
+  \caption{The Nodes in $skip(slp(root,f))$} \label{discnetskip}
+\end{figure}
 
 Using this, we can retrieve all the nodes reached by replacing the variable in the query term with some term. The union of the terms returned by the query on each node represents the result. An overview of all the queries is given in \cref{discnetqueries}. The base case of $Q(N,\ang{}) = terms(N)$ is identical for all queries and not included in the table. Note that $\var$ is the simplest and most restrictive query, $\unif$ is the most complex and least restrictive with $\ins$ and $\gen$ being a combination of both.
 
@@ -277,18 +278,19 @@ Using this, we can retrieve all the nodes reached by replacing the variable in t
 % This mapping can be efficiently stored in a discrimination tree by storing one symbol of the preorder traversal in each internal node and storing
 
 \section{Term Indexing in Isabelle/ML}
-As Isabelle has now been used for over 30 years, a number of data structures have already been implemented to store terms. One of the simplest approaches is the \lstinline{termtable} \cite{noauthor_termtables_nodate}, a balanced 2-3 tree, storing terms and differentiating them on all attributes, namely their structure, symbols and types. Therefore, this approach is best used when an exact lookup is necessary. On the other hand, \lstinline{termtable} does not offer any support for the more complex queries such as $\ins$ or $\unif$.
+As Isabelle has now been used for over 30 years, a number of data structures have already been implemented to store terms. One of the simplest approaches is the \lstinline{termtable} \footnote{\url{https://isabelle-dev.sketis.net/source/isabelle/browse/default/src/Pure/term_ord.ML;89cf7c903acad179e40c10f2f6643d3c21448f47$226}}, %$
+a balanced 2-3 tree, storing terms and differentiating them on all attributes, namely their structure, symbols and types. Therefore, this approach is best used when an exact lookup is necessary. On the other hand, \lstinline{termtable} does not offer any support for the more complex queries such as $\ins$ or $\unif$.
 
-Another data structure present in Isabelle is the \lstinline{discrimination tree} \cite{noauthor_discrimination_nodate}. Despite being based on the concepts introduced above, the discrimination tree implementation in Isabelle/ML stores arbitrary sets of values indexed by terms. This is useful when we want to tag terms with some attributes to, for example, differentiate between introductory and simplifying rules.
+Another data structure present in Isabelle is the \lstinline{discrimination tree} \footnote{\url{https://isabelle-dev.sketis.net/source/isabelle/browse/default/src/Pure/net.ML;89cf7c903acad179e40c10f2f6643d3c21448f47}}. Despite being based on the concepts introduced above, the discrimination tree implementation in Isabelle/ML stores arbitrary sets of values indexed by terms. This is useful when we want to tag terms with multiple attributes, for example, introduction and simplification rules.
 
-The interface of the discrimination tree is mostly identical to the one introduced in \cref{termindex}. The queries return sets of values instead of sets of terms and insertion and deletion use key-value pairs, similar to hash tables. To modify the values stored, we use a term to address a leaf and insert or delete values from the respective value set. In addition, the index raises an exception if it detects duplicate key-value pairs. The value comparison used for the detection is supplied by the user and can, therefore, also be a constant $eq\ (v_{1},v_{2}) = false$.
+The interface of the discrimination tree is mostly identical to the one introduced in \cref{termindex}. The queries return sets of values instead of sets of terms and insertion and deletion use key-value pairs, similar to hash tables. To modify the stored values, we use a term to address a leaf and insert or delete values from the respective value set. In addition, the index raises an exception if it detects duplicate key-value pairs. The value comparison used for the detection of duplicates is supplied by the user and can, therefore, also be the constant function returning false, i.e. \lstinline{eq(v1,v2)  = false}.
 
 %This allows us to, for example, store horn clauses for efficient backward chaining. By storing the premises of a clause in the node addressed by its conclusion, we can later query our knowledge base for unifiables of our current goal. On successful retrieval, we can replace the goal with the set of premises.
 
 \subsection{Caveats of current Implementation} \label{caveats}
-The generalisation of storing terms to storing arbitrary values is relatively simple for discrimination trees. Each leaf is addressed by only one preorder traversal and therefore stores only variants of one term. As such, we can simply replace this set of terms with a set of arbitrary values.
+The generalisation of storing terms to storing arbitrary sets of values is relatively simple for discrimination trees. Each leaf is addressed by only one preorder traversal and therefore stores only variants of one term. As such, we can simply replace this set of terms with a set of arbitrary values.
 
-Insertion and deletion uses key-value pairs with the $Preorder(t)$ being the key. This results in some potentially surprising behaviour. We illustrate this with some examples. We write $(t, v)$ for key-value pair stored and $DT$ for the (initially) empty discrimination tree.
+When inserting or deleting a value for a term $t$, $preorder(t)$ is used as the key to address the node where the value should be stored at. This results in some potentially surprising behaviour. We illustrate this with some examples. We write $(t, v)$ for term-value pair stored and $DT$ for the (initially) empty discrimination tree.
 
 \begin{enumerate}
   \item \label{cave1} Inserting $(a,true)$ and $(b,true)$ into $DT$ stores $true$ at both $a$ and $b$. Retrieving the unifiables of $x$ returns the multiset $\{true, true\}$ as both $a$ and $b$ are unifiable and the queries do not deduplicate the results.
@@ -302,17 +304,17 @@ The lack of deduplication in queries is necessary as the insertion of an identic
 \Cref{cave2,cave3,cave4,cave5} may not seem too surprising when the user keeps in mind that the discrimination tree stores key-value pairs and the terms used as keys disregard the identity of variables. On the other hand, terms stored as values, generally, will respect variable identity as it may be relevant in the user's context. Nevertheless, the user must be wary to pay attention to these potential pitfalls.
 
 \subsection{Adapting Path Indexing}
-Unfortunately most literature \cite{noauthor_path-indexing_nodate, mccune_experiments_1992-1, carbonell_set-based_1995} on path indexing only covers the storage of terms. Reproducing the behaviour of the discrimination tree implementation correctly and efficiently takes some effort. The queries on a path index rely primarily on the intersection of sets of terms as every function results in a number of intersections.
+Unfortunately, most literature \cite{stickel_path-indexing_1989,mccune_experiments_1992, carbonell_set-based_1995} on path indexing only covers the storage of terms. Reproducing the behaviour of the discrimination tree implementation correctly and efficiently takes some effort. The queries on a path index rely primarily on the intersection of sets of terms as every function results in a number of intersections.
 
 We recall that a term is never explicitly stored in path indexing. Instead we represent a term by a collection of paths, each storing the set of terms containing this path. Naively replacing this set of terms by a set of values does not work as we can no longer detect duplicates and handle deletions correctly.
 For example, a path index storing the key-value pairs $(f(a,*), true)$ and $(f(*,b), true)$ has the value $true$ stored at the $(p, Symbol_{t}(p))$ pairs $(\ang{}, f)$, $(\ang{(f,1)}, a)$ and $(\ang{(f,2)}, b)$, amongst others. When inserting $(f(a,b), true)$, it is impossible to determine whether this key-value pair has already been inserted before.
 
-Therefore, we must also store the key of a value at each path. Doing so allows us to reproduce the behaviour of the discrimination tree in the path index and performs well. Note that we need only check if one path, for example the top symbol, stores the same key-value pair on insertion. If one path does not contain the same key-value pair, no other path will. Nevertheless, some optimisations can still be made.
+Therefore, we must also store the key of a value at each path. Doing so allows us to reproduce the behaviour of the discrimination tree in the path index. Note that we need only check if one path, for example the top symbol, stores the same term-value pair on insertion. If one path does not contain the same key-value pair, no other path will. Nevertheless, some optimisations can still be made.
 
 \subsection{Combining Path Indexing and Termtables} \label{ptt}
-A potential problem remains in the above approach. Insertion is fast because we need only compare one path to determine whether an identical key-value pair has already been inserted. Deletion of $(t,v)$, on the other hand, requires us to remove $(t,v)$ from the set at every path which necessitates repeatedly comparing $(t,v)$ with the other key-value pairs stored. When we have many terms that share their prefix, this overhead can become problematic as term comparison of similar terms is relatively slow.
+A potential problem remains in the above approach. Insertion is fast because we need to only compare one path to determine whether an identical key-value pair has already been inserted. Deletion of $(t,v)$, on the other hand, requires us to remove $(t,v)$ from the set at every path which necessitates repeatedly comparing $(t,v)$ with the other key-value pairs stored. When we have many terms that share their prefix, this overhead can become problematic as term comparison of similar terms is relatively slow.
 
-\Cref{ptt_delete} shows a path index storing values with three similar terms as keys. For the sake of simplicity, only the key is shown. Deleting the values at term $f(g(a))$ requires two comparisons with each of $f(g(b))$ and $f(g(c))$, due to sharing the $(p, Symbol_{t}(p))$ constraints $(\ang{}, f)$ and $(\ang{}, g)$. If the terms shared more symbols, e.g. in the form of $f(a,b,c,g(a,b,c,h(*)))$, this problem would be even more pronounced. Similarly, deleting a single value from a term associated with multiple values requires repeated comparison of the values. As the comparison for values is supplied by the user, it may be arbitrarily slow, e.g. when storing large lists.
+\Cref{ptt_delete} shows a path index storing values with three similar terms as keys. For the sake of simplicity, only the key is shown. Deleting the values at term $f(g(a))$ requires two comparisons with each of $f(g(b))$ and $f(g(c))$, as they share the constraints $(\ang{}, f)$ and $(\ang{}, g)$. If the terms shared more symbols, e.g. in the form of $f(a,b,c,g(a,b,c,h(*)))$, this problem would be even more pronounced. Similarly, deleting a single value from a term associated with multiple values requires repeated comparisons of the values. As the comparison for values is supplied by the user, it may be arbitrarily slow, e.g. when storing large lists.
 
 \begin{figure}[h]
   \centering
@@ -331,25 +333,26 @@ A potential problem remains in the above approach. Insertion is fast because we 
   \caption{A path index sharing all paths} \label{ptt_delete}
 \end{figure}
 
-We optimize this approach by using unique identifiers for each key-value pair. By instead storing an identifier, together with  the value, in the path sets, we avoid repeatedly comparing $t$ with other terms. As the identifiers are unique for each key-value pair, we can also avoid repeatedly comparing $v$ with other values stored under the same term $t$. In essence, we use only the identifier to handle the path index operations correctly.
+We can optimize this challenge: Instead of storing term-value pairs, we generate unique integer identifiers for each such pair.
+We then store those identifiers along with their associated value in the path sets. Doing so allows us to use quick integer comparison methods and to avoid repeatedly comparing terms and values.
 
-To associate each key-value pair $(t,v)$ with a unique identifier $id$, we use a \lstinline{termtable}. In the termtable, we use $t$ as the key and store the $(id,v)$ pair. Upon insertion, we first check the termtable for an identical $v$ stored at $t$, ignoring the identifier of the value. If no duplicate is found, we insert $(id,v)$, using $t$ as key. Inserting the $(id,v)$ pair into the tree is straightforward as we already determined that no duplicate exists.
+To associate each term-value pair $(t,v)$ with a unique identifier $id$, we use a \lstinline{termtable}. In the termtable, we use $t$ as the key and store the $(id,v)$ pair. Upon insertion, we first check the termtable for an identical $v$ stored at $t$, ignoring the identifier of the value. If no duplicate is found, we insert $(id,v)$ at key $t$. Inserting the $(id,v)$ pair into the tree is straightforward as we already determined that no duplicate exists.
 
-Deletion of $(t,v)$ works similar. By looking up $t$ in the termtable, we gain a set of $(id,value)$ pairs. From this list we determine the $id$ of $v$, removing the $(id,v)$ pair from the termtable in the process. Traversing the tree is, again, straightforward as we need only compare the identifier.
+Deletion of $(t,v)$ works similar. By looking up $t$ in the termtable, we obtain a set of $(id,value)$ pairs. From this list we determine the $id$ of $v$, removing the $(id,v)$ pair from the termtable in the process. Traversing the tree is, again, straightforward as we only need to compare the identifier.
 
-This approach provides us with an opportunity. By using the exact lookup of \lstinline{termtable}, we can improve the duplicate detection to no longer ignore variable identity. In addition, we can also provide an exact lookup operation for the values by using only the table. This reduces the overhead in applications where both the queries and an exact lookup are required. In the current implementation we use a standard \lstinline{termtable} and therefore do not exactly replicate the behaviour of the discrimination tree. Nevertheless, switching to a variant of the \lstinline{termtable} that does not respect identity of variables is fairly trivial.
+This approach offers another benefit. By using the exact lookup of \lstinline{termtable}, we can improve the duplicate detection to no longer ignore variable identities. In addition, we can also provide an exact lookup operation (syntactic equality) by using only the associated termtable. This reduces the overhead in applications where both the queries and an exact lookup are required. In the current implementation we use a standard \lstinline{termtable} and therefore do not exactly replicate the behaviour of the discrimination tree. Switching to a variant of the \lstinline{termtable} that does not respect identity of variables is fairly trivial.
 
 \subsection{Further Optimisations}
-The performance of path indexing relies on fast set operations as every function requires an intersection of the sets retrieved from the arguments. In the previous section, we already reduced the comparison for intersections to a single integer comparison. By using ordered lists, provided by \lstinline{OrdList} in Isabelle/ML \cite{noauthor_ord_listml_nodate}, to implement the sets, we can further speed up the set operations.
+The performance of path indexing relies on fast set operations as every function requires an intersection of the sets retrieved from the arguments. In the previous section, we already reduced the comparison for intersections to integer comparisons. By using ordered lists, provided by \lstinline{OrdList} in Isabelle/ML \footnote{\url{https://isabelle-dev.sketis.net/source/isabelle/browse/default/src/Pure/General/ord_list.ML;89cf7c903acad179e40c10f2f6643d3c21448f47}}, to implement the sets, we can further speed up the set operations.
 
-When tasked to compute the intersection of two ordered lists, we need only compare the first element of each list. If they are different, we can discard the smaller value and continue. If they are equal, we know that the value is in the intersection and continue with the next element of the lists. The fast integer ordering ensures that we can use \lstinline{OrdList} at almost no overhead.
+When tasked to compute the intersection of two ordered lists, we need only compare the first element of each list. If they are different, we can discard the smaller value and continue. If they are equal, we know that the value is in the intersection and continue with the next element of the lists.
 
-To improve the cache usage of the queries, we lazily evaluate the set operations. While traversing the tree we build a tree of the required set operations, where the leafs represent the sets of values and internal nodes represent the intersection or union of a number of children. Once we have traversed the complete path index, we evaluate all the operations at once. This improves cache usage as the result of one operation can be immediately used again instead of being evicted from the cache during the traversal of the path index.
+To improve the cache usage of the queries, we lazily evaluate the set operations. While traversing the tree, we build a tree of the required set operations, where the leafs represent the sets of values and internal nodes represent the intersection or union of a number of children. Once we have traversed the complete path index, we evaluate all the operations at once. This improves cache usage as the result of one operation can be immediately used again instead of being evicted from the cache during the traversal of the path index.
 
 This delayed evaluation also simplifies handling the $\ALL$ case of $\ins$ and $\unif$ separately. As $\ALL$ represents a wildcard, we need not replace it by the set of all indexed term, unless it is the only relevant value. Instead, we simply disregard this set in the intersection. For example, the intersection of the three sets $\ALL$, $\{f(a,b), f(x), g(a)\}$ and $\{g(a), g(f(a,b))\}$ is identical to the intersection of only the latter two sets.
 %We only evaluate  $\ALL$ if it is the top node, that is, $\ALL$ is the result of the query.
 
-\Cref{intersect} shows a path index storing two terms and the operations tree built by a $\ins (f(a,y))$ query. As $y$ is a variable, it can be replaced arbitrarily, represented by $\ALL$. We can simplify the tree by removing $\ALL$ and the intersection, resulting only in $\{1\}$ remaining.
+\Cref{intersect} shows a path index storing two terms and the operations tree built by a $\ins (f(a,y))$ query. As $y$ is a variable, it can be replaced arbitrarily, represented by $\ALL$. We can then simplify the tree by removing $\ALL$ from the intersection tree.
 
 \begin{figure}[h]
   \begin{subfigure}{0.2\textwidth}
@@ -396,6 +399,10 @@ We attempted to further speed up the set operations by implementing a more effic
 
 The second idea was to compare the head of each list before moving on to the next element instead of intersecting the first two lists completely before moving on to the third list. For example, intersecting the sets $\{1,2,3,4\}$ $\{1,2,3,4,5\}$ and $\{5\}$ this way results in the values $1$ through $4$ being discarded directly. While they are present in the first two lists, they are smaller than $5$. This is opposed to the naive version, in which we build the intermediate result $\{1,2,3,4\}$ before moving on to the last list.
 
-Unfortunately, both ideas proved to be slower. Due to the linked lists used by \lstinline{OrdList} providing no efficient \lstinline{length} function, the first idea resulted in significant overhead. The second idea was, unfortunately, also slower although we could not determine the exact reason. Perhaps the elements of a list are allocated, at least piecewise, consecutively in memory. In this case, accessing only one element of each list would be detrimental to the cache usage.
+Unfortunately, both ideas proved to be slower. Due to the linked lists used by \lstinline{OrdList} providing no efficient \lstinline{length} function, the first idea resulted in significant overhead. The second idea was, unfortunately, also slower although we could not determine the exact reason. Perhaps the elements of a list are allocated, at least piecewise, consecutively in memory. In this case, accessing only one element of each list would be detrimental to an efficient usage of the cache.
 
-Although we repeatedly store identical values at different locations in the path index, this does not impact memory consumption. Isabelle/ML is based on the Poly/ML runtime \cite{noauthor_polyml_nodate} which provides data sharing. This results in copies of immutable values requiring almost no additional memory. A related feature is \lstinline{pointer_eq} \cite{noauthor_polyml_nodate-1} which is based on the data sharing and compares immutable values quickly. Unfortunately, we cannot directly take advantage of this as the user may wish to use a constant $eq (x,y) = false$ for comparison.
+Although we repeatedly store identical values at different locations in the path index, this does not impact memory consumption. Isabelle/ML is based on the Poly/ML runtime \cite{noauthor_polyml_nodate} which provides data sharing. This results in copies of immutable values requiring almost no additional memory. A related feature is \lstinline{pointer_eq} \cite{noauthor_polyml_nodate-1} which makes use of the data sharing mechanism and compares immutable values quickly. Unfortunately, we cannot directly take advantage of this as the user may wish to use a constant function returning false, i.e. \lstinline{eq(v1,v2)  = false}, for comparison.
+
+Some of the optimisations proposed in this section have also been described in Section 5.3.1 of \cite{twain_set-based_1995}.
+The authors there propose some further optimisations for the computation of intersections based on database techniques and using references.
+However, as the usage of references is discouraged in Isabelle/ML, we did not investigate the latter any further.

@@ -2,26 +2,28 @@
 The path index implemented as part of this thesis competes directly with the discrimination tree implementation already present in Isabelle/ML. Furthermore, the combination of path indexing with termtables increases complexity and overhead. In this chapter, we will evaluate the impact of the termtables and compare the performance of the discrimination tree with the path index.
 
 \section{Approach} \label{approach}
-For the experiments randomly generated term sets are used. The terms are generated in treeform and then converted to the applicative style used in Isabelle/ML. The trees have a depth ranging from 1 to 6 and each internal node, representing a function, has a number of children ranging from 1 to 4. $20\%$ of the generated functions are instead replaced by a symbol $s$ with $\arity (s) = 0$.
+For the experiments, randomly generated term sets are used. During generation, the terms are represented as a tree with functions as internal nodes with the children representing the arguments. This is later converted to the applicative style used in Isabelle/ML.
+Starting at the root node, a random number of arguments is chosen. We then recursively descend into each argument, generating another random number of arguments. This number ranges from 0 to 4. As a result, $20\%$ of the generated nodes are nullary constants and the remaining $80\%$ are functions with 1 to 4 arguments. In addition, the depth of the tree is limited to 6, that is, every node on the sixth level is a constant.
 
-Each generated term set has an associated variable frequency $f \in \{0.00, 0.01, 0.03, 0.1\}$. $f$ specifies the percentage of symbols $s$ that are selected from the variables $\V$. A function $g$ may also be a variable. Although $g$ has a $\arity(g)$ arguments, which are all generated, both term index implementations do not traverse the arguments of $g$ if it is a variable. Therefore, a higher variable frequency decreases the effective size of the term.
+Each generated term set has an associated variable frequency $f \in \{0.00, 0.01, 0.03, 0.1\}$. $f$ specifies the percentage of symbols $s$ that are selected from the set of variables $\V$. A function $g$ may also be a variable, which is, strictly speaking, not allowed in first-order terms. In this case, both term index implementations treat the subtrem as a variable. Therefore, a higher variable frequency effectively decreases the size of the term.
 
 \begin{exmpl}
   Assume $f = 0.1$ and $t = g(s)$ is a randomly generated term. Then, $g$ and $s$ each have a $10\%$ chance to be variables. If $g$ is a variable, $preorder(t) = \ang{*}$ and the only path of $t$ is $\ang{}$ with $symbol_{t}(\ang{}) = *$.
 \end{exmpl}
 
-To allow symbols to occur multiple times, we select each symbols name at random from a finite set of names. The cardinality of this set of names is identical to the cardinality of the term set. For example, in a term set with 10 terms, a total of 10 symbols are available.
-
-Each term consists of many symbols, thereby ensuring that most symbols occur multiple times, either in the same term or across different terms. As the total number of symbols generated is proportional to the number of terms generated, we scale the amount of names available accordingly to maintain a similar pattern of multiple occurences.
+To allow symbols to occur multiple times, we select each symbol's name at random from a finite set of names $\mathcal{N}$.
+The cardinality of $\mathcal{N}$ is identical to the cardinality of the term set. For example, in a term set with 10 terms, a total of 10 symbols are available.
+This ensures that we maintain a similar frequency of repeated occurences across different numbers of terms.
+Note that each term consists of many symbols, thereby ensuring that most symbols occur multiple times, either in the same term or across different terms.
 
 While the terms generated in this way do not accurately represent terms of real applications, they allow us to efficiently stress-test the term indices. As they are randomly generated we can generate term sets of arbitrary size and test each size multiple times with different seeds to average the impact of any single term on the performance.
 
-For the benchmarks, we generated term sets with sizes ranging from 10 to 5000. The smaller sets were tested more often to obtain test runtimes significantly larger than time measurement errors. For sizes $s \leq 100$, we generated 5000 different term sets. For sizes $100 < s < 1000$, we generated 500 sets. To restrict the runtime of the benchmarks, only 50 sets were generated for the sizes $s \geq 1000$.
+For the benchmarks, we generated term sets with sizes ranging from 10 to 5000. The smaller sets were tested more often to obtain test runtimes significantly larger than time measurement errors. For sizes $s \leq 100$, we generated 5000 different term sets. For sizes $100 < s < 1000$, we generated 500 sets. To restrict the runtime of the benchmarks, only 50 sets were generated for sizes $s \geq 1000$.
 
 %TODO Combinatorial explosion of parameters. Fixed term-size and reuse
 
 \section{Combining Path Indexing and Termtables} \label{pathindex_termtab}
-In the previous chapter, we discussed the repeated comparisons necessary during insertion and deletion. By introducing unique identifiers for each $(term,value)$ pair in conjunction with termtables we hope to reduce the time spent on comparisons, both for insertion and deletion.
+In \cref{ptt}, we discussed the repeated comparisons necessary during insertion and deletion. By introducing unique identifiers for each $(term,value)$ pair and using termtables we reduced the time spent on comparisons, both for insertion and deletion.
 
 To evaluate the performance of the insert operation for a term set $\T$, we generate a term set $\mathcal{U}$ containing an identical number of new terms, that is, $|\T| = |\mathcal{U}|$ and $\T \cap \mathcal{U} = \emptyset$. After creating a term index for $\T$, we start the time measurement and insert every term $u \in \mathcal{U}$ into $\T$, effectively doubling the size of $\T$. To evaluate the deletion, we also create a term index for $\T$ but instead delete every term $t \in \T$, effectively removing every indexed term.
 
@@ -92,7 +94,7 @@ For deletion, we can see in \cref{pi_delete} that using a termtable is consisten
 \section{Path Indexing and Discrimination Trees} \label{pi_dt}
 To test the queries for a term set $\T$, we create both term indices $PI$ and $DT$ for the set $\T$. We execute one query for each term stored in the index. This ensures that each indexed term is retrieved at least once.
 
-As the queries are used for different purposes, we use $t \in \T$ directly as the query term for the variants and generalisations query.
+We use $t \in \T$ directly as the query term for the variants and generalisations query.
 For the instances and unifiables query, we do not use the term $t \in \T$ directly.
 Instead, we generate a generalisation of $t$ by replacing a randomly chosen constant or function in $t$ by a variable.
 
@@ -120,36 +122,36 @@ Although we can generate an instance of $t$ to more accurately represent a gener
 \label{queries}
 \end{figure}
 
-\Cref{queries} shows an overview of the queries, summing the test results of each variable frequency and term sets size combination. This of course not representative of the smaller sized term indices and is only used to give an intuition for the expected performance.
+\Cref{queries} shows an overview of the queries, summing the test results of each variable frequency and term sets size combination. This, of course, is not representative for the smaller sized term indices and is only used to give an intuition for the expected performance.
 
-As we can see, path indexing performs significantly better at retrieving instances and unifiables. In contrast, the generalisations query is, in relation, extremely slow. In addition, it performs relatively predictable with the slowest query taking about twice as long as the fastest.
+As we can see, path indexing performs significantly better at retrieving instances and unifiables. However, it performs poorer for generalisation queries. In addition, the variations across the different types of queries are relatively low, with the generalisations query taking about twice as long as the instances query.
 
-The reason for the low variance in performance is found in \cref{path_queries}. The variants and instances queries differ only in the handling of a variable. While variants retrieves the, likely small, term set from this path, the variable is simply disregard for instances. As a result performance of these queries is near identical.
+The reason for the low variance in performance is found in \cref{path_queries}. The variants and instances queries differ only in the handling of a variable. While variants retrieves the, likely small, term set from this path, the variable is simply disregarded for instances. As a result, performance of these queries is near identical.
 
-The generalisations query differs from variants by retrieving the union of two path sets for each constant or function. As each term consists mostly of constants and functions, this overhead impacts performance significantly. Unifiables suffers from the same performance problems as the generalisations but reduces the number of intersections required due to variables being treated as a wildcard.
+The generalisations query differs from variants by retrieving the union of two path sets for each constant or function. As each term consists mostly of constants and functions, this overhead impacts performance significantly. Unifiables suffers from the same performance problems as generalisations but reduces the number of intersections required due to variables being treated as a wildcard.
 
 The queries on the discrimination tree index, in contrast, vary greatly in their performance.
-Retrieving variants is extremely fast as we need only use the preorder traversal of the query term to reach a single leaf. Generalisations add a union at every constant or function. As these sets are not used for intersections, these unions do not significantly impact the performance. Due to implementation of the variants query separately computing the preorder traversal of the term instead of traversing the term directly, the generalisations query is in fact faster although this could easily be optimised.
+Retrieving variants is extremely fast as we only need to use the preorder traversal of the query term to reach a single leaf. Generalisations add a union at every constant or function. As these sets are not used for intersections, these unions do not significantly impact the performance. As the variants implementation computes the preorder traversal of the term instead of traversing the term directly, the generalisations query is in fact faster although this could easily be optimised.
 
 In comparison, the instances and unifiables query are extremely slow.
 Both rely on the $skip$ function to compute the set of nodes reached by skipping one subterm.
 Evaluating this function is slow as it must both traverse every child of the current node and potentially skip many nodes if a large term is skipped.
 
 \begin{exmpl}
-  Let the set of indexed terms $\T = \{t_{1} = f(a,x), t_{2} = f(b,x), t_{3} = f(c,x), t_{4} = f(g(a,b),x)\}$ and the query term $u = f(x,y)$.
+  Consider the set of indexed terms $\T = \{t_{1} = f(a,x), t_{2} = f(b,x), t_{3} = f(c,x), t_{4} = f(g(a,b),x)\}$ and the query term $u = f(x,y)$.
   The instances query will first lookup $f$ and reach node $N = \slp(root,f)$. As the next symbol of $preorder(u)$ is $*$, we compute $skip(N)$. As every indexed term shares the prefix $f$ with $u$, we retrieve the set of nodes $\{\slp(N,a), \slp(N,b), \slp(N,c), \slp(\slp(\slp(N,g),a),b)\}$. Each of these nodes is evaluated recursively.
   If more terms shared some prefix with $u$ or the subterms were larger, this evaluation will be even slower.
 \end{exmpl}
 
 \subsection{Variants}
-To evaluate the performance of the variants query, we test differently sized sets of terms. As variables in the term are handled identically to constants, the variable frequency of the terms is not plotted separately. We confirmed that the variable frequency had practically no impact and, to reduce noise, average the tests of a given size with the different frequencies.
+To evaluate the performance of the variants query, we test differently sized sets of terms. As variables in the term are handled identically to constants, the variable frequency of the terms is not plotted separately. We confirmed that the variable frequency had practically no impact. We average the tests of a given size with the different frequencies to reduce noise.
 
 \Cref{variants} shows the variants query of the term indices over differently sized sets of indexed terms. Note that we run one query for each term in the set. Therefore, we expect to see a linear plot with a slope of 1 if the query performance of a term index is independent of the number of indexed terms.
 
 In theory, only the discrimination tree index should handle the variants query as fast for large number of indexed terms as the query only relies on the preorder traversal of the query term and therefore does not interact with terms unrelated to it.
 The path index, on the other hand, relies on the intersection of term sets that may contain many unrelated terms and the termtables must traverse a larger 2-3 tree to reach the desired leaf. In practice, these deficits do not meaningfully affect the performance for realistically sized term indices.
 
-Note that the variants query of path indexing can be supplemented by the exact lookup provided by the termtables. If the exact lookup of terms is sufficient, or even required, this provides a significantly faster alternative. Adapating the termtables to ignore the variable identity should also retain almost identical performance characterstics. However, due to a lack of time we did not verify this.
+Note that the variants query of path indexing can be supplemented by the exact lookup provided by the termtables. If the exact lookup of terms is sufficient, or even required, this provides a significantly faster alternative. Adapating the termtables to ignore the variable identity should also retain almost identical performance characterstics. However, due to a lack of time, we did not verify this.
 
 \begin{figure}[h]
   \centering
@@ -231,7 +233,7 @@ The unifiables query is likely one of the most important queries due to the wide
 
 For discrimination tree indexing, on the other hand, every term sharing a prefix with the query term potentially leads to additional recursive calls due to the $skip$ function returning more nodes. Note that, due to the double-logarithmic scale, the performance difference is more drastic than it appears. Increasing the number of indexed terms from 3000 to 5000, less than doubling, leads to an almost four times longer evaluation for the unifiables query on the discrimination tree.
 
-Despite this, the discrimination tree index is comparable, or even faster, at smaller index sizes. Comparing the performance with differng variable frequencies at a fixed size of 40, as can be seen in \cref{unifvar}, shows that at lower variable frequencies the performance is comparable.
+Despite this, the discrimination tree index is comparable, or even faster, at smaller index sizes. Comparing the performance with differing variable frequencies at a fixed size of 40, as can be seen in \cref{unifvar}, shows that, at lower variable frequencies, the performance is comparable.
 
 Due to the variables replacing not only constants but also functions and both indices disregarding the arguments of a variable, increasing the variable frequency effectively decreases the size of the terms. As a result, we expect both term indices to improve with increasing variable frequencies. Path indexing, which benefits not only from the decreased size but also from the occurence of variables by treating them as wildcards, significantly improves. The discrimination tree, on the other hand, benefits only from the decreased term size but requires additional $skip$ evaluations. Therefore, it improves relatively slowly and is only comparable at lower frequencies.
 
@@ -280,12 +282,12 @@ Due to the variables replacing not only constants but also functions and both in
 \end{figure}
 
 \subsection{Modifying Operations}
-While the query performance is most important for a term index, the time spent on creation and modification of term indices may be significant if they are short-lived indices. The performance of modifying the set of indexed terms is comparable for both indices and the difference should not be a deciding factor unless an index storing multiple thousand terms must be modified often.
+While the query performance is most important for a term index, the time spent on creation and modification of term indices may be significant if they are short-lived indices. The performance of modifying the set of indexed terms is comparable for both indices and the difference should not be a deciding factor unless an index storing multiple thousand terms must be modified frequently.
 
-\Cref{insert} shows the insertion time for different term sizes. We, again, average the results from sets different variable frequencies as the impact of variables is neglegible.
-While path indexing performs similarly well for smaller indices, it scales worse than discrimination tree indexing with the number of indexed terms. This is expected as its duplicate detection is more expensive than it is for the discrimination tree. In addition, we must insert each term-value pair twice, once into the termtable and once into the tree.
+\Cref{insert} shows the insertion time for different term sizes. Again, we average the results from sets of different variable frequencies as the impact of variables is neglegible.
+While path indexing performs similarly well for smaller indices, it scales worse than discrimination tree indexing. This is expected as its duplicate detection is more expensive than it is for the discrimination tree. In addition, we must insert each term-value pair twice, once into the termtable and once into the tree.
 
-The difference is even more pronounced for deletion, as can be seen in \cref{delete}. At small sizes, the term sets are generally small, even for the top symbol. As the amount of indexed terms increases, so does the average size of the term sets. Despite the fast comparison with identifiers, this deletion must be repeated for single path of a term. Deleting the value from potentially hundreds of increasingly large term sets, naturally, increases deletion time significantly.
+The difference is even more pronounced for deletion, as can be seen in \cref{delete}. At small sizes, the term sets are generally small, even for the top symbol. As the number of indexed terms increases, so does the average size of the term sets. Despite the fast comparison with identifiers, this deletion must be repeated for every single path of a term. Naturally, deleting the value from potentially hundreds of increasingly large term sets increases deletion time significantly.
 
 \begin{figure}[h]
   \begin{subfigure}{0.45\textwidth}
@@ -333,16 +335,20 @@ The difference is even more pronounced for deletion, as can be seen in \cref{del
 \end{figure}
 
 \section{Shortcomings} \label{shortcomings}
-In the evaluation of the term indices, two problems became apparent. Firstly, the term generators do not accurately represent terms of real applications. Therefore, the results shown here must be taken with a grain of salt and verified for every context that is reliant on good performance. Nevertheless, the results shown are mostly identical to the expectations and should therefore be representative enough for the recommendations in the previous section to hold.
+In the evaluation of the term indices, two problems became apparent. Firstly, the term generators do not accurately represent terms of real applications. Therefore, the results shown here must be taken with a grain of salt and should be compared to tests on real data for contexts that rely on high performance.
 
-Secondly, the results from the tests show some significant and consistent outliers. These occur almost exclusively at the tests with a index size of 100 and 700. We recall from \cref{approach} that we repeat the smaller sized tests more often to avoid measuring short time intervals. For the sizes up to 100, we repeat the tests 5000 times and, for the sizes up to 700, 500 times. These values were chosen in pretests to limit the runtime of the benchmark while still testing each size an appropriate number of times.
+Secondly, the results from the tests show some significant and consistent outliers. These occur almost exclusively at the tests with an index size of 100 and 700. We recall from \cref{approach} that we repeat the smaller sized tests more often to get better test results. For sizes up to 100, we repeat the tests 5000 times and for sizes up to 700 we repeat them 500 times. These values were chosen in pretests to limit the runtime of the benchmark while still testing each size an appropriate number of times.
 
-As the outliers occur at the largest size of a given number of repetitions, the first assumed cause is the exhaustion of memory. Even the swapping of unrelated memory will significantly slow down the benchmark. This is not the cause as the tests were run on a machine with 128 gigabytes of memory and pretests showed that memory consumption should not exceed 10 gigabytes, a fraction of the available memory.
+As a result, we store a total of 500000 terms for size 100 and 350000 terms for size 700 in memory during a single test run. The 5000 repetitions for size 70 also result in 350000 terms.
+Each of these three tests contain more terms than the other tests.
+The outliers occur consistently at sizes 100 and 700 but, surprisingly, size 70 is unaffected. This may be related to the overhead of the term indices.
 
-Nevertheless, as the outliers only appear at these specific sizes, a memory related cause is likely. As these issues are highly unlikely to be caused on the level of the operating system, the next higher level may be responsible. The Isabelle/ML code is run using the Poly/ML runtime. As the Poly/ML runtime has many advanced features, like garbage collection, data sharing for immutable values and implicit parallelism, it may be the culprit. We attempted to minimise these issues by triggering a full garbage collection between each test.
+Therefore, the first assumed cause is the exhaustion of memory as the swapping of any, even unrelated, memory will significantly slow down the benchmark. We determined that this is not the cause as the tests were run on a machine with 128 gigabytes of memory and pretests showed that memory consumption should not exceed 10 gigabytes, a fraction of the available memory.
+
+Nevertheless, as the outliers only appear at these specific sizes, a memory related cause is likely. As these issues are highly unlikely to be caused on the level of the operating system, the next higher level may be responsible. The Isabelle/ML code is run using the Poly/ML runtime. As the Poly/ML runtime has many advanced features, like garbage collection, a data sharing mechanism for immutable values and implicit parallelism, it may be the culprit. We attempted to minimise these issues by triggering a full garbage collection between each test to no avail.
 
 A clue, hinting at issues related to the memory management, is the appearance of outliers primarily for path indexing. The discrimination tree requires no set operations and therefore does not allocate as many intermediate results as path indexing. By building a tree of the required set operations and evaluating it, the runtime may be forced to run a garbage collection before the test is finished.
 
-We can also observe larger issues for the insertion test, seen in \cref{insert}. At a size of 100, the path index takes almost ten times as long as we would expect. Similarly, the discrimination tree is also affected at a size of 700. The lower insertion time for a size of 5000 when compared to a size of 3000 is also wholly unexpected as they are both run the same number of times and, with 50 different test runs with differing seeds, should not be significantly affected by chance.
+We can also observe larger issues for the insertion test, seen in \cref{insert}. At a size of 100, the path index takes almost ten times as long as we would expect. Similarly, the discrimination tree is also affected at a size of 700. The lower insertion time for a size of 5000 when compared to a size of 3000 is also unexpected as they are both run for the same number of times and should not be significantly affected by chance as all the tests were run with 50 different seeds.
 
-Although these issues primarily affect path indexing, they only occur in the more extreme tests and are therefore unlikely to occur in real-world applications. We therefore believe that the recommendations in the previous section still hold.
+Although we were not able to track down the exact reason for the outliers at the time of writing, we are confident that they are unrelated to the effectiveness of the term indices in general: our results coincide with those of previous studies \cite{stickel_path-indexing_1989,mccune_experiments_1992,carbonell_comparison_1995} and tests with sizes close to those of the outliers show results as expected.

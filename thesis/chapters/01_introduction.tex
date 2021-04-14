@@ -1,26 +1,36 @@
 \chapter{Introduction}\label{chapter:introduction}
 \section{Motivation}
-The problem of indexing first-order logic terms has long been relevant to automated theorem provers as it represents a performance bottleneck with no clear solution. Each technique for term indexing offers a different set of advantages and drawbacks, depending on both the structure of the indexed terms and the type of queries performed. As a result, many automated theorem provers use a combination of different term indices to provide a performant index for every query.
+Modern automated theorem provers can efficiently work on thousands of terms.
+One key ingredient for this is the effective us of efficient term indexing techniques.
+Each such technique for term indexing offers a different set of advantages and drawbacks, depending on both the structure of the indexed terms and the type of queries performed. As a result, many automated theorem provers use a combination of different term indices to provide a performant index for every query.
 
 For example, Vampire uses code trees, path indexing and discrimination trees for different proof methods \cite{riazanov_vampire_1999}. Other automated theorem provers, such as E \cite{schulz_system_2004} and SPASS \cite{weidenbach_spass_2009}, also take advantage of multiple term indexing techniques.
 
-Interactive theorem provers, such as Isabelle, have traditionally placed more emphasis on trustworthiness and flexibility at the cost of automated deductive power. In more recent times, verifications of a C compiler \cite{klein_sel4_2009} and a microkernel \cite{leroy_formally_2009} have shown the need for better proof automation.
+Interactive theorem provers, such as Isabelle, have traditionally placed more emphasis on trustworthiness and streamlined processes.
+In more recent times, large verification projects, such as the CompCert C-compiler \cite{leroy_formally_2009} and the seL4 microkernel \cite{klein_sel4_2009}, became more prominent. Moreover, the Archive of Formal Proofs \cite{noauthor_archive_nodate} has been steadily growing, currently hosting more than 165.000 theorems and 3 million lines of code.
+All these projects have shown the need for better proof automation.
 
 One approach to this problem is Sledgehammer, a tool to apply automated theorem provers to goals in Isabelle. While this allows Isabelle to benefit from the work on automated theorem provers, it is faced with many hurdles. Each invocation requires the conversion of the internal representation of the goal and knowledge base to the representation of each prover and, upon success, a reconstruction of the proof in Isabelle. \cite{bohme_sledgehammer_2010,blanchette_more_2012}
 
-Another approach is building general proof methods directly in Isabelle which relies on term indexing to achieve comparable performance. So far, term indices were used only sparingly in Isabelle as most proof methods were not limited by the performance of term indices. Therefore, only an implementation of discrimination trees is provided as part of the Isabelle/ML environment. As increasingly complex proof automation is written in user space, more term indexing techniques are required to exploit their respective strengths.
+Another approach is building general proof methods directly in Isabelle, which relies on term indexing to achieve comparable performance. So far, term indices were used only sparingly in Isabelle as most proof methods were not limited by the performance of term indices. Therefore, only an implementation of discrimination trees is provided as part of the Isabelle/ML environment. As increasingly complex proof automation is written in Isabelle's user space, more term indexing techniques are required to exploit their respective strengths.
 
 \section{Contributions}
 To address this need for more term indices, we defined a unified interface for them. This interface will simplify the implementation of additional term indices and allow users to swap one term index for another with minimal effort. Thereby, a user can choose the most performant term index for their context.
-The interface in its current form includes only the functions previously implemented by the discrimination tree index but can easily be extended.
+The interface in its current form is limited to the functions previously implemented by the discrimination tree index but can easily be extended.
 
-In addition to the interface, we provide an implementation of path indexing for first-order terms. Adapting path indexing, as it is presented in the literature, to Isabelle/ML is the main contribution of this thesis. The major challenges encountered are the embedding of first-order terms in the higher-order applicative term datatype used in Isabelle and generalising path indexing to store values indexed by terms instead of only storing terms.
+In addition to the interface, we provide an implementation of path indexing for first-order terms. Adapting path indexing from its standard representation in the literature to the more general term indexing interface defined in Isabelle/ML is the main contribution of this thesis.
+A major challenge was the generalisation of path indexing to store sets of values indexed by terms rather than only storing terms in an efficient manner.
 
-To increase our confidence in the correctness of our implementation, including optimisations, we also adapted SpecCheck, a testing suite for Isabelle/ML inspired by QuickCheck. We implemented term generators used for the tests and benchmarks, in addition to general refactoring to simplify modularity and usage. We do not discuss our work on SpecCheck in this thesis, for the changes and documentation see the repository\footnote{\url{https://gitlab.lrz.de/ga85wir/spec_check}}. Note that SpecCheck will likely be upstreamed into the main Isabelle repository in the near future.
+To increase our confidence in the correctness of our optimised implementation we also adapted SpecCheck \cite{bulwahn_new_2012}, a testing suite for Isabelle/ML inspired by QuickCheck \cite{claessen_quickcheck_2011}.
+We implemented a widely applicable term generator and used it for our tests and benchmarks.
+While doing so, we also modularised, documented and refactored the SpecCheck framework to increase reusability and code quality.
+Those changes are not discussed in this thesis.
+Interested readers can find the updated framework in the repository\footnote{\url{https://gitlab.lrz.de/ga85wir/spec_check}}.
+We plan to upstream the changes to the Isabelle repository in the near future.
 
 \section{Thesis Outline}
-The thesis is divided into preliminaries, including a brief overview of terms in first-order logic, \lam -calculus and Isabelle/ML. We also introduce the term indexing problem. In \cref{term_indexing}, we introduce the path indexing and discrimination tree indexing methods formally. In addition, we discuss the complications faced while implementing and optimising path indexing for Isabelle/ML.
+\Cref{prelim} starts with the preliminaries of this thesis, including a brief overview of terms in first-order logic, \lam -calculus and Isabelle/ML. We also introduce the term indexing problem. In \cref{term_indexing}, we introduce the path indexing and discrimination tree indexing methods formally. In addition, we discuss the complications faced while implementing and optimising path indexing for Isabelle/ML.
 
-In \cref{evaluation} we evaluate the performance of our evaluation, focussing, in \cref{pathindex_termtab}, on the effect of the optimisations and, in \cref{pi_dt}, on the relative performance of path indexing and discrimination trees in regards to the queries and the insertion and deletion of terms from the index. We address potential shortcomings of our evaluation in \cref{shortcomings}.
+In \cref{evaluation} we evaluate the performance of our evaluation. \Cref{pathindex_termtab} focusses on the effect of the optimisations and \cref{pi_dt} on the relative performance of path indexing and discrimination trees with regards to the queries and the insertion and deletion of terms from the index. We address potential shortcomings of our evaluation in \cref{shortcomings}.
 
 We conclude the thesis with a brief summary of our results in addition to some final thoughts on potential future developments and related work.
