@@ -54,6 +54,7 @@ For deletion, we can see in \cref{pi_delete} that using a termtable is consisten
     ,xmajorgrids=true
     ,ymajorgrids=true
     ,legend pos=north west
+    ,ymax=95000
     ]
     \addplot table[x=Size,y=PI_]{figures/ins.csv};
     \addplot table[x=Size,y=PITT]{figures/ins.csv};
@@ -110,6 +111,12 @@ Although we can generate an instance of $t$ to more accurately represent a gener
     ,yticklabels from table={figures/queries.csv}{Queries}
     %,y tick label style={rotate=60}
     ,xlabel={Execution Time [s]}
+    % Remove for color
+    ,cycle list =
+    {
+      {fill=gray!90,draw=gray!100},
+      {fill=gray!40,draw=gray!50}
+      }
     ]
     \addplot table[y expr=\coordindex,x=PITT]{figures/queries.csv};
     \addplot table[y expr=\coordindex,x=DN]{figures/queries.csv};
@@ -163,7 +170,7 @@ To evaluate the performance of the variants query, we test differently sized set
     ]
     \addplot table[x=Size,y=PITT]{figures/variants.csv};
     \addplot table[x=Size,y=DN]{figures/variants.csv};
-    \addplot table[x=Size,y=TT_]{figures/variants.csv};
+    \addplot[mark=triangle*] table[x=Size,y=TT_]{figures/variants.csv};
     %\addplot table[x=Size,y={create col/linear regression={y=PITT}}]{figures/variants.csv};
     %\addplot table[x=Size,y={create col/linear regression={y=DN}}]{figures/variants.csv};
     %\addplot table[x=Size,y={create col/linear regression={y=TT_}}]{figures/variants.csv};
@@ -194,6 +201,7 @@ As already shown in the overview, the performance difference of the queries for 
     ,xmajorgrids=true
     ,ymajorgrids=true
     ,legend pos=north west
+    ,ymin = 1
     ]
     \addplot table[x=Size,y=PITT]{figures/instances.csv};
     \addplot table[x=Size,y=DN]{figures/instances.csv};
@@ -254,6 +262,7 @@ Path indexing, which benefits not only from the decreased size but also from the
     ,xmajorgrids=true
     ,ymajorgrids=true
     ,legend pos=north west
+    ,ymin = 1
     ]
     \addplot table[x=Size,y=PITT]{figures/unifiables.csv};
     \addplot table[x=Size,y=DN]{figures/unifiables.csv};

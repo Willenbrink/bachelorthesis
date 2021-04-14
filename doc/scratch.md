@@ -6,15 +6,8 @@ benchmark: adhoc framework, csv export weil query
 Worst Case von DT erwähnen?
 
 Graphen normalisiert für 5000 Terme
-bar graph farblos
 conspicious refer to section...
-subcaption -> capiton
-danksagung?
 Example Environ everywhere?
-biblio checken
- -> pointereq nicht als ref
-
-TODOs entfernen!
 
 values =/= sets of values
 

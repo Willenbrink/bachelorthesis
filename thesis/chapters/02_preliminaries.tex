@@ -85,7 +85,7 @@ The \lam -terms are a variant of simply typed \lam -calculus. They are defined, 
 \begin{enumerate}
   \item \lstinline{Const} and \lstinline{Free} both represent a fixed symbol. The latter is used to represent fixed variables in the process of a proof. In this thesis, this distinction is irrelevant: both will be treated as first-order constants.
   \item \lstinline{Var} represents a variable, i.e. it is a placeholder and can be replaced by an arbitrary term of the same type.
-  \item \lstinline{Bound} is a variable bound by a lambda term encoded as a de Bruijn index \cite{bruijn_lambda_nodate}.
+  \item \lstinline{Bound} is a variable bound by a lambda term encoded as a de Bruijn index \cite{de_bruijn_lambda_1972}.
   \item \lstinline{Abs} is an abstraction. Although Isabelle uses de Bruijn indices, variables are named for pretty printing purposes.
   \item \lstinline{$} represents the application of the first argument to the second one.
 \end{enumerate} %$
