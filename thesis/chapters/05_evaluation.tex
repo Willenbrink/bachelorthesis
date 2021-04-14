@@ -1,5 +1,8 @@
 \chapter{Evaluation} \label{evaluation}
-The path index implemented as part of this thesis competes directly with the discrimination tree implementation already present in Isabelle/ML. Furthermore, the combination of path indexing with termtables increases complexity and overhead. In this chapter, we will evaluate the impact of the termtables and compare the performance of the discrimination tree with the path index.
+
+In this chapter, we will discuss our approach for benchmarking the term indices and evaluate the impact of termtables on the performance of path indexing. In addition, we compare the performance of path indexing and discrimination tree indexing. Finally, we discuss potential shortcomings of this evaluation.
+
+The benchmark was run on a computer with a Xeon E5-2690 v3 and 128GB of DDR4 RAM. The repository version\footnote{\url{https://isabelle-dev.sketis.net/source/isabelle/browse/default/;89cf7c903acad179e40c10f2f6643d3c21448f47}} of Isabelle was used. The distribution used is Ubuntu 18.04.
 
 \section{Approach} \label{approach}
 For the experiments, randomly generated term sets are used. During generation, the terms are represented as a tree with functions as internal nodes with the children representing the arguments. This is later converted to the applicative style used in Isabelle/ML.
@@ -20,8 +23,6 @@ While the terms generated in this way do not accurately represent terms of real 
 
 For the benchmarks, we generated term sets with sizes ranging from 10 to 5000. The smaller sets were tested more often to obtain test runtimes significantly larger than time measurement errors. For sizes $s \leq 100$, we generated 5000 different term sets. For sizes $100 < s < 1000$, we generated 500 sets. To restrict the runtime of the benchmarks, only 50 sets were generated for sizes $s \geq 1000$.
 
-%TODO Combinatorial explosion of parameters. Fixed term-size and reuse
-
 \section{Combining Path Indexing and Termtables} \label{pathindex_termtab}
 In \cref{ptt}, we discussed the repeated comparisons necessary during insertion and deletion. By introducing unique identifiers for each $(term,value)$ pair and using termtables we reduced the time spent on comparisons, both for insertion and deletion.
 
@@ -35,15 +36,14 @@ As mentionend in the previous chapter, we require a $(term,value)$ to $id$ mappi
 
 The first, basic path indexing (Basic PI) uses a linked list to associate each $(term,value)$ pair with an $id$. To detect duplicates, we use a variants query on the tree as this avoids an expensive linear search in the list. For deletion, we cannot avoid searching the list to retrieve the identifiers that must be deleted. The second variant, path indexing with termtables (PI with TT), uses a termtable to store $(term,value) \mapsto id$. We also use this termtable to detect duplicates and retrieve the identifiers that are deleted.
 
-In \cref{pi_insert}, we can see a comparison of the respective insertion performance. Basic path indexing uses a variants query to detect duplicates of a $(term,value)$ pair. Note that this traverses all the paths of $term$ and is therefore relatively inefficient. Despite this, it can be used as a baseline for the path indexing with termtables.
+In \cref{pi_insert}, a log-log plot, we can see a comparison of the respective insertion performance. Basic path indexing uses a variants query to detect duplicates of a $(term,value)$ pair. Note that this traverses all the paths of $term$ and is therefore relatively inefficient. Despite this, it can be used as a baseline for the path indexing with termtables.
 
 It appears that combining path indexing with termtables does not significantly increase the runtime of insertion despite inserting every pair into both the termtable and the path index. While it is faster when compared with basic path indexing, we can expect that duplication detection using only the top symbol is significantly more performant. Unfortunately, this is not an option for us as the path index only stores $(id,value)$ pairs and we require the mapping of $(term,value)$ to $id$.
 
-For deletion, we can see in \cref{pi_delete} that using a termtable is consistently and significantly faster.
-\todo{Finish}
+For deletion, we can see in \cref{pi_delete} that using a termtable is consistently and significantly faster. This aligns with our expectations as the deletion performance was a major motivation for using termtables.
 
 \begin{figure}[h]
-  \begin{subfigure}{0.45\textwidth}
+  \begin{minipage}{0.45\textwidth}
 \begin{adjustbox}{width=1\textwidth}
 \begin{tikzpicture}
   \begin{axis}[
@@ -64,10 +64,10 @@ For deletion, we can see in \cref{pi_delete} that using a termtable is consisten
 \end{adjustbox}
 \caption{Insertion Performance}
 \label{pi_insert}
-\end{subfigure}
-\begin{subfigure}{0.1\textwidth}
-\end{subfigure}
-\begin{subfigure}{0.45\textwidth}
+\end{minipage}
+\begin{minipage}{0.1\textwidth}
+\end{minipage}
+\begin{minipage}{0.45\textwidth}
 \begin{adjustbox}{width=1\textwidth}
 \begin{tikzpicture}
   \begin{axis}[
@@ -88,11 +88,11 @@ For deletion, we can see in \cref{pi_delete} that using a termtable is consisten
 \end{adjustbox}
 \caption{Deletion Performance}
 \label{pi_delete}
-\end{subfigure}
+\end{minipage}
 \end{figure}
 
 \section{Path Indexing and Discrimination Trees} \label{pi_dt}
-To test the queries for a term set $\T$, we create both term indices $PI$ and $DT$ for the set $\T$. We execute one query for each term stored in the index. This ensures that each indexed term is retrieved at least once.
+To test the queries for a term set $\T$, we create both term indices $PI$ and $DT$ for the set $\T$. We execute one query for each term stored in the index. This ensures that each indexed term is retrieved at least once. As the combination of path indexing and termtables is superior for both insertion and deletion and identical for the queries, we will only compare path indexing with termtables (PI) and discrimination tree indexing (DT).
 
 We use $t \in \T$ directly as the query term for the variants and generalisations query.
 For the instances and unifiables query, we do not use the term $t \in \T$ directly.
@@ -104,29 +104,30 @@ Although we can generate an instance of $t$ to more accurately represent a gener
   \centering
 \begin{tikzpicture}
   \begin{axis}[
-    ybar
-    ,xtick=data
-    ,legend pos=north west
-    ,xticklabels from table={figures/queries.csv}{Queries}
-    ,x tick label style={rotate=-45}
-    ,xlabel={Indexed Terms}
-    ,ylabel={Query Time [s]}
+    xbar
+    ,ytick=data
+    ,legend pos=north east
+    ,yticklabels from table={figures/queries.csv}{Queries}
+    %,y tick label style={rotate=60}
+    ,xlabel={Execution Time [s]}
     ]
-    \addplot table[x expr=\coordindex,y=PITT]{figures/queries.csv};
-    \addplot table[x expr=\coordindex,y=DN]{figures/queries.csv};
+    \addplot table[y expr=\coordindex,x=PITT]{figures/queries.csv};
+    \addplot table[y expr=\coordindex,x=DN]{figures/queries.csv};
     %\addplot table[x expr=\coordindex,y=TT_]{figures/queries.csv};
     \legend{PI,DT}
   \end{axis}
 \end{tikzpicture}
-\caption{Overview of Queries}
+\caption{Overview of the Operations}
 \label{queries}
 \end{figure}
 
-\Cref{queries} shows an overview of the queries, summing the test results of each variable frequency and term sets size combination. This, of course, is not representative for the smaller sized term indices and is only used to give an intuition for the expected performance.
+\Cref{queries} shows an overview of the operations for a term set size of 200, summing the test results of each variable frequency. Of course, this is not representative of differently sized term indices and is only used to give an intuition for the expected performance.
 
-As we can see, path indexing performs significantly better at retrieving instances and unifiables. However, it performs poorer for generalisation queries. In addition, the variations across the different types of queries are relatively low, with the generalisations query taking about twice as long as the instances query.
+As we can see, the performance of insertion is inferior as we must execute each value twice, once into the termtable and once into the path index. On the other hand, deletion is slightly superior. We also see that path indexing performs significantly better at retrieving instances and unifiables. However, it performs poorer for generalisation queries. In addition, the variations across the different types of queries are relatively low, with the generalisations query taking less than twice as long as the instances query.
 
-The reason for the low variance in performance is found in \cref{path_queries}. The variants and instances queries differ only in the handling of a variable. While variants retrieves the, likely small, term set from this path, the variable is simply disregarded for instances. As a result, performance of these queries is near identical.
+This mostly confirms the results of previous studies \cite{stickel_path-indexing_1989,mccune_experiments_1992,carbonell_comparison_1995} even though the term indices considered in this thesis are a generalisation - they store sets of arbitray values instead of terms. One significant difference are our findings for unifiable queries and is discussed in \cref{unif_eval}.
+
+The reason for the low variance in performance of the different queries is found in \cref{path_queries}. The variants and instances queries differ only in the handling of a variable. While variants retrieves the, likely small, term set from this path, the variable is simply disregarded for instances. As a result, performance of these queries is near identical.
 
 The generalisations query differs from variants by retrieving the union of two path sets for each constant or function. As each term consists mostly of constants and functions, this overhead impacts performance significantly. Unifiables suffers from the same performance problems as generalisations but reduces the number of intersections required due to variables being treated as a wildcard.
 
@@ -146,14 +147,9 @@ Evaluating this function is slow as it must both traverse every child of the cur
 \subsection{Variants}
 To evaluate the performance of the variants query, we test differently sized sets of terms. As variables in the term are handled identically to constants, the variable frequency of the terms is not plotted separately. We confirmed that the variable frequency had practically no impact. We average the tests of a given size with the different frequencies to reduce noise.
 
-\Cref{variants} shows the variants query of the term indices over differently sized sets of indexed terms. Note that we run one query for each term in the set. Therefore, we expect to see a linear plot with a slope of 1 if the query performance of a term index is independent of the number of indexed terms.
+\Cref{variants} shows the variants query of the term indices over differently sized sets of indexed terms. Note that we run one query for each term in the set. Therefore, we expect to see a linear plot with a slope of 1 if the query performance of a term index is independent of the number of indexed terms. We also show the performance of the exact lookup provided by the termtables (TT).
 
-In theory, only the discrimination tree index should handle the variants query as fast for large number of indexed terms as the query only relies on the preorder traversal of the query term and therefore does not interact with terms unrelated to it.
-The path index, on the other hand, relies on the intersection of term sets that may contain many unrelated terms and the termtables must traverse a larger 2-3 tree to reach the desired leaf. In practice, these deficits do not meaningfully affect the performance for realistically sized term indices.
-
-Note that the variants query of path indexing can be supplemented by the exact lookup provided by the termtables. If the exact lookup of terms is sufficient, or even required, this provides a significantly faster alternative. Adapating the termtables to ignore the variable identity should also retain almost identical performance characterstics. However, due to a lack of time, we did not verify this.
-
-\begin{figure}[h]
+\begin{figure}
   \centering
 \begin{tikzpicture}
   \begin{axis}[
@@ -178,11 +174,16 @@ Note that the variants query of path indexing can be supplemented by the exact l
 \label{variants}
 \end{figure}
 
+In theory, only the discrimination tree index should handle the variants query as fast for large number of indexed terms as the query only relies on the preorder traversal of the query term and therefore does not interact with terms unrelated to it.
+The path index, on the other hand, relies on the intersection of term sets that may contain many unrelated terms and the termtables must traverse a larger 2-3 tree to reach the desired leaf. In practice, these deficits do not meaningfully affect the performance for realistically sized term indices.
+
+Note that the variants query of path indexing can be supplemented by the exact lookup provided by the termtables. If the exact lookup of terms is sufficient, or even required, this provides a significantly faster alternative. Adapating the termtables to ignore the variable identity should also retain almost identical performance characterstics. However, due to a lack of time, we did not verify this.
+
 \subsection{Instances and Generalisations}
 As already shown in the overview, the performance difference of the queries for instances and generalisations are drastic for the indices. \Cref{inst} shows that the path index dominates the discrimination tree index for all sizes when querying for instances, although this difference is more pronounced for larger indices. Similiarly, \cref{gener} shows that the discrimination tree index is consistently and significantly faster than the path index for generalisations.
 
 \begin{figure}[h]
-  \begin{subfigure}{0.45\textwidth}
+  \begin{minipage}{0.45\textwidth}
 \begin{adjustbox}{width=1\textwidth}
 \begin{tikzpicture}
   \begin{axis}[
@@ -202,10 +203,10 @@ As already shown in the overview, the performance difference of the queries for 
 \end{adjustbox}
 \caption{Instances Query}
 \label{inst}
-\end{subfigure}
-\begin{subfigure}{0.1\textwidth}
-\end{subfigure}
-\begin{subfigure}{0.45\textwidth}
+\end{minipage}
+\begin{minipage}{0.1\textwidth}
+\end{minipage}
+\begin{minipage}{0.45\textwidth}
 \begin{adjustbox}{width=1\textwidth}
 \begin{tikzpicture}
   \begin{axis}[
@@ -225,20 +226,24 @@ As already shown in the overview, the performance difference of the queries for 
 \end{adjustbox}
 \caption{Generalisations Query}
 \label{gener}
-\end{subfigure}
+\end{minipage}
 \end{figure}
 
-\subsection{Unifiables}
+\subsection{Unifiables} \label{unif_eval}
 The unifiables query is likely one of the most important queries due to the wide range of applications. It is also the query in which the term indices differ the least in performance. We can see in \cref{unif} that path indexing handles increased index sizes well. While the additional terms increase the average size of the term sets stored at the paths located close to the root, the path lists likely remain very small as it is unlikely for two large terms to share not only a constant or variable, but also all the functions leading to this symbol.
 
 For discrimination tree indexing, on the other hand, every term sharing a prefix with the query term potentially leads to additional recursive calls due to the $skip$ function returning more nodes. Note that, due to the double-logarithmic scale, the performance difference is more drastic than it appears. Increasing the number of indexed terms from 3000 to 5000, less than doubling, leads to an almost four times longer evaluation for the unifiables query on the discrimination tree.
 
 Despite this, the discrimination tree index is comparable, or even faster, at smaller index sizes. Comparing the performance with differing variable frequencies at a fixed size of 40, as can be seen in \cref{unifvar}, shows that, at lower variable frequencies, the performance is comparable.
 
-Due to the variables replacing not only constants but also functions and both indices disregarding the arguments of a variable, increasing the variable frequency effectively decreases the size of the terms. As a result, we expect both term indices to improve with increasing variable frequencies. Path indexing, which benefits not only from the decreased size but also from the occurence of variables by treating them as wildcards, significantly improves. The discrimination tree, on the other hand, benefits only from the decreased term size but requires additional $skip$ evaluations. Therefore, it improves relatively slowly and is only comparable at lower frequencies.
+Due to the variables replacing not only constants but also functions and both indices disregarding the arguments of a variable, increasing the variable frequency effectively decreases the size of the terms. We therefore expect both term indices to improve with increasing variable frequencies. As a result, the absolute impact of the variable frequency can not be accurately measured. Nevertheless, the relative performance gain through higher variable frequencies can be measured.
+
+Path indexing, which benefits not only from the decreased size but also from the occurence of variables by treating them as wildcards, significantly improves. The discrimination tree, on the other hand, benefits only from the decreased term size but requires additional $skip$ evaluations. Therefore, it improves relatively slowly and is only comparable at lower frequencies.
+
+ Although previous results are mixed, discrimination trees are found to be either comparable or superior. While we also found them to be comparable at small sizes, path indexing is significantly faster when 200 or more terms are indexed. This may be a result of the applicative style disrupting the performance of discrimination trees or the random generation of terms not accurately representing the terms of real applications and requires further investigation.
 
 \begin{figure}[h]
-  \begin{subfigure}{0.45\textwidth}
+  \begin{minipage}{0.45\textwidth}
 \begin{adjustbox}{width=1\textwidth}
 \begin{tikzpicture}
   \begin{axis}[
@@ -256,12 +261,12 @@ Due to the variables replacing not only constants but also functions and both in
   \end{axis}
 \end{tikzpicture}
 \end{adjustbox}
-\caption{Unifiables Query}
+\caption{Unifiables Query over Size}
 \label{unif}
-\end{subfigure}
-\begin{subfigure}{0.1\textwidth}
-\end{subfigure}
-\begin{subfigure}{0.45\textwidth}
+\end{minipage}
+\begin{minipage}{0.1\textwidth}
+\end{minipage}
+\begin{minipage}{0.45\textwidth}
 \begin{adjustbox}{width=1\textwidth}
 \begin{tikzpicture}
   \begin{axis}[
@@ -269,6 +274,9 @@ Due to the variables replacing not only constants but also functions and both in
     ,ylabel={Query Time [s]}
     %,xmajorgrids=true
     %,ymajorgrids=true
+    ,/pgf/number format/.cd,
+    fixed,
+    %fixed zerofill,
     ]
     \addplot table[x=Gen,y=PITT]{figures/unifiables2.csv};
     \addplot table[x=Gen,y=DN]{figures/unifiables2.csv};
@@ -278,7 +286,7 @@ Due to the variables replacing not only constants but also functions and both in
 \end{adjustbox}
 \caption{Unifiables Query at 40 Terms}
 \label{unifvar}
-\end{subfigure}
+\end{minipage}
 \end{figure}
 
 \subsection{Modifying Operations}
@@ -290,7 +298,7 @@ While path indexing performs similarly well for smaller indices, it scales worse
 The difference is even more pronounced for deletion, as can be seen in \cref{delete}. At small sizes, the term sets are generally small, even for the top symbol. As the number of indexed terms increases, so does the average size of the term sets. Despite the fast comparison with identifiers, this deletion must be repeated for every single path of a term. Naturally, deleting the value from potentially hundreds of increasingly large term sets increases deletion time significantly.
 
 \begin{figure}[h]
-  \begin{subfigure}{0.45\textwidth}
+  \begin{minipage}{0.45\textwidth}
 \begin{adjustbox}{width=1\textwidth}
 \begin{tikzpicture}
   \begin{axis}[
@@ -298,6 +306,7 @@ The difference is even more pronounced for deletion, as can be seen in \cref{del
     ,ymode=log
     ,xlabel={Indexed Terms}
     ,ylabel={Insertion Time [s]}
+    ,xmajorgrids=true
     ,ymajorgrids=true
     ,legend pos=north west
     ]
@@ -309,10 +318,10 @@ The difference is even more pronounced for deletion, as can be seen in \cref{del
 \end{adjustbox}
 \caption{Insertion Performance}
 \label{insert}
-\end{subfigure}
-\begin{subfigure}{0.1\textwidth}
-\end{subfigure}
-\begin{subfigure}{0.45\textwidth}
+\end{minipage}
+\begin{minipage}{0.1\textwidth}
+\end{minipage}
+\begin{minipage}{0.45\textwidth}
 \begin{adjustbox}{width=1\textwidth}
 \begin{tikzpicture}
   \begin{axis}[
@@ -320,6 +329,7 @@ The difference is even more pronounced for deletion, as can be seen in \cref{del
     ,ymode=log
     ,xlabel={Indexed Terms}
     ,ylabel={Deletion Time [s]}
+    ,xmajorgrids=true
     ,ymajorgrids=true
     ,legend pos=north west
     ]
@@ -331,7 +341,7 @@ The difference is even more pronounced for deletion, as can be seen in \cref{del
 \end{adjustbox}
 \caption{Deletion Performance}
 \label{delete}
-\end{subfigure}
+\end{minipage}
 \end{figure}
 
 \section{Shortcomings} \label{shortcomings}

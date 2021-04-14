@@ -19,13 +19,13 @@ To address this need for more term indices, we defined a unified interface for t
 The interface in its current form is limited to the functions previously implemented by the discrimination tree index but can easily be extended.
 
 In addition to the interface, we provide an implementation of path indexing for first-order terms. Adapting path indexing from its standard representation in the literature to the more general term indexing interface defined in Isabelle/ML is the main contribution of this thesis.
-A major challenge was the generalisation of path indexing to store sets of values indexed by terms rather than only storing terms in an efficient manner.
+A major challenge was the generalisation of path indexing to store sets of values indexed by terms rather than only storing terms in an efficient manner. The implementation can be found in the repository\footnote{\url{}}
 
 To increase our confidence in the correctness of our optimised implementation we also adapted SpecCheck \cite{bulwahn_new_2012}, a testing suite for Isabelle/ML inspired by QuickCheck \cite{claessen_quickcheck_2011}.
 We implemented a widely applicable term generator and used it for our tests and benchmarks.
 While doing so, we also modularised, documented and refactored the SpecCheck framework to increase reusability and code quality.
 Those changes are not discussed in this thesis.
-Interested readers can find the updated framework in the repository\footnote{\url{https://gitlab.lrz.de/ga85wir/spec_check}}.
+Interested readers can find the updated framework in the repository\footnote{\url{https://github.com/kappelmann/SpecCheck}}.
 We plan to upstream the changes to the Isabelle repository in the near future.
 
 \section{Thesis Outline}

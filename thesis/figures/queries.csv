@@ -1,5 +1,29 @@
      PI_    PITT      DN     TT_ Queries
-  510.558  245.895  62.105   6.113 Variants
-  258.293  258.486  1419.296	nan Instances
-  728.091  715.554  54.264	 nan Generalisations
-  712.895  599.964  1468.229	nan Unifiables
+  %510.558  245.895  62.105   6.113 Variants
+  %258.293  258.486  1419.296	nan Instances
+  %728.091  715.554  54.264	 nan Generalisations
+  %712.895  599.964  1468.229	nan Unifiables
+  %1576.070  843.511  193.663   9.611	 Insertion
+  %923.160  164.850  101.208   7.273	 Deletion
+
+  %83.462  27.016  15.574   1.040	 Insertion
+  %26.862   8.019   8.635   0.691	 Deletion
+  %14.633  14.159   5.591   0.585	 Variants
+  %%14.809  13.830  13.910     N/A	 Q: instances of existing term
+  %22.635  21.387   5.164     N/A	 Generalisations
+  %%22.212  22.442  13.921     N/A	 Q: unifiables of existing term
+  %13.028  12.717  74.256     N/A	 Instances
+  %19.035  19.685  75.887     N/A	 Unifiables
+   %%9.097   7.840   7.231   0.783	 Q: variants of non-ex term
+   %%8.962   8.244  16.594     N/A	 Q: instances of non-ex term
+  %%11.062   9.830   0.864     N/A	 Q: generalisations of non-ex term
+  %%11.724   9.860   9.893     N/A	 Q: unifiables of non-ex term
+
+   6.915   6.630  15.536     N/A	 Unifiables
+   4.972   4.457  15.347     N/A	 Instances
+   %8.915   7.643   3.322     N/A	 Q: unifiables of existing term
+   9.474   8.043   1.851     N/A	 Generalisations
+   %5.816   4.817   3.551     N/A	 Q: instances of existing term
+   6.108   4.848   2.121   0.189	 Variants
+  11.249   2.245   3.308   0.234	 Deletion
+  14.191   8.758   5.314   0.272	 Insertion
