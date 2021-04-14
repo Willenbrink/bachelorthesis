@@ -6,6 +6,12 @@
 \end{center}
 
 \vspace{10mm}
-A significant fraction of modern data centers' energy costs is due to their high energy consumption during periods of low load. One possible solution to deal with this waste of energy is to dynamically adjust the number of active servers and to efficiently distribute the varying workloads, that is to dynamically right-size the data center. In this thesis, we derive algorithms capable of finding approximative as well as optimal solutions for this dynamic right-sizing process by reducing the data centers' scheduling problem to the shortest path problem of acyclic graphs. All developed algorithms are proved for correctness and made accessible by using pseudo-code that can be easily transferred to arbitrary programming languages.
+An important development for interactive theorem provers is the introduction of increasingly powerful proof automation.
+This automation necessitates efficient data structures to index and query sets of terms.
+The so-called term indices provide queries for retrieving variants, instances, generalisations and unifiables of a given term.
+Two indexing techniques, path indexing and discrimination tree indexing are reviewed.
+We implement path indexing for first-order terms in Isabelle/ML and adapt it to the more general term indexing interface defined in Isabelle/ML.
+We further define a unified interface for the previously implemented discrimination tree index and the path index, thereby clearing the way for additional term indices.
+Lastly, we evaluate the performance of path indexing relative to discrimination tree indexing.
 
 \cleardoublepage{}
