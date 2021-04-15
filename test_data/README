@@ -1,0 +1,6 @@
+test_output.txt contains the result of the benchmark.
+raw_data.txt contains only the raw data of the test, reformated for inclusion in Isabelle
+By using "benchmark" from raw_data, one can reproduce the graphs of the thesis or plot different properties.
+See Test.thy for the commands
+
+plots contains some unused test runs and plotting commands
